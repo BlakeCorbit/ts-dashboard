@@ -9,13 +9,52 @@
  * 5. Return clusters that meet the threshold
  */
 
-// Known POS systems — used to tag tickets
+// Known POS systems — used to tag tickets (text matching fallback)
 const POS_SYSTEMS = [
   'tekmetric', 'protractor', 'mitchell', 'shopkey', 'shop-ware', 'shopware',
   'napa tracs', 'napa', 'tracs', 'ro writer', 'rowriter', 'vast',
   'winworks', 'maxxtruxx', 'maxxtraxx', 'yes management', 'yes prime',
   'alldata', 'stocktrac', 'autofluent', 'tabs', 'costar', 'lankar',
   'idenifix', 'navex',
+];
+
+// Zendesk tag → POS name mapping (from actual ticket data)
+const TAG_TO_POS = {
+  'protractor_partner_api': 'protractor',
+  'tekmetric_partner_api': 'tekmetric',
+  'shopware_partner_api': 'shop-ware',
+  'mitchell_binary': 'mitchell',
+  'napa_binary': 'napa tracs',
+  'rowriter_binary': 'ro writer',
+  'winworks_binary': 'winworks',
+  'vast_binary': 'vast',
+  'maxxtraxx_binary': 'maxxtraxx',
+  'alldata_binary': 'alldata',
+  'autofluent_binary': 'autofluent',
+  'yes_binary': 'yes management',
+  'stocktrac_binary': 'stocktrac',
+};
+
+// Zendesk tag → category mapping
+const TAG_TO_CATEGORY = {
+  'system_issue': 'pos',
+  'data_issue': 'pos',
+  'integration_issue': 'pos',
+  'email_issue': 'comms',
+  'sms_issue': 'comms',
+  'twilio_issue': 'comms',
+  'mailgun_issue': 'comms',
+  'login_issue': 'access',
+  'access_issue': 'access',
+};
+
+// Tags that cause a ticket to be ignored entirely
+const IGNORE_TAGS = [
+  'twilio_rejected',
+  'twilio_category',
+  'web',
+  'website',
+  'voicemail',
 ];
 
 // Common error patterns to normalize ticket descriptions
@@ -42,20 +81,23 @@ class TicketClusterer {
   }
 
   /**
-   * Categorize a ticket into a type based on keywords.
+   * Categorize a ticket into a type based on Zendesk tags first, then keywords.
    */
   categorize(ticket) {
+    // Try tags first (more reliable than text matching)
+    for (const tag of ticket.tags) {
+      if (TAG_TO_CATEGORY[tag]) return TAG_TO_CATEGORY[tag];
+    }
+
     const text = `${ticket.subject} ${ticket.description}`.toLowerCase();
 
-    // Check POS keywords
+    // Fall back to keyword matching
     for (const kw of this.keywords.pos) {
       if (text.includes(kw)) return 'pos';
     }
-    // Check comms keywords
     for (const kw of this.keywords.comms) {
       if (text.includes(kw)) return 'comms';
     }
-    // Check access keywords
     for (const kw of this.keywords.access) {
       if (text.includes(kw)) return 'access';
     }
@@ -63,19 +105,26 @@ class TicketClusterer {
   }
 
   /**
-   * Extract POS system name from ticket text.
+   * Extract POS system name from Zendesk tags first, then ticket text.
    */
   extractPOS(ticket) {
-    const text = `${ticket.subject} ${ticket.description}`.toLowerCase();
-    for (const pos of POS_SYSTEMS) {
-      if (text.includes(pos)) return pos;
+    // Try structured tags first (most reliable)
+    for (const tag of ticket.tags) {
+      if (TAG_TO_POS[tag]) return TAG_TO_POS[tag];
     }
-    // Also check tags
+
+    // Try matching any tag that contains a POS name
     for (const tag of ticket.tags) {
       const tagLower = tag.toLowerCase();
       for (const pos of POS_SYSTEMS) {
         if (tagLower.includes(pos.replace(/\s+/g, ''))) return pos;
       }
+    }
+
+    // Fall back to text matching
+    const text = `${ticket.subject} ${ticket.description}`.toLowerCase();
+    for (const pos of POS_SYSTEMS) {
+      if (text.includes(pos)) return pos;
     }
     return null;
   }
@@ -111,10 +160,19 @@ class TicketClusterer {
    * Find all clusters in the given tickets.
    * Returns array of cluster objects, sorted by size descending.
    */
+  /**
+   * Check if a ticket should be ignored based on tags.
+   */
+  shouldIgnore(ticket) {
+    return ticket.tags.some(tag => IGNORE_TAGS.includes(tag.toLowerCase()));
+  }
+
   findClusters(tickets) {
     const groups = new Map();
 
     for (const ticket of tickets) {
+      if (this.shouldIgnore(ticket)) continue;
+
       const key = this.getClusterKey(ticket);
 
       if (!groups.has(key)) {

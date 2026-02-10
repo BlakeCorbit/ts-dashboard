@@ -6,12 +6,30 @@
 class SlackNotifier {
   constructor({ webhookUrl }) {
     this.webhookUrl = webhookUrl;
+    this.dryRun = !webhookUrl;
   }
 
   /**
-   * Send an incident alert to Slack.
+   * Send an incident alert to Slack (or log to console in dry-run mode).
    */
   async sendIncidentAlert(cluster) {
+    if (this.dryRun) {
+      console.log('');
+      console.log('========================================');
+      console.log('  POTENTIAL INCIDENT DETECTED (dry-run)');
+      console.log('========================================');
+      console.log(`  Pattern:  ${cluster.pattern}`);
+      console.log(`  Tickets:  ${cluster.tickets.length} in ${cluster.timeSpanMinutes} min`);
+      console.log(`  Shops:    ${cluster.organizations.length} affected`);
+      cluster.tickets.forEach(t => {
+        console.log(`    ZD#${t.id} - ${t.subject.substring(0, 60)}`);
+      });
+      console.log(`  Threshold: ${cluster.tickets.length}/${process.env.CLUSTER_THRESHOLD || 3}`);
+      console.log('========================================');
+      console.log('  (Set SLACK_WEBHOOK_URL in .env to send to Slack)');
+      console.log('');
+      return;
+    }
     const ticketLinks = cluster.tickets
       .map(t => `<https://bayiq.zendesk.com/agent/tickets/${t.id}|ZD#${t.id}>`)
       .join(', ');

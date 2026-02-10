@@ -28,19 +28,24 @@ const missing = [];
 if (!config.zendesk.subdomain) missing.push('ZENDESK_SUBDOMAIN');
 if (!config.zendesk.email) missing.push('ZENDESK_EMAIL');
 if (!config.zendesk.apiToken) missing.push('ZENDESK_API_TOKEN');
-if (!config.slack.webhookUrl) missing.push('SLACK_WEBHOOK_URL');
 if (missing.length > 0) {
   console.error(`Missing required env vars: ${missing.join(', ')}`);
   console.error('Copy .env.example to .env and fill in your credentials.');
   process.exit(1);
 }
 
+const dryRun = !config.slack.webhookUrl;
+if (dryRun) {
+  console.log('** DRY-RUN MODE: No SLACK_WEBHOOK_URL set. Alerts will log to console only. **');
+  console.log('');
+}
+
 const zendesk = new ZendeskClient(config.zendesk);
 const clusterer = new TicketClusterer(config);
 const slack = new SlackNotifier(config.slack);
 
-// Track which clusters we've already alerted on (by cluster fingerprint)
-const alertedClusters = new Set();
+// Track which clusters we've already alerted on (fingerprint -> {size, timestamp})
+const alertedClusters = new Map();
 
 async function poll() {
   try {
@@ -55,21 +60,18 @@ async function poll() {
       if (cluster.tickets.length < config.clusterThreshold) continue;
 
       const fingerprint = cluster.fingerprint;
-      if (alertedClusters.has(fingerprint)) {
-        // Check if cluster grew — re-alert if significantly larger
-        const prevSize = alertedClusters.get(fingerprint);
-        if (prevSize && cluster.tickets.length <= prevSize + 2) continue;
-      }
+      const prev = alertedClusters.get(fingerprint);
+      if (prev && cluster.tickets.length <= prev.size + 2) continue;
 
       console.log(`[ALERT] Cluster detected: "${cluster.pattern}" with ${cluster.tickets.length} tickets`);
       await slack.sendIncidentAlert(cluster);
-      alertedClusters.set(fingerprint, cluster.tickets.length);
+      alertedClusters.set(fingerprint, { size: cluster.tickets.length, timestamp: Date.now() });
     }
 
     // Clean up old fingerprints (older than 2x the window)
     const cutoff = Date.now() - (config.clusterWindowMinutes * 2 * 60 * 1000);
     for (const [fp, data] of alertedClusters.entries()) {
-      if (typeof data === 'object' && data.timestamp < cutoff) {
+      if (data.timestamp < cutoff) {
         alertedClusters.delete(fp);
       }
     }
@@ -77,9 +79,6 @@ async function poll() {
     console.error(`[${new Date().toISOString()}] Poll error:`, err.message);
   }
 }
-
-// Use a Map instead of Set for tracking alert sizes
-const alertedClustersMap = new Map();
 
 async function run() {
   console.log('=== AutoVitals Incident Detector ===');
