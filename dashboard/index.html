@@ -36,6 +36,26 @@
     <div id="incidents-box"><div class="loading-shimmer"></div></div>
   </section>
 
+  <!-- Live Triage Queue -->
+  <section>
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        Live Triage Queue
+        <span id="triage-new-badge" class="nav-badge" style="display:none">0</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="triage-poll-status" style="font-size:0.68rem;color:var(--text-muted);font-family:var(--font-mono)">--</span>
+        <button class="btn btn-sm" onclick="loadTriageQueue()">Refresh</button>
+      </div>
+    </div>
+    <div id="triage-filters" style="display:flex;gap:0;margin-bottom:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content">
+      <button class="triage-filter active" data-filter="all" onclick="setTriageFilter('all',this)">All</button>
+      <button class="triage-filter" data-filter="matched" onclick="setTriageFilter('matched',this)">Matched</button>
+      <button class="triage-filter" data-filter="unmatched" onclick="setTriageFilter('unmatched',this)">No Match</button>
+    </div>
+    <div id="triage-queue-box"><div class="loading-shimmer" style="height:300px"></div></div>
+  </section>
+
   <!-- Stats -->
   <section>
     <div class="section-header">
@@ -56,15 +76,6 @@
       <div class="loading-shimmer" style="height:200px"></div>
     </div>
   </section>
-
-  <!-- Triage -->
-  <section>
-    <div class="section-header">
-      <div class="section-title">Ticket Triage (Last 24h)</div>
-      <button class="btn btn-sm" onclick="loadTriage()">Refresh</button>
-    </div>
-    <div id="triage-box"><div class="loading-shimmer" style="height:300px"></div></div>
-  </section>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -75,7 +86,13 @@
 (function(){
 'use strict';
 
-var metricsData = null, incidentsData = null, triageData = null;
+var metricsData = null, incidentsData = null;
+var triageQueueData = null;
+var seenTicketIds = {};
+var dismissedIds = {};
+var handledIds = {};
+var currentFilter = 'all';
+var firstLoad = true;
 
 // ---- Incidents ----
 window.loadIncidents = function(){
@@ -126,116 +143,226 @@ function renderIncidents(d){
   box.innerHTML=h;
 }
 
-// ---- Metrics ----
-window.loadMetrics = function(){
-  CC.api('metrics').then(function(d){
-    if(!d)return;
-    metricsData=d;
-    renderStats(d);
-    renderCharts(d);
-    document.getElementById('header-sub').textContent=
-      d.byDay&&d.byDay.length?d.byDay[0].day+' to '+d.byDay[d.byDay.length-1].day:'Current week';
-    document.getElementById('last-updated').textContent='Updated '+CC.fmtTime(d.generatedAt);
-  }).catch(function(e){ CC.toast('Metrics: '+e.message, false); });
-};
+// ---- Live Triage Queue ----
+window.loadTriageQueue = function(){
+  CC.api('triage-queue?hours=2').then(function(d){
+    if(!d) return;
 
-function renderStats(d){
-  var box=document.getElementById('stats-box');
-  var cards=[
-    {l:'Tickets This Week',v:CC.fmt(d.totalTickets),det:'Resolved: '+CC.fmt(d.resolvedTickets)},
-    {l:'Avg Per Day',v:d.avgPerDay?d.avgPerDay.toFixed(1):'--',det:'7-day average'},
-    {l:'Open Backlog',v:CC.fmt(d.openBacklog),det:'Unresolved tickets'},
-    {l:'Triage Match Rate',v:triageData&&triageData.stats?triageData.stats.matchRate+'%':'--',det:triageData&&triageData.stats?'Triaged: '+CC.fmt(triageData.stats.total):''},
-  ];
-  var h='';
-  cards.forEach(function(c){
-    h+='<div class="stat-card fade-in"><div class="stat-label">'+CC.esc(c.l)+'</div><div class="stat-value">'+c.v+'</div><div class="stat-detail">'+CC.esc(c.det)+'</div></div>';
-  });
-  box.innerHTML=h;
-}
-
-function renderCharts(d){
-  var box=document.getElementById('charts-box');
-  var h='';
-  // Tickets by day
-  h+='<div class="chart-card fade-in"><div class="chart-title">Tickets by Day</div>';
-  if(d.byDay&&d.byDay.length){
-    var mx=Math.max.apply(null,d.byDay.map(function(x){return x.count;}));
-    h+='<div class="bar-chart-v">';
-    d.byDay.forEach(function(x){
-      var pct=mx>0?(x.count/mx)*100:0;
-      h+='<div class="bar-col"><div class="bar-val">'+x.count+'</div><div class="bar-fill" style="height:'+pct+'%"></div><div class="bar-lbl">'+CC.esc(CC.dayLbl(x.day))+'</div></div>';
+    // Count new tickets since last poll
+    var newCount = 0;
+    (d.queue || []).forEach(function(item){
+      if(!seenTicketIds[item.ticketId]){
+        seenTicketIds[item.ticketId] = true;
+        if(!firstLoad) newCount++;
+      }
     });
-    h+='</div>';
-  } else h+='<div class="no-data">No data</div>';
-  h+='</div>';
-  // By category
-  h+=CC.hBar('By Category',d.byCategory);
-  // By POS
-  h+=CC.hBar('By POS',d.byPOS);
-  box.innerHTML=h;
-}
 
-// ---- Triage ----
-window.loadTriage = function(){
-  CC.api('tickets?hours=24').then(function(d){
-    if(!d)return;
-    triageData=d;
-    renderTriage(d);
+    triageQueueData = d;
+    firstLoad = false;
+
+    // Flash new badge
+    var badge = document.getElementById('triage-new-badge');
+    if(newCount > 0){
+      badge.textContent = '+' + newCount;
+      badge.style.display = 'inline-flex';
+      setTimeout(function(){ badge.style.display = 'none'; }, 8000);
+    }
+
+    // Poll timestamp
+    document.getElementById('triage-poll-status').textContent =
+      d.count + ' tickets | ' + d.matchedCount + ' matched | polled ' + CC.fmtTime(d.generatedAt);
+
+    renderTriageQueue(d);
   }).catch(function(e){ CC.toast('Triage: '+e.message, false); });
 };
 
-function renderTriage(d){
-  var box=document.getElementById('triage-box');
-  var tickets=(d&&d.tickets)?d.tickets:(d&&d.recentTickets)?d.recentTickets:[];
-  if(!tickets.length){
-    box.innerHTML='<div class="triage-card"><div class="no-data">No recent tickets</div></div>';
-    return;
-  }
-  var h='<div class="triage-card fade-in"><div class="triage-wrap"><table>';
-  h+='<thead><tr><th>Ticket</th><th>Subject</th><th>Status</th><th>Priority</th><th>Type</th><th>Actions</th></tr></thead><tbody>';
-  tickets.slice(0,30).forEach(function(t){
-    var id=t.id;
-    var pri=(t.priority||'normal').toLowerCase();
-    var pcls='p-'+pri;
-    h+='<tr>';
-    h+='<td class="td-ticket"><a href="'+CC.ZD+id+'" target="_blank">#'+id+'</a></td>';
-    h+='<td class="td-subject" title="'+CC.esc(t.subject)+'">'+CC.esc(CC.trunc(t.subject,55))+'</td>';
-    h+='<td><span class="td-cat">'+CC.esc(t.status||'--')+'</span></td>';
-    h+='<td><span class="priority-badge '+pcls+'">'+CC.esc(pri)+'</span></td>';
-    h+='<td class="td-cat">'+CC.esc(t.type||'ticket')+'</td>';
-    h+='<td>';
-    if(t.category){
-      h+='<button class="btn btn-approve btn-sm" onclick="approveTicket('+id+',this)" title="Add triage note to ZD">Approve</button> ';
+window.setTriageFilter = function(filter, btn){
+  currentFilter = filter;
+  var btns = document.querySelectorAll('.triage-filter');
+  btns.forEach(function(b){
+    if(b === btn){
+      b.classList.add('active');
+      b.style.background = 'var(--av-green-dark)';
+      b.style.color = '#fff';
+    } else {
+      b.classList.remove('active');
+      b.style.background = 'var(--bg-card)';
+      b.style.color = 'var(--text-secondary)';
     }
-    if(!t.problemId && incidentsData && incidentsData.incidents && incidentsData.incidents.length){
-      h+='<button class="btn btn-link btn-sm" onclick="showLinkMenu('+id+',this)" title="Link to Problem ticket">Link</button>';
-    }
-    h+='</td></tr>';
   });
-  h+='</tbody></table></div></div>';
-  box.innerHTML=h;
-}
-
-// ---- Actions ----
-window.approveTicket = function(ticketId, btn){
-  btn.classList.add('loading');
-  btn.innerHTML='<span class="spinner"></span>';
-  CC.api('approve',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ticketId:ticketId, category:'Auto-triaged', suggestedAction:'Review triage suggestion'})
-  }).then(function(d){
-    if(d&&d.success){ CC.toast('Internal note added to #'+ticketId, true); btn.textContent='Done'; btn.disabled=true; }
-    else { CC.toast('Failed', false); btn.classList.remove('loading'); btn.textContent='Approve'; }
-  }).catch(function(e){ CC.toast(e.message, false); btn.classList.remove('loading'); btn.textContent='Approve'; });
+  if(triageQueueData) renderTriageQueue(triageQueueData);
 };
 
+function renderTriageQueue(d){
+  var box = document.getElementById('triage-queue-box');
+  var queue = (d && d.queue) ? d.queue : [];
+
+  // Apply filter + remove dismissed/handled
+  var filtered = queue.filter(function(item){
+    if(dismissedIds[item.ticketId] || handledIds[item.ticketId]) return false;
+    if(currentFilter === 'matched') return item.match !== null;
+    if(currentFilter === 'unmatched') return item.match === null;
+    return true;
+  });
+
+  if(!filtered.length){
+    box.innerHTML = '<div class="all-clear fade-in"><div class="title">Queue Clear</div>' +
+      '<div class="sub">No unlinked tickets in the last 2 hours</div></div>';
+    return;
+  }
+
+  // Sort: high confidence first, then medium, then unmatched, then by age
+  var confOrder = {high: 0, medium: 1, low: 2};
+  filtered.sort(function(a, b){
+    var ca = a.match ? (confOrder[a.match.confidence] != null ? confOrder[a.match.confidence] : 3) : 3;
+    var cb = b.match ? (confOrder[b.match.confidence] != null ? confOrder[b.match.confidence] : 3) : 3;
+    if(ca !== cb) return ca - cb;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  var h = '<div class="triage-queue-grid fade-in">';
+
+  filtered.forEach(function(item){
+    var borderColor = item.match
+      ? (item.match.confidence === 'high' ? 'var(--av-green)'
+        : item.match.confidence === 'medium' ? 'var(--accent-yellow)'
+        : 'var(--border)')
+      : 'var(--border)';
+    var pri = (item.priority || 'normal').toLowerCase();
+
+    h += '<div class="triage-queue-card" id="tq-' + item.ticketId + '" style="border-left:4px solid ' + borderColor + '">';
+
+    // Row 1: Ticket info + dismiss
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
+    h += '<div>';
+    h += '<a href="' + CC.ZD + item.ticketId + '" target="_blank" style="font-family:var(--font-mono);font-weight:700;color:var(--av-blue)">#' + item.ticketId + '</a>';
+    h += ' <span class="priority-badge p-' + pri + '" style="margin-left:4px">' + CC.esc(pri) + '</span>';
+    h += ' <span class="age-pill ' + (CC.ageH(item.createdAt) > 1 ? 'age-warning' : 'age-ok') + '">' + CC.relTime(item.createdAt) + '</span>';
+    h += '</div>';
+    h += '<button class="btn btn-muted btn-sm" onclick="dismissTriageItem(' + item.ticketId + ')" title="Hide">Dismiss</button>';
+    h += '</div>';
+
+    // Subject
+    h += '<div style="font-size:0.88rem;font-weight:500;margin-bottom:6px;color:var(--text-primary)">' + CC.esc(item.subject) + '</div>';
+
+    // Badges: category, POS, error pattern
+    h += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">';
+    if(item.category && item.category !== 'general'){
+      h += '<span style="font-size:0.62rem;padding:2px 7px;border-radius:4px;background:rgba(118,195,206,0.12);color:var(--av-blue);font-weight:600;text-transform:uppercase">' + CC.esc(item.category) + '</span>';
+    }
+    if(item.pos){
+      h += '<span style="font-size:0.62rem;padding:2px 7px;border-radius:4px;background:rgba(117,194,154,0.12);color:var(--av-green);font-weight:600">' + CC.esc(item.pos) + '</span>';
+    }
+    if(item.errorPattern && item.errorPattern !== 'other'){
+      h += '<span style="font-size:0.62rem;padding:2px 7px;border-radius:4px;background:rgba(232,134,58,0.12);color:var(--accent-orange);font-weight:600">' + CC.esc(item.errorPattern) + '</span>';
+    }
+    h += '</div>';
+
+    // Match recommendation
+    if(item.match){
+      var m = item.match;
+      var confBg = m.confidence === 'high' ? 'rgba(117,194,154,0.08)' : 'rgba(240,192,80,0.08)';
+      var confColor = m.confidence === 'high' ? 'var(--av-green)' : 'var(--accent-yellow)';
+
+      h += '<div style="background:' + confBg + ';border:1px solid ' + confColor + ';border-radius:6px;padding:10px 14px;margin-bottom:10px">';
+      h += '<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:' + confColor + ';margin-bottom:4px;letter-spacing:0.04em">';
+      h += CC.esc(m.confidence) + ' match (' + m.score + '%)';
+      h += '</div>';
+      h += '<div style="font-size:0.84rem;margin-bottom:4px">';
+      h += 'Link to <a href="' + CC.ZD + m.problemId + '" target="_blank" style="font-weight:700">ZD#' + m.problemId + '</a>: ' + CC.esc(CC.trunc(m.problemSubject, 60));
+      h += '</div>';
+      if(m.jiraLinks && m.jiraLinks.length){
+        m.jiraLinks.forEach(function(j){
+          h += '<span style="font-size:0.72rem;color:var(--text-secondary)">Jira: <a href="' + CC.esc(j.url) + '" target="_blank" style="font-weight:700">' + CC.esc(j.issueKey) + '</a></span> ';
+        });
+      }
+      h += '<div style="font-size:0.68rem;color:var(--text-muted);margin-top:4px">' + CC.esc(m.matchReason) + '</div>';
+      h += '</div>';
+
+      // Editable reply
+      if(item.suggestedReply){
+        h += '<div style="margin-bottom:10px">';
+        h += '<label style="display:block;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Suggested Internal Note</label>';
+        h += '<textarea id="reply-' + item.ticketId + '" style="width:100%;min-height:55px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-sub);font-size:0.8rem;resize:vertical;box-sizing:border-box">' + CC.esc(item.suggestedReply) + '</textarea>';
+        h += '</div>';
+      }
+
+      // Action button
+      h += '<button class="btn btn-approve" id="approve-btn-' + item.ticketId + '" onclick="approveAndLink(' + item.ticketId + ',' + m.problemId + ',this)">Approve &amp; Link</button>';
+
+    } else {
+      // No match
+      h += '<div style="font-size:0.78rem;color:var(--text-muted);padding:6px 0;margin-bottom:6px">No matching Problem Ticket found</div>';
+      if(incidentsData && incidentsData.incidents && incidentsData.incidents.length){
+        h += '<button class="btn btn-link btn-sm" onclick="showLinkMenu(' + item.ticketId + ',this)">Link Manually</button>';
+      }
+    }
+
+    h += '</div>';
+  });
+
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- One-click Approve & Link ----
+window.approveAndLink = function(ticketId, problemId, btn){
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Linking...';
+
+  var replyEl = document.getElementById('reply-' + ticketId);
+  var replyBody = replyEl ? replyEl.value.trim() : '';
+
+  // Step 1: Link ticket to problem
+  CC.api('link', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ ticketId: ticketId, problemId: problemId })
+  }).then(function(linkResult){
+    if(!linkResult || !linkResult.success) throw new Error('Link failed');
+
+    // Step 2: Post internal note if reply text exists
+    if(replyBody){
+      return CC.api('comment', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          ticketId: ticketId,
+          body: replyBody
+        })
+      });
+    }
+    return { success: true };
+  }).then(function(){
+    handledIds[ticketId] = true;
+    var card = document.getElementById('tq-' + ticketId);
+    if(card){
+      card.style.borderLeftColor = 'var(--av-green)';
+      card.style.opacity = '0.5';
+      card.innerHTML = '<div style="padding:10px;display:flex;align-items:center;gap:8px">' +
+        '<span style="color:var(--av-green);font-weight:700;font-size:0.85rem">Linked #' + ticketId + ' to ZD#' + problemId + (replyBody ? ' + note posted' : '') + '</span></div>';
+    }
+    CC.toast('Linked #' + ticketId + ' to Problem #' + problemId, true);
+  }).catch(function(e){
+    CC.toast('Error: ' + e.message, false);
+    btn.classList.remove('loading');
+    btn.innerHTML = 'Approve &amp; Link';
+  });
+};
+
+// ---- Dismiss ----
+window.dismissTriageItem = function(ticketId){
+  dismissedIds[ticketId] = true;
+  var card = document.getElementById('tq-' + ticketId);
+  if(card) card.remove();
+};
+
+// ---- Manual link (reused from old triage) ----
 window.showLinkMenu = function(ticketId, btn){
   var incidents = incidentsData ? incidentsData.incidents : [];
   if(!incidents.length){ CC.toast('No active incidents', false); return; }
   var menu='<select onchange="linkTicket('+ticketId+',this.value,this)" style="font-size:0.7rem;padding:2px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px">';
-  menu+='<option value="">Pick incident...</option>';
+  menu+='<option value="">Pick problem...</option>';
   incidents.forEach(function(i){
     var jira=i.jiraLinks&&i.jiraLinks.length?'('+i.jiraLinks[0].issueKey+')':'';
     menu+='<option value="'+i.problemId+'">ZD#'+i.problemId+' '+jira+' '+CC.esc(CC.trunc(i.subject,30))+'</option>';
@@ -253,12 +380,61 @@ window.linkTicket = function(ticketId, problemId, sel){
     body:JSON.stringify({ticketId:ticketId, problemId:parseInt(problemId,10)})
   }).then(function(d){
     if(d&&d.success){
+      handledIds[ticketId] = true;
       var jira=d.jiraLinks&&d.jiraLinks.length?' + '+d.jiraLinks[0].issueKey:'';
       CC.toast('Linked #'+ticketId+' to Problem #'+problemId+jira, true);
       sel.outerHTML='<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Linked</span>';
     } else { CC.toast('Link failed', false); sel.disabled=false; }
   }).catch(function(e){ CC.toast(e.message, false); sel.disabled=false; });
 };
+
+// ---- Metrics ----
+window.loadMetrics = function(){
+  CC.api('metrics').then(function(d){
+    if(!d)return;
+    metricsData=d;
+    renderStats(d);
+    renderCharts(d);
+    document.getElementById('header-sub').textContent=
+      d.byDay&&d.byDay.length?d.byDay[0].day+' to '+d.byDay[d.byDay.length-1].day:'Current week';
+    document.getElementById('last-updated').textContent='Updated '+CC.fmtTime(d.generatedAt);
+  }).catch(function(e){ CC.toast('Metrics: '+e.message, false); });
+};
+
+function renderStats(d){
+  var box=document.getElementById('stats-box');
+  var tq = triageQueueData;
+  var cards=[
+    {l:'Tickets This Week',v:CC.fmt(d.totalTickets),det:'Resolved: '+CC.fmt(d.resolvedTickets)},
+    {l:'Avg Per Day',v:d.avgPerDay?d.avgPerDay.toFixed(1):'--',det:'Period average'},
+    {l:'Open Backlog',v:CC.fmt(d.openBacklog),det:'Unresolved tickets'},
+    {l:'Queue Match Rate',v:tq?Math.round((tq.matchedCount/Math.max(tq.count,1))*100)+'%':'--',det:tq?tq.matchedCount+'/'+tq.count+' matched':''},
+  ];
+  var h='';
+  cards.forEach(function(c){
+    h+='<div class="stat-card fade-in"><div class="stat-label">'+CC.esc(c.l)+'</div><div class="stat-value">'+c.v+'</div><div class="stat-detail">'+CC.esc(c.det)+'</div></div>';
+  });
+  box.innerHTML=h;
+}
+
+function renderCharts(d){
+  var box=document.getElementById('charts-box');
+  var h='';
+  h+='<div class="chart-card fade-in"><div class="chart-title">Tickets by Day</div>';
+  if(d.byDay&&d.byDay.length){
+    var mx=Math.max.apply(null,d.byDay.map(function(x){return x.count;}));
+    h+='<div class="bar-chart-v">';
+    d.byDay.forEach(function(x){
+      var pct=mx>0?(x.count/mx)*100:0;
+      h+='<div class="bar-col"><div class="bar-val">'+x.count+'</div><div class="bar-fill" style="height:'+pct+'%"></div><div class="bar-lbl">'+CC.esc(CC.dayLbl(x.day))+'</div></div>';
+    });
+    h+='</div>';
+  } else h+='<div class="no-data">No data</div>';
+  h+='</div>';
+  h+=CC.hBar('By Category',d.byCategory);
+  h+=CC.hBar('By POS',d.byPOS);
+  box.innerHTML=h;
+}
 
 // ---- Refresh All ----
 window.refreshAll = function(){
@@ -268,7 +444,7 @@ window.refreshAll = function(){
   Promise.all([
     CC.api('incidents').then(function(d){ if(d){incidentsData=d;renderIncidents(d);renderStatus(d);} }),
     CC.api('metrics').then(function(d){ if(d){metricsData=d;renderStats(d);renderCharts(d);document.getElementById('last-updated').textContent='Updated '+CC.fmtTime(d.generatedAt);} }),
-    CC.api('tickets?hours=24').then(function(d){ if(d){triageData=d;renderTriage(d);} }),
+    CC.api('triage-queue?hours=2').then(function(d){ if(d){triageQueueData=d;renderTriageQueue(d);} }),
   ]).then(function(){
     btn.classList.remove('loading');
     btn.textContent='Refresh All';
@@ -282,8 +458,11 @@ window.refreshAll = function(){
 // ---- Init ----
 loadIncidents();
 loadMetrics();
-loadTriage();
-setInterval(function(){ loadIncidents(); loadMetrics(); loadTriage(); }, 5*60*1000);
+loadTriageQueue();
+
+// Triage queue polls every 30s, everything else every 5 min
+setInterval(function(){ loadTriageQueue(); }, 30 * 1000);
+setInterval(function(){ loadIncidents(); loadMetrics(); }, 5 * 60 * 1000);
 
 })();
 </script>

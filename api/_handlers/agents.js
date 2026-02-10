@@ -215,18 +215,6 @@ module.exports = async function handler(req, res) {
           .map(([name, count]) => ({ name, count }))
           .sort((a, b) => b.count - a.count);
 
-        // Avg resolution time from solved tickets (approximate from created_at to updated_at)
-        const solvedTickets = (solvedData.results || []).slice(0, 20);
-        let avgResolutionHours = null;
-        if (solvedTickets.length > 0) {
-          const totalHours = solvedTickets.reduce((sum, t) => {
-            const created = new Date(t.created_at).getTime();
-            const updated = new Date(t.updated_at).getTime();
-            return sum + (updated - created) / 3600000;
-          }, 0);
-          avgResolutionHours = Math.round((totalHours / solvedTickets.length) * 10) / 10;
-        }
-
         // Today solved count
         const todaySolvedData = await zdRequest('/search.json', {
           params: { query: 'type:ticket assignee:' + agent.userId + ' solved>=' + todayStr, per_page: '1' },
@@ -275,7 +263,6 @@ module.exports = async function handler(req, res) {
           assigned,
           solved,
           openCount,
-          avgResolutionHours,
           categoryBreakdown,
           todayAssigned,
           todaySolved,
@@ -310,7 +297,8 @@ module.exports = async function handler(req, res) {
         : 0;
 
       // Component 2: Solve rate score (25 pts max)
-      const solveRate = a.assigned > 0 ? (a.solved / a.assigned) * 100 : 0;
+      const denom = Math.max(a.assigned, a.solved, 1);
+      const solveRate = Math.min((a.solved / denom) * 100, 100);
       const solveScore = solveRateScore(solveRate);
 
       // Component 3: First reply score (25 pts max)
@@ -328,7 +316,6 @@ module.exports = async function handler(req, res) {
           assigned: a.assigned,
           solved: a.solved,
           open: a.openCount,
-          avgResolutionHours: a.avgResolutionHours,
           categories: a.categoryBreakdown,
           velocity: {
             volumeScore: Math.round(volumeScore * 10) / 10,

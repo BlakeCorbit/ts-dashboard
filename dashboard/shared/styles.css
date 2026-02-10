@@ -338,3 +338,57 @@ tr.row-high { border-left: 3px solid var(--accent-orange); }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .incidents-grid { grid-template-columns: 1fr; }
 }
+
+/* ---- Triage Queue ---- */
+.triage-queue-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.triage-queue-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  transition: all 200ms;
+}
+.triage-queue-card:hover {
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-hover);
+}
+.triage-filter {
+  padding: 5px 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: var(--font-main);
+  border: none;
+  cursor: pointer;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  transition: all 150ms;
+}
+.triage-filter:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+.triage-filter.active {
+  background: var(--av-green-dark);
+  color: #fff;
+}
+.btn-muted {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-weight: 600;
+  transition: all 150ms;
+}
+.btn-muted:hover {
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+}
