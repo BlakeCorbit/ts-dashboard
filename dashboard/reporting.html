@@ -20,6 +20,12 @@
     </div>
   </div>
   <div class="header-right">
+    <div id="period-selector" style="display:inline-flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <button class="period-btn" data-period="week" style="padding:5px 12px;font-size:0.72rem;font-weight:600;font-family:var(--font-main);border:none;cursor:pointer;background:var(--bg-card);color:var(--text-secondary);transition:all 150ms">Week</button>
+      <button class="period-btn active" data-period="month" style="padding:5px 12px;font-size:0.72rem;font-weight:600;font-family:var(--font-main);border:none;cursor:pointer;background:var(--av-green-dark);color:#fff;transition:all 150ms">Month</button>
+      <button class="period-btn" data-period="quarter" style="padding:5px 12px;font-size:0.72rem;font-weight:600;font-family:var(--font-main);border:none;cursor:pointer;background:var(--bg-card);color:var(--text-secondary);transition:all 150ms">Quarter</button>
+      <button class="period-btn" data-period="year" style="padding:5px 12px;font-size:0.72rem;font-weight:600;font-family:var(--font-main);border:none;cursor:pointer;background:var(--bg-card);color:var(--text-secondary);transition:all 150ms">Year</button>
+    </div>
     <div id="status-badge"></div>
     <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
     <div class="last-updated" id="last-updated">--</div>
@@ -30,7 +36,7 @@
   <!-- Team CSAT -->
   <section>
     <div class="section-header">
-      <div class="section-title">Team CSAT This Week</div>
+      <div class="section-title" id="team-csat-title">Team CSAT This Month</div>
     </div>
     <div class="stats-grid" id="team-csat-box">
       <div class="loading-shimmer"></div>
@@ -55,7 +61,7 @@
   <!-- Weekly Trends -->
   <section>
     <div class="section-header">
-      <div class="section-title">Weekly Trends</div>
+      <div class="section-title" id="trends-title">Trends</div>
       <button class="btn btn-sm" onclick="loadMetrics()">Refresh</button>
     </div>
     <div class="charts-grid" id="trends-box">
@@ -99,12 +105,107 @@
 
 var metricsData = null;
 var agentsData = null;
+var selectedPeriod = 'month';
 
 var AGENT_NAMES = ['Blake Corbit', 'Brien Nunn', 'Jacob Ryder'];
 
+var PERIOD_LABELS = {
+  week: 'This Week',
+  month: 'This Month',
+  quarter: 'This Quarter',
+  year: 'This Year'
+};
+
+// ---- Period Selector ----
+function initPeriodSelector(){
+  var btns = document.querySelectorAll('.period-btn');
+  btns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var period = btn.getAttribute('data-period');
+      if(period === selectedPeriod) return;
+      selectedPeriod = period;
+      // Update button styles
+      btns.forEach(function(b){
+        if(b.getAttribute('data-period') === period){
+          b.style.background = 'var(--av-green-dark)';
+          b.style.color = '#fff';
+          b.classList.add('active');
+        } else {
+          b.style.background = 'var(--bg-card)';
+          b.style.color = 'var(--text-secondary)';
+          b.classList.remove('active');
+        }
+      });
+      // Update period-aware labels
+      updatePeriodLabels();
+      // Reload data with new period
+      loadAgents();
+      loadMetrics();
+    });
+    // Hover effects for non-active
+    btn.addEventListener('mouseenter', function(){
+      if(!btn.classList.contains('active')){
+        btn.style.background = 'var(--bg-card-hover)';
+        btn.style.color = 'var(--text-primary)';
+      }
+    });
+    btn.addEventListener('mouseleave', function(){
+      if(!btn.classList.contains('active')){
+        btn.style.background = 'var(--bg-card)';
+        btn.style.color = 'var(--text-secondary)';
+      }
+    });
+  });
+}
+
+function updatePeriodLabels(){
+  var lbl = PERIOD_LABELS[selectedPeriod] || 'This Month';
+  var csatTitle = document.getElementById('team-csat-title');
+  if(csatTitle) csatTitle.textContent = 'Team CSAT ' + lbl;
+  var trendsTitle = document.getElementById('trends-title');
+  if(trendsTitle) trendsTitle.textContent = 'Trends';
+}
+
+// ---- Velocity color helper ----
+function velocityColor(score){
+  if(score >= 90) return 'var(--av-green)';
+  if(score >= 80) return 'var(--av-blue)';
+  if(score >= 70) return 'var(--accent-yellow)';
+  if(score >= 60) return 'var(--accent-orange)';
+  return 'var(--accent-red)';
+}
+
+// ---- CSAT color helper ----
+function csatColor(pct){
+  if(pct == null) return 'var(--text-primary)';
+  if(pct >= 90) return 'var(--av-green)';
+  if(pct >= 70) return 'var(--accent-yellow)';
+  return 'var(--accent-red)';
+}
+
+// ---- Velocity component bar builder ----
+function velocityBar(label, score, max, rawLabel){
+  var pct = max > 0 ? Math.min((score / max) * 100, 100) : 0;
+  var color = velocityColor((score / max) * 100);
+  var h = '';
+  h += '<div style="margin-bottom:6px">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">';
+  h += '<span style="font-size:0.7rem;color:var(--text-secondary)">' + CC.esc(label) + '</span>';
+  h += '<span style="font-size:0.72rem;font-family:var(--font-mono);font-weight:700;color:' + color + '">' + score + '/' + max + '</span>';
+  h += '</div>';
+  h += '<div style="height:8px;background:var(--bg-input);border-radius:4px;overflow:hidden">';
+  h += '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;transition:width 0.6s ease"></div>';
+  h += '</div>';
+  if(rawLabel){
+    h += '<div style="font-size:0.62rem;color:var(--text-muted);margin-top:1px;font-family:var(--font-mono)">' + CC.esc(rawLabel) + '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
 // ---- Agents ----
 window.loadAgents = function(){
-  CC.api('agents').then(function(d){
+  CC.api('agents?period=' + selectedPeriod).then(function(d){
     if(!d) return;
     agentsData = d;
     renderAgents(d);
@@ -115,19 +216,22 @@ function renderTeamCsat(d){
   var box = document.getElementById('team-csat-box');
   var tc = d.teamCsat || {};
   var pct = tc.pct != null ? tc.pct + '%' : '--';
-  var color = tc.pct != null ? (tc.pct >= 90 ? 'var(--av-green)' : tc.pct >= 70 ? 'var(--accent-amber)' : 'var(--accent-red)') : 'var(--text-primary)';
+  var color = tc.pct != null ? csatColor(tc.pct) : 'var(--text-primary)';
+  var lbl = PERIOD_LABELS[selectedPeriod] || 'This Month';
   var h = '';
   h += '<div class="stat-card fade-in"><div class="stat-label">Team CSAT</div><div class="stat-value" style="color:' + color + '">' + pct + '</div><div class="stat-detail">' + CC.fmt(tc.good || 0) + ' good, ' + CC.fmt(tc.bad || 0) + ' bad</div></div>';
-  h += '<div class="stat-card fade-in"><div class="stat-label">Responses</div><div class="stat-value">' + CC.fmt(tc.total || 0) + '</div><div class="stat-detail">Rated this week</div></div>';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Responses</div><div class="stat-value">' + CC.fmt(tc.total || 0) + '</div><div class="stat-detail">Rated ' + lbl.toLowerCase() + '</div></div>';
   // Per-agent CSAT mini list
   var agents = d.agents || [];
+  // Filter to only our agents
+  var filtered = agents.filter(function(a){ return AGENT_NAMES.indexOf(a.name) !== -1; });
   h += '<div class="stat-card fade-in"><div class="stat-label">By Agent</div>';
-  if(agents.length){
+  if(filtered.length){
     h += '<div style="margin-top:6px">';
-    agents.forEach(function(a){
+    filtered.forEach(function(a){
       var c = a.csat || {};
       var ap = c.pct != null ? c.pct + '%' : '--';
-      var ac = c.pct != null ? (c.pct >= 90 ? 'var(--av-green)' : c.pct >= 70 ? 'var(--accent-amber)' : 'var(--accent-red)') : 'var(--text-muted)';
+      var ac = c.pct != null ? csatColor(c.pct) : 'var(--text-muted)';
       h += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.82rem">';
       h += '<span>' + CC.esc(a.name) + '</span>';
       h += '<span style="font-weight:700;font-family:var(--font-mono);color:' + ac + '">' + ap + ' <span style="font-weight:400;color:var(--text-muted);font-size:0.7rem">(' + CC.fmt(c.total || 0) + ')</span></span>';
@@ -170,6 +274,11 @@ function renderAgents(d){
     agents = arr;
   }
 
+  // Filter to only Blake/Brien/Jacob
+  agents = agents.filter(function(a){
+    return AGENT_NAMES.indexOf(a.name) !== -1;
+  });
+
   if(!agents.length){
     // Fallback: render placeholder cards for known agents
     var h = '';
@@ -186,40 +295,116 @@ function renderAgents(d){
   var h = '';
   agents.forEach(function(a){
     var name = a.name || 'Agent';
-    var cw = a.currentWeek || {};
+    var cp = a.currentPeriod || a.currentWeek || {};
     var td = a.today || {};
-    var assigned = cw.assigned || a.assignedThisWeek || a.assigned || 0;
-    var solved = cw.solved || a.solved || 0;
-    var open = cw.open || a.currentlyOpen || a.open || 0;
-    var avgRes = cw.avgResolutionHours || a.avgResolutionTime || null;
-    var avgResStr = avgRes ? (typeof avgRes === 'number' ? avgRes.toFixed(1) + 'h' : avgRes) : '--';
-    var categories = cw.categories || a.categories || [];
+    var assigned = cp.assigned || a.assignedThisWeek || a.assigned || 0;
+    var solved = cp.solved || a.solved || 0;
+    var open = cp.open || a.currentlyOpen || a.open || 0;
+    var categories = cp.categories || a.categories || [];
     var todayAssigned = td.assigned || 0;
     var todaySolved = td.solved || 0;
     var hasTodayData = td.assigned != null || td.solved != null;
 
-    h += '<div class="agent-card fade-in">';
-    h += '<div class="agent-name">' + CC.esc(name) + '</div>';
+    // Velocity data
+    var vel = cp.velocity || {};
+    var velTotal = vel.total != null ? vel.total : null;
+    var velTier = vel.tier || '--';
+    var volScore = vel.volumeScore || 0;
+    var solveScore = vel.solveScore || 0;
+    var frScore = vel.firstReplyScore || 0;
+    var resScore = vel.resolutionScore || 0;
+    var velDetails = vel.details || {};
 
-    // CSAT + velocity
+    // CSAT data
     var csat = a.csat || {};
     var csatPct = csat.pct != null ? csat.pct + '%' : '--';
-    var csatColor = csat.pct != null ? (csat.pct >= 90 ? 'var(--av-green)' : csat.pct >= 70 ? 'var(--accent-amber)' : 'var(--accent-red)') : 'var(--text-primary)';
-    var velocity = cw.velocityPerDay || 0;
+    var csatCol = csatColor(csat.pct);
+    var csatTier = csat.tier || '--';
 
-    // 3x2 stat grid
+    // Solved per day (approx based on period)
+    var periodDays = selectedPeriod === 'week' ? 7 : selectedPeriod === 'month' ? 30 : selectedPeriod === 'quarter' ? 90 : 365;
+    var solvedPerDay = solved > 0 ? (solved / periodDays).toFixed(1) : '0.0';
+    // Use velocityPerDay if available
+    var velPerDay = cp.velocityPerDay != null ? cp.velocityPerDay.toFixed(1) : solvedPerDay;
+
+    h += '<div class="agent-card fade-in">';
+
+    // Agent name + velocity hero score
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">';
+    h += '<div class="agent-name" style="margin-bottom:0">' + CC.esc(name) + '</div>';
+
+    // Velocity Score Badge
+    if(velTotal != null){
+      var vc = velocityColor(velTotal);
+      h += '<div style="text-align:center">';
+      h += '<div style="font-family:var(--font-mono);font-size:1.6rem;font-weight:800;color:' + vc + ';line-height:1">' + velTotal + '<span style="font-size:0.85rem;font-weight:600;color:var(--text-muted)">/100</span></div>';
+      h += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:' + vc + ';margin-top:2px">Velocity</div>';
+      h += '</div>';
+    }
+    h += '</div>';
+
+    // 3x2 stat grid: Row 1: Assigned | Solved | Open  Row 2: CSAT % (tier) | Velocity (tier) | Solved/Day
     h += '<div class="agent-stats" style="grid-template-columns:1fr 1fr 1fr">';
     h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(assigned) + '</div><div class="label">Assigned</div></div>';
     h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(solved) + '</div><div class="label">Solved</div></div>';
     h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(open) + '</div><div class="label">Open</div></div>';
-    h += '<div class="agent-stat-item"><div class="value">' + CC.esc(avgResStr) + '</div><div class="label">Avg Resolution</div></div>';
-    h += '<div class="agent-stat-item"><div class="value" style="color:' + csatColor + '">' + CC.esc(csatPct) + '</div><div class="label">CSAT</div></div>';
-    h += '<div class="agent-stat-item"><div class="value">' + velocity.toFixed(1) + '</div><div class="label">Solved/Day</div></div>';
+
+    // CSAT with tier badge
+    h += '<div class="agent-stat-item">';
+    h += '<div class="value" style="color:' + csatCol + '">' + CC.esc(csatPct) + '</div>';
+    if(csat.pct != null && csatTier !== '--'){
+      h += '<div class="label">CSAT <span style="font-size:0.6rem;color:' + csatCol + ';font-weight:600;letter-spacing:0">&rarr; ' + CC.esc(csatTier) + ' payout</span></div>';
+    } else {
+      h += '<div class="label">CSAT</div>';
+    }
     h += '</div>';
+
+    // Velocity with tier
+    if(velTotal != null){
+      var vtc = velocityColor(velTotal);
+      h += '<div class="agent-stat-item">';
+      h += '<div class="value" style="color:' + vtc + '">' + velTotal + '</div>';
+      if(velTier !== '--'){
+        h += '<div class="label">Velocity <span style="font-size:0.6rem;color:' + vtc + ';font-weight:600;letter-spacing:0">&rarr; ' + CC.esc(velTier) + '</span></div>';
+      } else {
+        h += '<div class="label">Velocity</div>';
+      }
+      h += '</div>';
+    } else {
+      h += '<div class="agent-stat-item"><div class="value">--</div><div class="label">Velocity</div></div>';
+    }
+
+    // Solved/Day
+    h += '<div class="agent-stat-item"><div class="value">' + velPerDay + '</div><div class="label">Solved/Day</div></div>';
+    h += '</div>';
+
+    // Velocity component detail bars
+    if(velTotal != null){
+      h += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle)">';
+      h += '<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">Velocity Breakdown</div>';
+
+      // Volume bar
+      var volRaw = velDetails.teamAvgAssigned ? 'Team avg: ' + velDetails.teamAvgAssigned : '';
+      h += velocityBar('Volume', volScore, 25, volRaw);
+
+      // Solve Rate bar
+      var srRaw = velDetails.solveRate != null ? 'Solve rate: ' + velDetails.solveRate.toFixed(1) + '%' : '';
+      h += velocityBar('Solve Rate', solveScore, 25, srRaw);
+
+      // First Reply bar
+      var frRaw = velDetails.medianFirstReplyHours != null ? 'Median: ' + velDetails.medianFirstReplyHours.toFixed(2) + ' hrs' : '';
+      h += velocityBar('First Reply', frScore, 25, frRaw);
+
+      // Resolution bar
+      var resRaw = velDetails.medianResolutionHours != null ? 'Median: ' + velDetails.medianResolutionHours.toFixed(1) + ' hrs' : '';
+      h += velocityBar('Resolution', resScore, 25, resRaw);
+
+      h += '</div>';
+    }
 
     // Category breakdown
     if(categories.length){
-      h += '<div style="margin-top:8px">';
+      h += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle)">';
       var mx = Math.max.apply(null, categories.map(function(c){ return c.count || 0; }));
       categories.slice(0, 5).forEach(function(c, i){
         var w = mx > 0 ? ((c.count || 0) / mx) * 100 : 0;
@@ -245,9 +430,9 @@ function renderAgents(d){
   box.innerHTML = h;
 }
 
-// ---- Metrics / Weekly Trends ----
+// ---- Metrics / Trends ----
 window.loadMetrics = function(){
-  CC.api('metrics').then(function(d){
+  CC.api('metrics?period=' + selectedPeriod).then(function(d){
     if(!d) return;
     metricsData = d;
     renderTrends(d);
@@ -303,12 +488,13 @@ function renderResolution(d){
   var backlog = d.openBacklog || 0;
   var rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
   var avg = d.avgPerDay ? d.avgPerDay.toFixed(1) : '--';
+  var lbl = PERIOD_LABELS[selectedPeriod] || 'This Month';
 
   var h = '';
-  h += '<div class="stat-card fade-in"><div class="stat-label">Total This Week</div><div class="stat-value">' + CC.fmt(total) + '</div><div class="stat-detail">All tickets received</div></div>';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Total ' + CC.esc(lbl) + '</div><div class="stat-value">' + CC.fmt(total) + '</div><div class="stat-detail">All tickets received</div></div>';
   h += '<div class="stat-card fade-in"><div class="stat-label">Resolved</div><div class="stat-value">' + CC.fmt(resolved) + '</div><div class="stat-detail">' + rate + '% resolution rate</div></div>';
   h += '<div class="stat-card fade-in"><div class="stat-label">Open Backlog</div><div class="stat-value">' + CC.fmt(backlog) + '</div><div class="stat-detail">Unresolved tickets</div></div>';
-  h += '<div class="stat-card fade-in"><div class="stat-label">Avg Per Day</div><div class="stat-value">' + avg + '</div><div class="stat-detail">7-day average</div></div>';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Avg Per Day</div><div class="stat-value">' + avg + '</div><div class="stat-detail">Period average</div></div>';
   box.innerHTML = h;
 }
 
@@ -324,8 +510,8 @@ window.refreshAll = function(){
   btn.classList.add('loading');
   btn.innerHTML = '<span class="spinner"></span> Refreshing...';
   Promise.all([
-    CC.api('agents').then(function(d){ if(d){ agentsData=d; renderAgents(d); } }),
-    CC.api('metrics').then(function(d){
+    CC.api('agents?period=' + selectedPeriod).then(function(d){ if(d){ agentsData=d; renderAgents(d); } }),
+    CC.api('metrics?period=' + selectedPeriod).then(function(d){
       if(d){
         metricsData=d;
         renderTrends(d);
@@ -345,6 +531,8 @@ window.refreshAll = function(){
 };
 
 // ---- Init ----
+initPeriodSelector();
+updatePeriodLabels();
 updateStatus();
 loadAgents();
 loadMetrics();

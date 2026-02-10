@@ -15,14 +15,42 @@ const TAG_TO_CAT = {
   integrations: 'Integration', billing: 'Billing',
 };
 
+function getPeriodStart(period) {
+  const now = new Date();
+  switch (period) {
+    case 'week': {
+      const dow = now.getDay();
+      const off = dow === 0 ? -6 : 1 - dow;
+      const mon = new Date(now);
+      mon.setDate(now.getDate() + off);
+      mon.setHours(0, 0, 0, 0);
+      return mon;
+    }
+    case 'quarter': {
+      const q = Math.floor(now.getMonth() / 3) * 3;
+      return new Date(now.getFullYear(), q, 1, 0, 0, 0, 0);
+    }
+    case 'year':
+      return new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    case 'month':
+    default:
+      return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const period = ['week', 'month', 'quarter', 'year'].includes(url.searchParams.get('period'))
+      ? url.searchParams.get('period')
+      : 'month';
+
     const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const sinceStr = weekAgo.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const periodStart = getPeriodStart(period);
+    const sinceStr = periodStart.toISOString().replace(/\.\d{3}Z$/, 'Z');
 
     const [created, resolved, backlog] = await Promise.all([
       zdRequest('/search.json', {
@@ -88,14 +116,18 @@ module.exports = async function handler(req, res) {
       .map(([day, count]) => ({ day, count }))
       .sort((a, b) => a.day.localeCompare(b.day));
 
+    const periodDays = Math.max(1, Math.ceil((now.getTime() - periodStart.getTime()) / 86400000));
+
     res.json({
       totalTickets,
       resolvedTickets,
       openBacklog,
-      avgPerDay: totalTickets / 7,
+      avgPerDay: Math.round((totalTickets / periodDays) * 10) / 10,
       byCategory: toSorted(catCounts).slice(0, 10),
       byPOS: toSorted(posCounts).slice(0, 10),
       byDay,
+      period,
+      periodStart: periodStart.toISOString(),
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
