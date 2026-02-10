@@ -2,7 +2,7 @@
 // Agent performance data for Blake Corbit, Brien Nunn, Jacob Ryder.
 // Returns period-based and daily stats with category breakdowns, velocity scores, and CSAT.
 
-const { zdRequest, getJiraLinks, getAuth } = require('../_zendesk');
+const { zdRequest, getAuth } = require('../_zendesk');
 
 const AGENTS = [
   { name: 'Blake Corbit' },
@@ -221,36 +221,30 @@ module.exports = async function handler(req, res) {
         });
         const todaySolved = todaySolvedData.count || 0;
 
-        // --- Velocity: fetch metrics + Jira links for solved tickets (up to 100) ---
+        // --- Velocity: fetch metrics for solved tickets (up to 100) ---
         const solvedSample = (solvedData.results || []).slice(0, 100);
-        const ticketDetails = [];
-        for (let i = 0; i < solvedSample.length; i += 15) {
-          const batch = solvedSample.slice(i, i + 15);
+        const metricsList = [];
+        for (let i = 0; i < solvedSample.length; i += 20) {
+          const batch = solvedSample.slice(i, i + 20);
           const batchResults = await Promise.all(
-            batch.map(async (ticket) => {
-              const [metrics, jiraLinks] = await Promise.all([
-                fetchTicketMetrics(ticket.id),
-                getJiraLinks(ticket.id),
-              ]);
-              return { metrics, hasJira: jiraLinks && jiraLinks.length > 0 };
-            })
+            batch.map(ticket => fetchTicketMetrics(ticket.id))
           );
-          ticketDetails.push(...batchResults);
+          metricsList.push(...batchResults);
         }
 
         const firstReplyHours = [];
-        const resolutionHoursNoJira = [];
-        for (const td of ticketDetails) {
-          if (td.metrics && td.metrics.reply_time_in_minutes && td.metrics.reply_time_in_minutes.business != null) {
-            firstReplyHours.push(td.metrics.reply_time_in_minutes.business / 60);
+        const resolutionHours = [];
+        for (const m of metricsList) {
+          if (m && m.reply_time_in_minutes && m.reply_time_in_minutes.business != null) {
+            firstReplyHours.push(m.reply_time_in_minutes.business / 60);
           }
-          if (!td.hasJira && td.metrics && td.metrics.first_resolution_time_in_minutes && td.metrics.first_resolution_time_in_minutes.business != null) {
-            resolutionHoursNoJira.push(td.metrics.first_resolution_time_in_minutes.business / 60);
+          if (m && m.first_resolution_time_in_minutes && m.first_resolution_time_in_minutes.business != null) {
+            resolutionHours.push(m.first_resolution_time_in_minutes.business / 60);
           }
         }
 
         const medianFirstReply = median(firstReplyHours);
-        const medianResolution = median(resolutionHoursNoJira);
+        const medianResolution = median(resolutionHours);
 
         return {
           name: agent.name,
@@ -299,7 +293,7 @@ module.exports = async function handler(req, res) {
       // Component 3: First reply score (25 pts max)
       const frtScore = firstReplyScore(a.medianFirstReply);
 
-      // Component 4: Resolution score excluding Jira (25 pts max)
+      // Component 4: Resolution score (25 pts max)
       const resScore = resolutionTimeScore(a.medianResolution);
 
       const totalVelocity = Math.round((volumeScore + solveScore + frtScore + resScore) * 10) / 10;
