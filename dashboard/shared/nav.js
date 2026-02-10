@@ -37,18 +37,6 @@ pages.forEach(function(p) {
   nav.appendChild(a);
 });
 
-// Sign Out button (right side of nav)
-if (window.CCAuth && window.CCAuth.getToken()) {
-  var spacer = document.createElement('div');
-  spacer.style.cssText = 'flex:1';
-  nav.appendChild(spacer);
-  var logoutBtn = document.createElement('button');
-  logoutBtn.className = 'btn-logout';
-  logoutBtn.textContent = 'Sign Out';
-  logoutBtn.onclick = function(){ if(window.CCAuth) window.CCAuth.logout(); };
-  nav.appendChild(logoutBtn);
-}
-
 var header = document.querySelector('.header');
 if (header) header.parentNode.insertBefore(nav, header.nextSibling);
 
