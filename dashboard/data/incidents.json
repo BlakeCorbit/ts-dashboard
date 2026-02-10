@@ -75,12 +75,7 @@
       "subject": "PT - AV.X 6.9.3 GM VIN Scan Captures RPO Codes Causing Overflow",
       "pattern": "Custom Pattern",
       "posTag": null,
-      "jiraLinks": [
-        {
-          "issueKey": "AV-18725",
-          "url": "https://autovitals.atlassian.net/browse/AV-18725"
-        }
-      ],
+      "jiraLinks": [],
       "linkedCount": 0,
       "createdAt": "2026-01-23T19:49:29Z"
     },
@@ -214,5 +209,5 @@
       "createdAt": "2024-07-27T15:21:45Z"
     }
   ],
-  "generatedAt": "2026-02-10T18:41:34.603Z"
+  "generatedAt": "2026-02-10T19:44:31.266Z"
 }

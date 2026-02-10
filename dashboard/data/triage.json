@@ -1,13 +1,49 @@
 {
   "recentTickets": [
     {
+      "id": 135309,
+      "subject": "Removing a picture",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T19:44:21.363Z"
+    },
+    {
+      "id": 135308,
+      "subject": "When using the flash during a video, it shuts off at",
+      "category": "App Issue",
+      "subcategory": "AV.X - Video No Sound",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T19:44:21.363Z"
+    },
+    {
+      "id": 135307,
+      "subject": "ERROR STARTING CAMERA MESSAGE ",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T19:44:21.363Z"
+    },
+    {
+      "id": 135306,
+      "subject": "B and B autohaus SID 14524 - please remove page",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T19:44:21.363Z"
+    },
+    {
       "id": 135305,
       "subject": "New Voicemail from TNT SERVICES (760) 433-3346 to Main Auto Receptionist (Ext. 801) on Tue Feb 10, 2026 10:31",
       "category": "Uncategorized",
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.128Z"
+      "matchedAt": "2026-02-10T19:44:21.363Z"
     },
     {
       "id": 135304,
@@ -16,7 +52,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.128Z"
+      "matchedAt": "2026-02-10T19:44:21.363Z"
     },
     {
       "id": 135303,
@@ -25,7 +61,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-10T18:41:24.128Z"
+      "matchedAt": "2026-02-10T19:44:21.363Z"
     },
     {
       "id": 135302,
@@ -34,7 +70,7 @@
       "subcategory": "Email Delivery Issues",
       "runbook": "Email Issues and Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.128Z"
+      "matchedAt": "2026-02-10T19:44:21.363Z"
     },
     {
       "id": 135301,
@@ -43,7 +79,7 @@
       "subcategory": "Deleted Notes/Images",
       "runbook": "SOP: Recover Deleted Notes & Images",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.128Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135298,
@@ -52,7 +88,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.128Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135297,
@@ -61,7 +97,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-10T18:41:24.129Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135295,
@@ -70,7 +106,7 @@
       "subcategory": "Billing/Cancellation",
       "runbook": "Account Churn Process",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.129Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135294,
@@ -79,7 +115,7 @@
       "subcategory": "Overnight Compare & Sync Alert",
       "runbook": "Binary Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.129Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135293,
@@ -88,7 +124,7 @@
       "subcategory": "AV.X - Video No Sound",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.129Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135292,
@@ -97,7 +133,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.129Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135290,
@@ -106,7 +142,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.129Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135289,
@@ -115,7 +151,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.129Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135287,
@@ -124,7 +160,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135285,
@@ -133,7 +169,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135283,
@@ -142,7 +178,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135281,
@@ -151,7 +187,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.364Z"
     },
     {
       "id": 135279,
@@ -160,7 +196,7 @@
       "subcategory": "SMS/Text Delivery Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135277,
@@ -169,7 +205,7 @@
       "subcategory": "ROs Not Showing - Unknown POS",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135275,
@@ -178,7 +214,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135270,
@@ -187,7 +223,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135259,
@@ -196,7 +232,7 @@
       "subcategory": "AV.X - Crash/Freeze/Performance",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.131Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135258,
@@ -205,7 +241,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135255,
@@ -214,7 +250,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135254,
@@ -223,7 +259,7 @@
       "subcategory": "Add New User",
       "runbook": "Common Phone Support Requests",
       "priority": "low",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135253,
@@ -232,7 +268,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135252,
@@ -241,7 +277,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135251,
@@ -250,7 +286,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135250,
@@ -259,7 +295,7 @@
       "subcategory": "Vehicle Data Issue",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135248,
@@ -268,7 +304,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135247,
@@ -277,7 +313,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135246,
@@ -286,7 +322,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135245,
@@ -295,7 +331,7 @@
       "subcategory": "Vehicle Data Issue",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135242,
@@ -304,7 +340,7 @@
       "subcategory": "AV.X - Video No Sound",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135236,
@@ -313,7 +349,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135233,
@@ -322,7 +358,7 @@
       "subcategory": "SMS Reminders Not Sending",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135232,
@@ -331,7 +367,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135231,
@@ -340,7 +376,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.365Z"
     },
     {
       "id": 135230,
@@ -349,7 +385,7 @@
       "subcategory": "SMS Reminders Not Sending",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.132Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     },
     {
       "id": 135229,
@@ -358,7 +394,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     },
     {
       "id": 135227,
@@ -367,7 +403,7 @@
       "subcategory": "Overnight Compare & Sync Alert",
       "runbook": "Binary Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     },
     {
       "id": 135226,
@@ -376,7 +412,7 @@
       "subcategory": "TeE-Times / Time Clock",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     },
     {
       "id": 135221,
@@ -385,7 +421,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     },
     {
       "id": 135219,
@@ -394,7 +430,7 @@
       "subcategory": "Password Reset",
       "runbook": "Common Phone Support Requests",
       "priority": "low",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     },
     {
       "id": 135207,
@@ -403,7 +439,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     },
     {
       "id": 135203,
@@ -412,55 +448,19 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
-    },
-    {
-      "id": 135193,
-      "subject": "Logged me out",
-      "category": "Platform Issue",
-      "subcategory": "Inspection Issues",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
-    },
-    {
-      "id": 135187,
-      "subject": "RO number does not display in vehicle chat on mobile device unless YMM is clicked",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
-    },
-    {
-      "id": 135186,
-      "subject": "Service History for Richard Carranza missing",
-      "category": "POS Integration",
-      "subcategory": "ROs Not Showing - Tekmetric",
-      "runbook": "SOP: Retool - Simple Broken Shop v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
-    },
-    {
-      "id": 135185,
-      "subject": "ro not going to the system",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T18:41:24.133Z"
+      "matchedAt": "2026-02-10T19:44:21.366Z"
     }
   ],
   "stats": {
-    "total": 158,
-    "matched": 135,
+    "total": 161,
+    "matched": 138,
     "unmatched": 23,
-    "matchRate": 85
+    "matchRate": 86
   },
   "topCategories": [
     {
       "name": "App Issue",
-      "count": 45
+      "count": 47
     },
     {
       "name": "POS Integration",
@@ -468,7 +468,7 @@
     },
     {
       "name": "Platform Issue",
-      "count": 24
+      "count": 25
     },
     {
       "name": "Emergency",
@@ -499,5 +499,5 @@
       "count": 1
     }
   ],
-  "generatedAt": "2026-02-10T18:41:24.139Z"
+  "generatedAt": "2026-02-10T19:44:21.374Z"
 }
