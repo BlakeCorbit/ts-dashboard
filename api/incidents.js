@@ -19,11 +19,11 @@ module.exports = async function handler(req, res) {
       // Fetch Jira links and linked incidents in parallel
       const [jiraLinks, linkedData] = await Promise.all([
         getJiraLinks(p.id),
-        zdRequest('/search.json', {
-          params: { query: 'type:ticket problem_id:' + p.id, per_page: '100' },
-        }).catch(() => ({ results: [], count: 0 })),
+        zdRequest('/tickets/' + p.id + '/incidents.json', {
+          params: { per_page: '100' },
+        }).catch(() => ({ tickets: [] })),
       ]);
-      const linkedTickets = (linkedData.results || []).map(t => ({
+      const linkedTickets = (linkedData.tickets || []).map(t => ({
         id: t.id,
         subject: t.subject,
         status: t.status,
@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
         createdAt: p.created_at,
         updatedAt: p.updated_at,
         jiraLinks,
-        linkedCount: linkedData.count || linkedTickets.length,
+        linkedCount: linkedTickets.length,
         linkedTickets,
       };
     }));
