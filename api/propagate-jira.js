@@ -23,12 +23,52 @@ async function createJiraLink(ticketId, issueId, issueKey) {
   return resp.status === 204 ? null : resp.json();
 }
 
+// Backfill mode: GET /api/propagate-jira?backfill=1 (dry run) or ?backfill=run (execute)
+async function handleBackfill(req, res) {
+  const execute = req.query.backfill === 'run';
+  const problemData = await zdRequest('/search.json', {
+    params: { query: 'type:ticket ticket_type:problem status<solved', sort_by: 'created_at', sort_order: 'desc', per_page: '100' },
+  });
+  const problems = problemData.results || [];
+  const details = [];
+  let totalLinked = 0, totalSkipped = 0, totalNoJira = 0;
+
+  for (const p of problems) {
+    const jiraLinks = await getJiraLinks(p.id);
+    if (jiraLinks.length === 0) { totalNoJira++; continue; }
+    let incidentData;
+    try { incidentData = await zdRequest('/tickets/' + p.id + '/incidents.json', { params: { per_page: '100' } }); } catch { continue; }
+    const incidents = incidentData.tickets || [];
+    if (incidents.length === 0) continue;
+    const pr = { problemId: p.id, subject: p.subject, jira: jiraLinks.map(j => j.issueKey).join(', '), incidents: [] };
+    for (const inc of incidents) {
+      const existing = await getJiraLinks(inc.id);
+      if (existing.length > 0) { totalSkipped++; continue; }
+      if (execute) {
+        for (const j of jiraLinks) {
+          try { await createJiraLink(inc.id, j.issueId, j.issueKey); } catch {}
+        }
+        pr.incidents.push({ id: inc.id, subject: inc.subject, action: 'LINKED' });
+      } else {
+        pr.incidents.push({ id: inc.id, subject: inc.subject, action: 'WOULD LINK' });
+      }
+      totalLinked++;
+    }
+    if (pr.incidents.length > 0) details.push(pr);
+  }
+  return res.json({ mode: execute ? 'EXECUTED' : 'DRY RUN (?backfill=run to execute)', problemsScanned: problems.length, problemsWithoutJira: totalNoJira, incidentsLinked: totalLinked, incidentsSkipped: totalSkipped, details });
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+
+  // Backfill mode
+  if (req.query.backfill) return handleBackfill(req, res);
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only (or use ?backfill=1 for backfill)' });
 
   try {
     let { ticketId, problemId } = req.body;
