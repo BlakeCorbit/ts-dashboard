@@ -221,22 +221,24 @@ module.exports = async function handler(req, res) {
         });
         const todaySolved = todaySolvedData.count || 0;
 
-        // --- Velocity: fetch ticket metrics for up to 20 most recent solved tickets ---
-        // Sort solved tickets by updated_at descending (most recent first)
-        const sortedSolved = (solvedData.results || [])
-          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-          .slice(0, 20);
+        // --- Velocity: fetch ticket metrics for ALL solved tickets in period ---
+        const allSolved = solvedData.results || [];
 
-        // Fetch metrics and Jira links in parallel for each ticket
-        const ticketDetails = await Promise.all(
-          sortedSolved.map(async (ticket) => {
-            const [metrics, jiraLinks] = await Promise.all([
-              fetchTicketMetrics(ticket.id),
-              getJiraLinks(ticket.id),
-            ]);
-            return { ticket, metrics, hasJira: jiraLinks && jiraLinks.length > 0 };
-          })
-        );
+        // Batch-fetch metrics and Jira links (batches of 15 to avoid rate limits)
+        const ticketDetails = [];
+        for (let i = 0; i < allSolved.length; i += 15) {
+          const batch = allSolved.slice(i, i + 15);
+          const batchResults = await Promise.all(
+            batch.map(async (ticket) => {
+              const [metrics, jiraLinks] = await Promise.all([
+                fetchTicketMetrics(ticket.id),
+                getJiraLinks(ticket.id),
+              ]);
+              return { ticket, metrics, hasJira: jiraLinks && jiraLinks.length > 0 };
+            })
+          );
+          ticketDetails.push(...batchResults);
+        }
 
         // Compute first reply times (all solved tickets in sample)
         const firstReplyHours = [];
