@@ -143,13 +143,17 @@ function renderAgents(d){
   var h = '';
   agents.forEach(function(a){
     var name = a.name || 'Agent';
-    var assigned = a.assignedThisWeek || a.assigned || a.ticketsThisWeek || 0;
-    var solved = a.solved || a.resolvedThisWeek || a.resolved || 0;
-    var open = a.currentlyOpen || a.open || a.openCount || 0;
-    var avgRes = a.avgResolutionTime || a.avgResolution || a.avgResolveHours || null;
+    var cw = a.currentWeek || {};
+    var td = a.today || {};
+    var assigned = cw.assigned || a.assignedThisWeek || a.assigned || 0;
+    var solved = cw.solved || a.solved || 0;
+    var open = cw.open || a.currentlyOpen || a.open || 0;
+    var avgRes = cw.avgResolutionHours || a.avgResolutionTime || null;
     var avgResStr = avgRes ? (typeof avgRes === 'number' ? avgRes.toFixed(1) + 'h' : avgRes) : '--';
-    var categories = a.categories || a.byCategory || [];
-    var todayCount = a.today || a.todayCount || null;
+    var categories = cw.categories || a.categories || [];
+    var todayAssigned = td.assigned || 0;
+    var todaySolved = td.solved || 0;
+    var hasTodayData = td.assigned != null || td.solved != null;
 
     h += '<div class="agent-card fade-in">';
     h += '<div class="agent-name">' + CC.esc(name) + '</div>';
@@ -178,9 +182,10 @@ function renderAgents(d){
     }
 
     // Today's numbers
-    if(todayCount !== null){
+    if(hasTodayData){
       h += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle);font-size:0.78rem;color:var(--text-secondary)">';
-      h += 'Today: <strong style="color:var(--text-primary);font-family:var(--font-mono)">' + CC.fmt(todayCount) + '</strong> tickets';
+      h += 'Today: <strong style="color:var(--text-primary);font-family:var(--font-mono)">' + CC.fmt(todayAssigned) + '</strong> assigned, ';
+      h += '<strong style="color:var(--text-primary);font-family:var(--font-mono)">' + CC.fmt(todaySolved) + '</strong> solved';
       h += '</div>';
     }
 
