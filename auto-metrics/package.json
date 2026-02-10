@@ -1,0 +1,14 @@
+{
+  "name": "auto-metrics",
+  "version": "1.0.0",
+  "description": "Auto-generated Zendesk metrics and reporting for Tech Support",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "report": "node src/index.js --report",
+    "weekly": "node src/index.js --weekly"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
