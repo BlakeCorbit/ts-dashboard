@@ -1,8 +1,8 @@
 {
-  "totalTickets": 356,
-  "resolvedTickets": 326,
-  "openBacklog": 499,
-  "avgPerDay": 50.9,
+  "totalTickets": 357,
+  "resolvedTickets": 330,
+  "openBacklog": 496,
+  "avgPerDay": 51,
   "byCategory": [
     {
       "name": "Other",
@@ -10,7 +10,7 @@
     },
     {
       "name": "High Priority",
-      "count": 93
+      "count": 94
     },
     {
       "name": "App/Work Order",
@@ -40,13 +40,13 @@
     },
     {
       "name": "NAPA TRACS",
-      "count": 24
+      "count": 25
     }
   ],
   "bySource": [
     {
       "name": "TVP",
-      "count": 240
+      "count": 241
     },
     {
       "name": "Unknown",
@@ -88,8 +88,8 @@
     },
     {
       "day": "2026-02-10",
-      "count": 45
+      "count": 46
     }
   ],
-  "generatedAt": "2026-02-10T19:44:25.360Z"
+  "generatedAt": "2026-02-10T20:26:25.217Z"
 }
