@@ -27,6 +27,18 @@
 </header>
 
 <div class="dashboard">
+  <!-- Team CSAT -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Team CSAT This Week</div>
+    </div>
+    <div class="stats-grid" id="team-csat-box">
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+    </div>
+  </section>
+
   <!-- Agent Performance -->
   <section>
     <div class="section-header">
@@ -99,8 +111,39 @@ window.loadAgents = function(){
   }).catch(function(e){ CC.toast('Agents: ' + e.message, false); });
 };
 
+function renderTeamCsat(d){
+  var box = document.getElementById('team-csat-box');
+  var tc = d.teamCsat || {};
+  var pct = tc.pct != null ? tc.pct + '%' : '--';
+  var color = tc.pct != null ? (tc.pct >= 90 ? 'var(--av-green)' : tc.pct >= 70 ? 'var(--accent-amber)' : 'var(--accent-red)') : 'var(--text-primary)';
+  var h = '';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Team CSAT</div><div class="stat-value" style="color:' + color + '">' + pct + '</div><div class="stat-detail">' + CC.fmt(tc.good || 0) + ' good, ' + CC.fmt(tc.bad || 0) + ' bad</div></div>';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Responses</div><div class="stat-value">' + CC.fmt(tc.total || 0) + '</div><div class="stat-detail">Rated this week</div></div>';
+  // Per-agent CSAT mini list
+  var agents = d.agents || [];
+  h += '<div class="stat-card fade-in"><div class="stat-label">By Agent</div>';
+  if(agents.length){
+    h += '<div style="margin-top:6px">';
+    agents.forEach(function(a){
+      var c = a.csat || {};
+      var ap = c.pct != null ? c.pct + '%' : '--';
+      var ac = c.pct != null ? (c.pct >= 90 ? 'var(--av-green)' : c.pct >= 70 ? 'var(--accent-amber)' : 'var(--accent-red)') : 'var(--text-muted)';
+      h += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.82rem">';
+      h += '<span>' + CC.esc(a.name) + '</span>';
+      h += '<span style="font-weight:700;font-family:var(--font-mono);color:' + ac + '">' + ap + ' <span style="font-weight:400;color:var(--text-muted);font-size:0.7rem">(' + CC.fmt(c.total || 0) + ')</span></span>';
+      h += '</div>';
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="no-data">No data</div>';
+  }
+  h += '</div>';
+  box.innerHTML = h;
+}
+
 function renderAgents(d){
   var box = document.getElementById('agents-box');
+  renderTeamCsat(d);
   var agents = d.agents || d;
 
   // If agents is an object/map keyed by name, convert
@@ -158,12 +201,20 @@ function renderAgents(d){
     h += '<div class="agent-card fade-in">';
     h += '<div class="agent-name">' + CC.esc(name) + '</div>';
 
-    // 2x2 stat grid
-    h += '<div class="agent-stats">';
-    h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(assigned) + '</div><div class="label">Assigned This Week</div></div>';
+    // CSAT + velocity
+    var csat = a.csat || {};
+    var csatPct = csat.pct != null ? csat.pct + '%' : '--';
+    var csatColor = csat.pct != null ? (csat.pct >= 90 ? 'var(--av-green)' : csat.pct >= 70 ? 'var(--accent-amber)' : 'var(--accent-red)') : 'var(--text-primary)';
+    var velocity = cw.velocityPerDay || 0;
+
+    // 3x2 stat grid
+    h += '<div class="agent-stats" style="grid-template-columns:1fr 1fr 1fr">';
+    h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(assigned) + '</div><div class="label">Assigned</div></div>';
     h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(solved) + '</div><div class="label">Solved</div></div>';
-    h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(open) + '</div><div class="label">Currently Open</div></div>';
+    h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(open) + '</div><div class="label">Open</div></div>';
     h += '<div class="agent-stat-item"><div class="value">' + CC.esc(avgResStr) + '</div><div class="label">Avg Resolution</div></div>';
+    h += '<div class="agent-stat-item"><div class="value" style="color:' + csatColor + '">' + CC.esc(csatPct) + '</div><div class="label">CSAT</div></div>';
+    h += '<div class="agent-stat-item"><div class="value">' + velocity.toFixed(1) + '</div><div class="label">Solved/Day</div></div>';
     h += '</div>';
 
     // Category breakdown
