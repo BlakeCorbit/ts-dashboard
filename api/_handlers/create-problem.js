@@ -2,7 +2,7 @@
 // Creates a Problem ticket in Zendesk, links all provided tickets as incidents,
 // propagates Jira context, returns reply template.
 
-const { zdRequest, getJiraLinks } = require('./_zendesk');
+const { zdRequest, getJiraLinks } = require('../_zendesk');
 
 // Reply templates by error pattern
 const REPLY_TEMPLATES = {

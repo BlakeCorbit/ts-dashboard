@@ -3,7 +3,7 @@
 // via the Zendesk-Jira integration (creates actual sidebar links,
 // not just comments).
 
-const { zdRequest, getJiraLinks, getAuth } = require('./_zendesk');
+const { zdRequest, getJiraLinks, getAuth } = require('../_zendesk');
 
 async function createJiraLink(ticketId, issueId, issueKey) {
   const { baseUrl, auth } = getAuth();

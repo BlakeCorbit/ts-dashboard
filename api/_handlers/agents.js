@@ -2,7 +2,7 @@
 // Agent performance data for Blake Corbit, Brien Nunn, Jacob Ryder.
 // Returns weekly and daily stats with category breakdowns.
 
-const { zdRequest, getAuth } = require('./_zendesk');
+const { zdRequest, getAuth } = require('../_zendesk');
 
 const AGENTS = [
   { name: 'Blake Corbit' },

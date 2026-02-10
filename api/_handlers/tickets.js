@@ -1,4 +1,4 @@
-const { zdRequest } = require('./_zendesk');
+const { zdRequest } = require('../_zendesk');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
