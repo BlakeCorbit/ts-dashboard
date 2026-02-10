@@ -1,4 +1,4 @@
-const { zdRequest } = require('./_zendesk');
+const { zdRequest } = require('../_zendesk');
 
 const TAG_TO_POS = {
   napaenterprise: 'NAPA TRACS', napa_binary: 'NAPA Binary',

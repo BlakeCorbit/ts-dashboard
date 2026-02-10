@@ -2,8 +2,8 @@
 // Cluster detection endpoint: fetches recent tickets, runs clustering,
 // filters out clusters matching existing Problem tickets.
 
-const { zdRequest } = require('./_zendesk');
-const { TicketClusterer } = require('./_clusterer');
+const { zdRequest } = require('../_zendesk');
+const { TicketClusterer } = require('../_clusterer');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

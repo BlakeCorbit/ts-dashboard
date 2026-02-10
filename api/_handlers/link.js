@@ -1,4 +1,4 @@
-const { zdRequest, getJiraLinks } = require('./_zendesk');
+const { zdRequest, getJiraLinks } = require('../_zendesk');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
 
     // Create actual Jira links on the incident via the integration API
     if (jiraLinks.length > 0) {
-      const { getAuth } = require('./_zendesk');
+      const { getAuth } = require('../_zendesk');
       const { baseUrl, auth } = getAuth();
       await Promise.all(
         jiraLinks.map(j =>
