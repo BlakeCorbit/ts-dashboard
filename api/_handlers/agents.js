@@ -185,7 +185,7 @@ module.exports = async function handler(req, res) {
             params: { query: 'type:ticket assignee:' + agent.userId + ' created>=' + periodStartStr, per_page: '100' },
           }),
           zdRequest('/search.json', {
-            params: { query: 'type:ticket assignee:' + agent.userId + ' solved>=' + periodStartStr, per_page: '100', sort_by: 'created_at', sort_order: 'desc' },
+            params: { query: 'type:ticket assignee:' + agent.userId + ' solved>=' + periodStartStr, per_page: '100', sort_by: 'updated_at', sort_order: 'desc' },
           }),
           zdRequest('/search.json', {
             params: { query: 'type:ticket assignee:' + agent.userId + ' status<solved', per_page: '100' },
