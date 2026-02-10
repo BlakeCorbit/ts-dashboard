@@ -31,9 +31,25 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   try {
-    const { ticketId, problemId } = req.body;
-    if (!ticketId || !problemId) {
-      return res.status(400).json({ error: 'ticketId and problemId required' });
+    let { ticketId, problemId } = req.body;
+    if (!ticketId) {
+      return res.status(400).json({ error: 'ticketId required' });
+    }
+
+    // If problemId not provided, look it up from the ticket
+    if (!problemId) {
+      const ticketData = await zdRequest('/tickets/' + ticketId + '.json');
+      const ticket = ticketData.ticket;
+      if (!ticket || !ticket.problem_id) {
+        return res.json({ success: true, ticketId, message: 'Ticket has no linked Problem' });
+      }
+      problemId = ticket.problem_id;
+    }
+
+    // Check if this ticket already has Jira links (skip if so)
+    const existingLinks = await getJiraLinks(ticketId);
+    if (existingLinks.length > 0) {
+      return res.json({ success: true, ticketId, problemId, message: 'Already has Jira links', existingLinks });
     }
 
     // Fetch Jira links from the Problem ticket
