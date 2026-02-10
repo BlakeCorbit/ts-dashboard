@@ -221,13 +221,14 @@ module.exports = async function handler(req, res) {
         });
         const todaySolved = todaySolvedData.count || 0;
 
-        // --- Velocity: fetch ticket metrics for ALL solved tickets in period ---
-        const allSolved = solvedData.results || [];
+        // --- Velocity: fetch ticket metrics for solved tickets (up to 100 for median) ---
+        // Use up to 100 solved tickets — statistically robust for median, avoids timeout
+        const solvedSample = (solvedData.results || []).slice(0, 100);
 
         // Batch-fetch metrics and Jira links (batches of 15 to avoid rate limits)
         const ticketDetails = [];
-        for (let i = 0; i < allSolved.length; i += 15) {
-          const batch = allSolved.slice(i, i + 15);
+        for (let i = 0; i < solvedSample.length; i += 15) {
+          const batch = solvedSample.slice(i, i + 15);
           const batchResults = await Promise.all(
             batch.map(async (ticket) => {
               const [metrics, jiraLinks] = await Promise.all([
@@ -240,7 +241,7 @@ module.exports = async function handler(req, res) {
           ticketDetails.push(...batchResults);
         }
 
-        // Compute first reply times (all solved tickets in sample)
+        // Compute first reply times (business hours)
         const firstReplyHours = [];
         for (const td of ticketDetails) {
           if (td.metrics && td.metrics.reply_time_in_minutes && td.metrics.reply_time_in_minutes.business != null) {
@@ -248,11 +249,11 @@ module.exports = async function handler(req, res) {
           }
         }
 
-        // Compute resolution times excluding Jira-linked tickets
+        // Compute first resolution times excluding Jira-linked tickets (matches Explore "Med 1st Res")
         const resolutionHoursNoJira = [];
         for (const td of ticketDetails) {
-          if (!td.hasJira && td.metrics && td.metrics.full_resolution_time_in_minutes && td.metrics.full_resolution_time_in_minutes.business != null) {
-            resolutionHoursNoJira.push(td.metrics.full_resolution_time_in_minutes.business / 60);
+          if (!td.hasJira && td.metrics && td.metrics.first_resolution_time_in_minutes && td.metrics.first_resolution_time_in_minutes.business != null) {
+            resolutionHoursNoJira.push(td.metrics.first_resolution_time_in_minutes.business / 60);
           }
         }
 
