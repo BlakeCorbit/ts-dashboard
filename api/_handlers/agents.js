@@ -179,23 +179,19 @@ module.exports = async function handler(req, res) {
           return { name: agent.name, userId: null, error: 'User not found', currentPeriod: null, today: null };
         }
 
-        // Fetch assigned, solved, open, today assigned, non-incident solved — in parallel
-        const [assignedData, solvedData, openData, todayData, nonIncidentSolved] = await Promise.all([
+        // Fetch assigned, solved, open, today assigned — in parallel
+        const [assignedData, solvedData, openData, todayData] = await Promise.all([
           zdRequest('/search.json', {
             params: { query: 'type:ticket assignee:' + agent.userId + ' created>=' + periodStartStr, per_page: '100' },
           }),
           zdRequest('/search.json', {
-            params: { query: 'type:ticket assignee:' + agent.userId + ' solved>=' + periodStartStr, per_page: '100' },
+            params: { query: 'type:ticket assignee:' + agent.userId + ' solved>=' + periodStartStr, per_page: '100', sort_by: 'created_at', sort_order: 'desc' },
           }),
           zdRequest('/search.json', {
             params: { query: 'type:ticket assignee:' + agent.userId + ' status<solved', per_page: '100' },
           }),
           zdRequest('/search.json', {
             params: { query: 'type:ticket assignee:' + agent.userId + ' created>=' + todayStr, per_page: '100' },
-          }),
-          // Non-incident solved tickets for resolution time (incidents inherit PT resolution time)
-          zdRequest('/search.json', {
-            params: { query: 'type:ticket assignee:' + agent.userId + ' solved>=' + periodStartStr + ' -ticket_type:incident', per_page: '100' },
           }),
         ]);
 
@@ -225,32 +221,11 @@ module.exports = async function handler(req, res) {
         });
         const todaySolved = todaySolvedData.count || 0;
 
-        // --- Velocity: First Reply from all solved, Resolution from non-incident only ---
-
-        // First reply: sample up to 100 solved tickets (all types)
-        const frtSample = (solvedData.results || []).slice(0, 100);
-        const frtDetails = [];
-        for (let i = 0; i < frtSample.length; i += 15) {
-          const batch = frtSample.slice(i, i + 15);
-          const batchResults = await Promise.all(
-            batch.map(ticket => fetchTicketMetrics(ticket.id))
-          );
-          frtDetails.push(...batchResults);
-        }
-
-        const firstReplyHours = [];
-        for (const m of frtDetails) {
-          if (m && m.reply_time_in_minutes && m.reply_time_in_minutes.business != null) {
-            firstReplyHours.push(m.reply_time_in_minutes.business / 60);
-          }
-        }
-
-        // Resolution: non-incident solved tickets only, excluding Jira-linked
-        // (incident tickets inherit PT resolution time, not agent's actual work)
-        const resTickets = (nonIncidentSolved.results || []);
-        const resDetails = [];
-        for (let i = 0; i < resTickets.length; i += 15) {
-          const batch = resTickets.slice(i, i + 15);
+        // --- Velocity: fetch metrics + Jira links for solved tickets (up to 100) ---
+        const solvedSample = (solvedData.results || []).slice(0, 100);
+        const ticketDetails = [];
+        for (let i = 0; i < solvedSample.length; i += 15) {
+          const batch = solvedSample.slice(i, i + 15);
           const batchResults = await Promise.all(
             batch.map(async (ticket) => {
               const [metrics, jiraLinks] = await Promise.all([
@@ -260,11 +235,15 @@ module.exports = async function handler(req, res) {
               return { metrics, hasJira: jiraLinks && jiraLinks.length > 0 };
             })
           );
-          resDetails.push(...batchResults);
+          ticketDetails.push(...batchResults);
         }
 
+        const firstReplyHours = [];
         const resolutionHoursNoJira = [];
-        for (const td of resDetails) {
+        for (const td of ticketDetails) {
+          if (td.metrics && td.metrics.reply_time_in_minutes && td.metrics.reply_time_in_minutes.business != null) {
+            firstReplyHours.push(td.metrics.reply_time_in_minutes.business / 60);
+          }
           if (!td.hasJira && td.metrics && td.metrics.first_resolution_time_in_minutes && td.metrics.first_resolution_time_in_minutes.business != null) {
             resolutionHoursNoJira.push(td.metrics.first_resolution_time_in_minutes.business / 60);
           }
