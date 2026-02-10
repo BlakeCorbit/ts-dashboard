@@ -25,32 +25,23 @@ module.exports = async function handler(req, res) {
       },
     });
 
-    // Fetch Problem ticket info + Jira links for the internal note
-    const [problem, jiraLinks] = await Promise.all([
-      zdRequest(`/tickets/${problemId}.json`).then(d => d.ticket),
-      getJiraLinks(problemId),
-    ]);
+    // Fetch Jira links from the Problem ticket
+    const jiraLinks = await getJiraLinks(problemId);
 
-    const jiraInfo = jiraLinks.length > 0
-      ? jiraLinks.map(j => `${j.issueKey}: ${j.url}`).join('\n')
-      : '(no Jira linked)';
-
-    const note = [
-      `Linked to Problem ZD#${problemId}: ${problem.subject}`,
-      ``,
-      `Jira: ${jiraInfo}`,
-      ``,
-      `-- TS Dashboard (Auto Tag-and-Bag)`,
-    ].join('\n');
-
-    await zdRequest(`/tickets/${ticketId}.json`, {
-      method: 'PUT',
-      body: {
-        ticket: {
-          comment: { body: note, public: false },
-        },
-      },
-    });
+    // Create actual Jira links on the incident via the integration API
+    if (jiraLinks.length > 0) {
+      const { getAuth } = require('./_zendesk');
+      const { baseUrl, auth } = getAuth();
+      await Promise.all(
+        jiraLinks.map(j =>
+          fetch(`${baseUrl}/api/services/jira/links`, {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_id: Number(ticketId), issue_key: j.issueKey }),
+          }).catch(() => {})
+        )
+      );
+    }
 
     res.json({ success: true, ticketId, problemId, jiraLinks });
   } catch (err) {

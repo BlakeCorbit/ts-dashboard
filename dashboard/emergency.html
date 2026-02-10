@@ -3,10 +3,100 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Emergency Triage - AutoVitals Tech Support Command Center</title>
+<title>Emergency - AutoVitals Tech Support Command Center</title>
 <link rel="icon" href="assets/av-icon-green.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared/styles.css">
+<style>
+.emg-alert {
+  background: linear-gradient(135deg, rgba(248,81,73,0.12), rgba(232,134,58,0.08));
+  border: 2px solid var(--accent-red); border-radius: var(--radius-lg);
+  padding: 24px; margin-bottom: 20px; animation: pulseAlert 2s infinite;
+}
+@keyframes pulseAlert { 0%,100%{border-color:var(--accent-red)} 50%{border-color:rgba(248,81,73,0.4)} }
+.emg-alert .emg-title { font-size: 1.3rem; font-weight: 800; color: var(--accent-red); margin-bottom: 4px; }
+.emg-alert .emg-pattern { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.emg-alert .emg-stats { font-size: 0.85rem; color: var(--text-secondary); }
+.emg-alert .emg-stats strong { color: var(--text-primary); font-family: var(--font-mono); }
+
+.emg-quiet {
+  background: linear-gradient(135deg, rgba(117,194,154,0.08), rgba(118,195,206,0.05));
+  border: 1px solid rgba(117,194,154,0.2); border-radius: var(--radius-lg);
+  padding: 40px; text-align: center; margin-bottom: 20px;
+}
+.emg-quiet .title { font-size: 1.3rem; font-weight: 700; color: var(--av-green); }
+.emg-quiet .sub { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
+
+.role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.role-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow);
+}
+.role-card h4 { font-size: 0.85rem; font-weight: 700; color: var(--accent-orange); margin-bottom: 8px; }
+.role-card .role-desc { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6; }
+.role-card select {
+  width: 100%; padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-primary); font-family: var(--font-main); font-size: 0.82rem;
+  margin-top: 10px;
+}
+
+.sop-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 12px;
+}
+.sop-card h3 { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+
+.checklist { list-style: none; padding: 0; }
+.checklist li {
+  display: flex; align-items: flex-start; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem; color: var(--text-secondary);
+  cursor: pointer; transition: all 150ms;
+}
+.checklist li:last-child { border-bottom: none; }
+.checklist li:hover { color: var(--text-primary); }
+.checklist li.done { color: var(--text-muted); text-decoration: line-through; }
+.checklist li .check {
+  width: 20px; height: 20px; min-width: 20px; border: 2px solid var(--border);
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; transition: all 150ms;
+}
+.checklist li.done .check {
+  background: var(--av-green); border-color: var(--av-green); color: #0d1117;
+}
+.checklist li .step-num {
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.72rem;
+  color: var(--accent-orange); min-width: 20px;
+}
+
+.ticket-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.ticket-chips a {
+  font-size: 0.72rem; font-family: var(--font-mono); padding: 3px 8px;
+  background: var(--bg-input); border: 1px solid var(--border-subtle);
+  border-radius: 4px; color: var(--av-blue); text-decoration: none;
+}
+
+.emg-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+.channel-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; margin-bottom: 20px; }
+.channel-tag {
+  font-size: 0.75rem; font-family: var(--font-mono); padding: 3px 10px;
+  background: rgba(118,195,206,0.1); border: 1px solid rgba(118,195,206,0.3);
+  border-radius: 4px; color: var(--av-blue);
+}
+
+.comm-template {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px; font-size: 0.82rem; color: var(--text-secondary);
+  white-space: pre-wrap; position: relative; margin-top: 8px;
+}
+.comm-template .copy-btn {
+  position: absolute; top: 8px; right: 8px; font-size: 0.68rem;
+  padding: 2px 8px; background: var(--av-green-dark); color: #fff;
+  border: none; border-radius: 4px; cursor: pointer;
+}
+
+@media(max-width:1100px) { .role-grid{grid-template-columns:1fr} }
+</style>
 </head>
 <body>
 
@@ -16,37 +106,104 @@
     <div class="header-divider"></div>
     <div>
       <div class="header-title">Tech Support Command Center</div>
-      <div class="header-subtitle" id="header-sub">Emergency Triage</div>
+      <div class="header-subtitle" id="header-sub">Emergency Response</div>
     </div>
   </div>
   <div class="header-right">
     <div id="status-badge"></div>
-    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Scan Now</button>
     <div class="last-updated" id="last-updated">--</div>
   </div>
 </header>
 
 <div class="dashboard">
-  <!-- Summary Cards -->
+  <!-- Emergency Detection -->
   <section>
     <div class="section-header">
-      <div class="section-title">Emergency Overview</div>
+      <div class="section-title">Emergency Detection</div>
+      <div style="font-size:0.72rem;color:var(--text-muted)">Auto-scans every 2 min | Threshold: 3+ similar tickets in 60 min</div>
     </div>
-    <div class="emergency-summary" id="summary-box">
-      <div class="loading-shimmer" style="height:100px"></div>
-      <div class="loading-shimmer" style="height:100px"></div>
-      <div class="loading-shimmer" style="height:100px"></div>
-    </div>
+    <div id="emg-box"><div class="loading-shimmer" style="height:100px"></div></div>
   </section>
 
-  <!-- Emergency Table -->
-  <section>
-    <div class="section-header">
-      <div class="section-title">Urgent &amp; High Priority Tickets</div>
-      <button class="btn btn-sm" onclick="loadEmergency()">Refresh</button>
-    </div>
-    <div id="emergency-box"><div class="loading-shimmer" style="height:300px"></div></div>
-  </section>
+  <!-- SOP Workflow (shown when emergency detected) -->
+  <div id="sop-workflow" style="display:none">
+
+    <!-- Role Assignment -->
+    <section>
+      <div class="section-header"><div class="section-title">Role Assignment</div></div>
+      <div class="role-grid">
+        <div class="role-card">
+          <h4>Role 1: Engineering Liaison</h4>
+          <div class="role-desc">Flag in #emergency-updates, confirm issue, post to #incident-updates, create Problem ticket, create JIRA INC, quarterback with Engineering</div>
+          <select id="role1"><option value="">Assign...</option><option>Blake Corbit</option><option>Brien Nunn</option><option>Jacob Ryder</option></select>
+        </div>
+        <div class="role-card">
+          <h4>Role 2: Customer Communication</h4>
+          <div class="role-desc">Create customer message, post in Problem ticket, announce in #team-technical-support, update Status Page, update voicemail, TVP Special Message if needed</div>
+          <select id="role2"><option value="">Assign...</option><option>Blake Corbit</option><option>Brien Nunn</option><option>Jacob Ryder</option></select>
+        </div>
+        <div class="role-card">
+          <h4>Role 3: Tag and Bag</h4>
+          <div class="role-desc">Link tickets to Problem ticket, send customer message as you link, wait for Role 2 confirmation first</div>
+          <select id="role3"><option value="">Assign...</option><option>Blake Corbit</option><option>Brien Nunn</option><option>Jacob Ryder</option></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Priority Steps -->
+    <section>
+      <div class="section-header"><div class="section-title">Emergency SOP Checklist</div></div>
+      <div class="sop-card">
+        <h3>Priority Steps (in order)</h3>
+        <ul class="checklist" id="sop-checklist">
+          <li onclick="toggleStep(this)"><span class="check"></span><span class="step-num">1</span><span>Flag to Engineering in #emergency-updates — Describe the issue, include ticket examples</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span class="step-num">2</span><span>Post to #incident-updates — Alert client-facing teams</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span class="step-num">3</span><span>Create Zendesk Problem Ticket (or use Approval Queue)</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span class="step-num">4</span><span>Create customer communication message</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span class="step-num">5</span><span>Tag and bag — Link incoming tickets to Problem ticket</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span class="step-num">6</span><span>Create JIRA INC ticket (after incident post)</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span class="step-num">7</span><span>If no Engineering response in 20 min — Escalate: tag engineers, reach out to Cole/Product, use on-call phone list</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Slack Channels -->
+    <section>
+      <div class="section-header"><div class="section-title">Slack Channels</div></div>
+      <div class="channel-list">
+        <span class="channel-tag">#emergency-updates</span>
+        <span class="channel-tag">#incident-updates</span>
+        <span class="channel-tag">#team-technical-support</span>
+        <span class="channel-tag">#pos-troubleshoot</span>
+      </div>
+    </section>
+
+    <!-- Customer Communication -->
+    <section>
+      <div class="section-header"><div class="section-title">Customer Communication Template</div></div>
+      <div class="sop-card">
+        <h3 style="color:var(--accent-red)">ETA Policy: Do NOT provide ETAs unless Engineering gives a concrete timeframe</h3>
+        <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:8px">Waterfall approach (default): Each person updates tickets as they grab them. Mass updates require 2/3 majority.</div>
+        <div id="comm-template-box"><div style="color:var(--text-muted);font-size:0.82rem">Template will appear when emergency is detected</div></div>
+      </div>
+    </section>
+
+    <!-- Post-Emergency -->
+    <section>
+      <div class="section-header"><div class="section-title">Post-Emergency Process</div></div>
+      <div class="sop-card">
+        <ul class="checklist" id="post-checklist">
+          <li onclick="toggleStep(this)"><span class="check"></span><span>Update Status Page</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span>Remove TVP Special Message</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span>Post resolution in #incident-updates</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span>Revert voicemail</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span>Continue working tickets</span></li>
+          <li onclick="toggleStep(this)"><span class="check"></span><span>Update JIRA INC ticket</span></li>
+        </ul>
+      </div>
+    </section>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -57,263 +214,133 @@
 (function(){
 'use strict';
 
-// SLA definitions (in hours)
-var SLA = {
-  urgent: { firstReply: 1, resolve: 8 },
-  high:   { firstReply: 4, resolve: 24 }
-};
-
 var emergencyData = null;
-var incidentsData = null;
-
-function calcSlaRemaining(ticket, priority){
-  var pri = (priority || '').toLowerCase();
-  var sla = SLA[pri];
-  if(!sla) return null;
-
-  var createdAt = ticket.created_at || ticket.createdAt;
-  if(!createdAt) return null;
-
-  var ageMs = Date.now() - new Date(createdAt).getTime();
-  var ageH = ageMs / 3600000;
-
-  // Use resolve SLA as the primary timer
-  var resolveLimit = sla.resolve;
-  var remaining = resolveLimit - ageH;
-
-  // Check first reply SLA
-  var firstReplyRemaining = sla.firstReply - ageH;
-  var hasReplied = ticket.firstReplyAt || ticket.first_reply_at || false;
-
-  return {
-    resolveRemaining: remaining,
-    firstReplyRemaining: hasReplied ? null : firstReplyRemaining,
-    breached: remaining <= 0,
-    firstReplyBreached: !hasReplied && firstReplyRemaining <= 0
-  };
-}
-
-function formatSlaTime(hours){
-  if(hours <= 0){
-    var overH = Math.abs(hours);
-    if(overH < 1) return '-' + Math.round(overH * 60) + 'm';
-    return '-' + overH.toFixed(1) + 'h';
-  }
-  if(hours < 1) return Math.round(hours * 60) + 'm';
-  return hours.toFixed(1) + 'h';
-}
-
-function slaClass(hours){
-  if(hours <= 0) return 'danger';
-  if(hours <= 1) return 'warning';
-  return 'ok';
-}
 
 window.loadEmergency = function(){
-  Promise.all([
-    CC.api('tickets?hours=24'),
-    CC.api('incidents')
-  ]).then(function(results){
-    var triageResult = results[0];
-    incidentsData = results[1];
-
-    if(!triageResult) return;
-
-    var tickets = (triageResult.tickets) ? triageResult.tickets : (triageResult.recentTickets) ? triageResult.recentTickets : [];
-
-    // Filter for urgent and high priority only
-    var emergency = tickets.filter(function(t){
-      var pri = (t.priority || '').toLowerCase();
-      return pri === 'urgent' || pri === 'high';
-    });
-
-    // Sort: urgent first, then by age (oldest first)
-    emergency.sort(function(a, b){
-      var pa = (a.priority||'').toLowerCase() === 'urgent' ? 0 : 1;
-      var pb = (b.priority||'').toLowerCase() === 'urgent' ? 0 : 1;
-      if(pa !== pb) return pa - pb;
-      var da = new Date(a.created_at || a.createdAt || 0).getTime();
-      var db = new Date(b.created_at || b.createdAt || 0).getTime();
-      return da - db;
-    });
-
-    emergencyData = emergency;
-    renderSummary(emergency);
-    renderTable(emergency);
-    renderStatus(emergency);
-    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
-  }).catch(function(e){
-    CC.toast('Emergency: ' + e.message, false);
-  });
+  CC.api('detect?hours=1&threshold=3').then(function(d){
+    if(!d)return;
+    emergencyData=d;
+    renderEmergency(d);
+    document.getElementById('last-updated').textContent='Scanned '+CC.fmtTime(new Date().toISOString());
+  }).catch(function(e){ CC.toast('Detection: '+e.message, false); });
 };
 
-function renderStatus(tickets){
-  var el = document.getElementById('status-badge');
-  var urgentCount = tickets.filter(function(t){ return (t.priority||'').toLowerCase() === 'urgent'; }).length;
-  var cls, txt;
-  if(urgentCount > 0){
-    cls = 'status-red'; txt = urgentCount + ' Urgent';
-  } else if(tickets.length > 0){
-    cls = 'status-yellow'; txt = tickets.length + ' High Priority';
-  } else {
-    cls = 'status-green'; txt = 'All Clear';
-  }
-  el.innerHTML = '<span class="status-badge ' + cls + '"><span class="dot"></span>' + txt + '</span>';
-}
+function renderEmergency(d){
+  var box=document.getElementById('emg-box');
+  var sop=document.getElementById('sop-workflow');
+  var clusters=(d&&d.clusters)?d.clusters:[];
 
-function renderSummary(tickets){
-  var box = document.getElementById('summary-box');
-  var urgentCount = 0, highCount = 0, breachCount = 0;
-
-  tickets.forEach(function(t){
-    var pri = (t.priority||'').toLowerCase();
-    if(pri === 'urgent') urgentCount++;
-    else if(pri === 'high') highCount++;
-
-    var sla = calcSlaRemaining(t, pri);
-    if(sla && (sla.breached || sla.firstReplyBreached)) breachCount++;
-  });
-
-  var h = '';
-  h += '<div class="emergency-stat fade-in"><div class="num urgent">' + urgentCount + '</div><div class="lbl">Urgent Tickets</div></div>';
-  h += '<div class="emergency-stat fade-in"><div class="num high">' + highCount + '</div><div class="lbl">High Priority</div></div>';
-  h += '<div class="emergency-stat fade-in"><div class="num breach">' + breachCount + '</div><div class="lbl">Approaching / Breached SLA</div></div>';
-  box.innerHTML = h;
-}
-
-function renderTable(tickets){
-  var box = document.getElementById('emergency-box');
-
-  if(!tickets.length){
-    box.innerHTML = '<div class="all-clear fade-in"><div class="title">No Emergency Tickets</div><div class="sub">No urgent or high priority tickets in the last 24 hours</div></div>';
+  if(!clusters.length){
+    box.innerHTML='<div class="emg-quiet fade-in"><div class="title">All Clear</div><div class="sub">No emergency patterns detected. Scanning '+CC.fmt(d.totalScanned)+' recent tickets every 2 minutes.</div></div>';
+    sop.style.display='none';
+    renderBadge(0);
     return;
   }
 
-  var h = '<div class="triage-card fade-in"><div class="triage-wrap"><table>';
-  h += '<thead><tr><th>Ticket</th><th>Subject</th><th>Priority</th><th>Age</th><th>SLA Remaining</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  renderBadge(clusters.length);
+  sop.style.display='block';
 
-  tickets.forEach(function(t){
-    var id = t.id;
-    var pri = (t.priority||'normal').toLowerCase();
-    var pcls = 'p-' + pri;
-    var rowCls = pri === 'urgent' ? 'row-urgent' : 'row-high';
-    var createdAt = t.created_at || t.createdAt;
-    var sla = calcSlaRemaining(t, pri);
+  var h='';
+  clusters.forEach(function(c, idx){
+    var pattern=c.pattern||'Unknown';
+    var tickets=c.tickets||[];
+    var count=c.ticketCount||tickets.length||0;
+    var orgs=c.orgCount||0;
+    var span=c.timeSpanMinutes||0;
 
-    h += '<tr class="' + rowCls + '">';
-    h += '<td class="td-ticket"><a href="' + CC.ZD + id + '" target="_blank">#' + id + '</a></td>';
-    h += '<td class="td-subject" title="' + CC.esc(t.subject) + '">' + CC.esc(CC.trunc(t.subject, 50)) + '</td>';
-    h += '<td><span class="priority-badge ' + pcls + '">' + CC.esc(pri) + '</span></td>';
-    h += '<td style="white-space:nowrap">' + CC.relTime(createdAt) + '</td>';
+    h+='<div class="emg-alert fade-in">';
+    h+='<div class="emg-title">EMERGENCY DETECTED</div>';
+    h+='<div class="emg-pattern">'+CC.esc(pattern)+'</div>';
+    h+='<div class="emg-stats">';
+    h+='<strong>'+count+'</strong> tickets';
+    if(orgs) h+=' from <strong>'+orgs+'</strong> shops';
+    if(span) h+=' in <strong>'+span+'</strong> minutes';
+    h+=' &middot; Scanned '+CC.fmt(d.totalScanned)+' tickets';
+    h+='</div>';
 
-    // SLA column
-    h += '<td>';
-    if(sla){
-      // Show resolve SLA
-      var resolveC = slaClass(sla.resolveRemaining);
-      h += '<div class="sla-timer ' + resolveC + '">Resolve: ' + formatSlaTime(sla.resolveRemaining) + '</div>';
-      // Show first reply SLA if not yet replied
-      if(sla.firstReplyRemaining !== null){
-        var frC = slaClass(sla.firstReplyRemaining);
-        h += '<div class="sla-timer ' + frC + '">1st Reply: ' + formatSlaTime(sla.firstReplyRemaining) + '</div>';
-      }
-    } else {
-      h += '<span style="color:var(--text-muted)">--</span>';
+    if(tickets.length){
+      h+='<div class="ticket-chips">';
+      tickets.forEach(function(t){
+        var tid=t.id||t;
+        var subj=t.subject?' — '+CC.esc(CC.trunc(t.subject,40)):'';
+        h+='<a href="'+CC.ZD+tid+'" target="_blank" title="'+CC.esc(t.subject||'')+'">#'+tid+subj+'</a>';
+      });
+      h+='</div>';
     }
-    h += '</td>';
 
-    h += '<td><span class="td-cat">' + CC.esc(t.status || '--') + '</span></td>';
+    h+='<div class="emg-actions">';
+    h+='<button class="btn btn-approve btn-sm" onclick="sendToApproval('+idx+',this)">Send to Approval Queue</button>';
+    h+='</div>';
 
-    // Actions
-    h += '<td style="white-space:nowrap">';
-    if(t.category){
-      h += '<button class="btn btn-approve btn-sm" onclick="approveEmergency(' + id + ',this)">Approve</button> ';
-    }
-    if(!t.problemId && incidentsData && incidentsData.incidents && incidentsData.incidents.length){
-      h += '<button class="btn btn-link btn-sm" onclick="showLinkMenu(' + id + ',this)">Link</button>';
-    }
-    h += '</td></tr>';
+    // Build comm template
+    var pos=c.pos?c.pos.charAt(0).toUpperCase()+c.pos.slice(1)+' ':'';
+    var err=c.errorPattern||'the reported issue';
+    var tmpl='We are aware of an issue'+(pos?' affecting '+pos:'')+(err!=='other'?' related to '+err.toLowerCase():'')+' and are actively investigating. Our team has been alerted and is working on a resolution. We will update you as soon as we have more information. Thank you for your patience.';
+    document.getElementById('comm-template-box').innerHTML=
+      '<div class="comm-template"><button class="copy-btn" onclick="copyText(this.parentElement)">Copy</button>'+CC.esc(tmpl)+'</div>';
+
+    h+='</div>';
   });
-
-  h += '</tbody></table></div></div>';
-  box.innerHTML = h;
+  box.innerHTML=h;
 }
 
-window.approveEmergency = function(ticketId, btn){
-  btn.classList.add('loading');
-  btn.innerHTML = '<span class="spinner"></span>';
-  CC.api('approve', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ticketId: ticketId, category: 'Emergency-triaged', suggestedAction: 'Priority review'})
-  }).then(function(d){
-    if(d && d.success){
-      CC.toast('Internal note added to #' + ticketId, true);
-      btn.textContent = 'Done';
-      btn.disabled = true;
-    } else {
-      CC.toast('Failed', false);
-      btn.classList.remove('loading');
-      btn.textContent = 'Approve';
-    }
-  }).catch(function(e){
-    CC.toast(e.message, false);
-    btn.classList.remove('loading');
-    btn.textContent = 'Approve';
-  });
+function renderBadge(n){
+  var el=document.getElementById('status-badge');
+  if(n===0) el.innerHTML='<span class="status-badge status-green"><span class="dot"></span>All Clear</span>';
+  else el.innerHTML='<span class="status-badge status-red"><span class="dot"></span>'+n+' Emergency</span>';
+}
+
+window.toggleStep = function(li){
+  li.classList.toggle('done');
+  li.querySelector('.check').textContent=li.classList.contains('done')?'\u2713':'';
 };
 
-window.showLinkMenu = function(ticketId, btn){
-  var incidents = incidentsData ? incidentsData.incidents : [];
-  if(!incidents.length){ CC.toast('No active incidents', false); return; }
-  var menu = '<select onchange="linkTicket(' + ticketId + ',this.value,this)" style="font-size:0.7rem;padding:2px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px">';
-  menu += '<option value="">Pick incident...</option>';
-  incidents.forEach(function(i){
-    var jira = i.jiraLinks && i.jiraLinks.length ? '(' + i.jiraLinks[0].issueKey + ')' : '';
-    menu += '<option value="' + i.problemId + '">ZD#' + i.problemId + ' ' + jira + ' ' + CC.esc(CC.trunc(i.subject, 30)) + '</option>';
-  });
-  menu += '</select>';
-  btn.outerHTML = menu;
+window.copyText = function(el){
+  var text=el.textContent.replace('Copy','').trim();
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(text).then(function(){ CC.toast('Copied to clipboard',true); });
+  } else {
+    var ta=document.createElement('textarea');
+    ta.value=text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    CC.toast('Copied to clipboard',true);
+  }
 };
 
-window.linkTicket = function(ticketId, problemId, sel){
-  if(!problemId) return;
-  sel.disabled = true;
-  CC.api('link', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ticketId: ticketId, problemId: parseInt(problemId, 10)})
-  }).then(function(d){
-    if(d && d.success){
-      var jira = d.jiraLinks && d.jiraLinks.length ? ' + ' + d.jiraLinks[0].issueKey : '';
-      CC.toast('Linked #' + ticketId + ' to Problem #' + problemId + jira, true);
-      sel.outerHTML = '<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Linked</span>';
-    } else {
-      CC.toast('Link failed', false);
-      sel.disabled = false;
-    }
-  }).catch(function(e){
-    CC.toast(e.message, false);
-    sel.disabled = false;
+window.sendToApproval = function(idx, btn){
+  var clusters=(emergencyData&&emergencyData.clusters)?emergencyData.clusters:[];
+  var c=clusters[idx];
+  if(!c)return;
+  var tickets=(c.tickets||[]).map(function(t){return t.id||t;});
+  var queue=JSON.parse(localStorage.getItem('approvalQueue')||'[]');
+  queue.push({
+    pattern: c.pattern||'Emergency',
+    suggestedSubject: c.suggestedSubject||c.pattern||'',
+    suggestedDescription: c.suggestedDescription||'',
+    ticketIds: tickets,
+    ticketCount: tickets.length,
+    addedAt: new Date().toISOString(),
+    emergency: true
   });
+  localStorage.setItem('approvalQueue', JSON.stringify(queue));
+  btn.textContent='Sent to Approval';
+  btn.disabled=true;
+  btn.classList.remove('btn-approve');
+  CC.toast('Emergency sent to Approval Queue', true);
+  if(typeof updateApprovalBadge==='function') updateApprovalBadge();
 };
 
-// ---- Refresh All ----
 window.refreshAll = function(){
-  var btn = document.getElementById('refresh-btn');
+  var btn=document.getElementById('refresh-btn');
   btn.classList.add('loading');
-  btn.innerHTML = '<span class="spinner"></span> Refreshing...';
+  btn.innerHTML='<span class="spinner"></span> Scanning...';
   loadEmergency();
-  setTimeout(function(){
-    btn.classList.remove('loading');
-    btn.textContent = 'Refresh All';
-  }, 1000);
+  setTimeout(function(){ btn.classList.remove('loading'); btn.textContent='Scan Now'; }, 2000);
 };
 
-// ---- Init ----
 loadEmergency();
-// Refresh every 2 minutes for emergency page
-setInterval(function(){ loadEmergency(); }, 2*60*1000);
+setInterval(loadEmergency, 2*60*1000);
 
 })();
 </script>

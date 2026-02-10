@@ -1,8 +1,27 @@
 // propagate-jira.js — POST /api/propagate-jira
-// Standalone Jira propagation: takes a ticketId and problemId,
-// fetches Jira links from the Problem, and stamps them on the incident.
+// Links Jira issues from a Problem ticket onto an incident ticket
+// via the Zendesk-Jira integration (creates actual sidebar links,
+// not just comments).
 
-const { zdRequest, getJiraLinks } = require('./_zendesk');
+const { zdRequest, getJiraLinks, getAuth } = require('./_zendesk');
+
+async function createJiraLink(ticketId, issueKey) {
+  const { baseUrl, auth } = getAuth();
+  const url = `${baseUrl}/api/services/jira/links`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ticket_id: Number(ticketId), issue_key: issueKey }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`Jira link ${resp.status}: ${body.substring(0, 200)}`);
+  }
+  return resp.status === 204 ? null : resp.json();
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,36 +36,30 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'ticketId and problemId required' });
     }
 
-    // Fetch Problem ticket info + Jira links
-    const [problem, jiraLinks] = await Promise.all([
-      zdRequest('/tickets/' + problemId + '.json').then(d => d.ticket),
-      getJiraLinks(problemId),
-    ]);
+    // Fetch Jira links from the Problem ticket
+    const jiraLinks = await getJiraLinks(problemId);
 
     if (jiraLinks.length === 0) {
       return res.json({ success: true, ticketId, problemId, jiraLinks: [], message: 'No Jira links on Problem ticket' });
     }
 
-    const jiraInfo = jiraLinks.map(j => j.issueKey + ': ' + j.url).join('\n');
+    // Create actual Jira links on the incident ticket via the integration API
+    const results = await Promise.all(
+      jiraLinks.map(j => createJiraLink(ticketId, j.issueKey).catch(err => ({ error: err.message, issueKey: j.issueKey })))
+    );
 
-    const note = [
-      'Linked to Problem ZD#' + problemId + ': ' + (problem.subject || ''),
-      '',
-      'Jira: ' + jiraInfo,
-      '',
-      '-- TS Dashboard (Jira Propagation)',
-    ].join('\n');
+    const linked = results.filter(r => !r || !r.error);
+    const failed = results.filter(r => r && r.error);
 
-    await zdRequest('/tickets/' + ticketId + '.json', {
-      method: 'PUT',
-      body: {
-        ticket: {
-          comment: { body: note, public: false },
-        },
-      },
+    res.json({
+      success: true,
+      ticketId,
+      problemId,
+      jiraLinks,
+      linkedCount: linked.length,
+      failedCount: failed.length,
+      failures: failed.length > 0 ? failed : undefined,
     });
-
-    res.json({ success: true, ticketId, problemId, jiraLinks });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
