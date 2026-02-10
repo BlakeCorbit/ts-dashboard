@@ -1,12 +1,12 @@
 {
-  "totalTickets": 366,
-  "resolvedTickets": 335,
-  "openBacklog": 500,
-  "avgPerDay": 52.3,
+  "totalTickets": 368,
+  "resolvedTickets": 336,
+  "openBacklog": 501,
+  "avgPerDay": 52.6,
   "byCategory": [
     {
       "name": "Other",
-      "count": 109
+      "count": 111
     },
     {
       "name": "High Priority",
@@ -28,7 +28,7 @@
   "byPOS": [
     {
       "name": "Non-POS",
-      "count": 275
+      "count": 277
     },
     {
       "name": "Protractor",
@@ -50,7 +50,7 @@
     },
     {
       "name": "Unknown",
-      "count": 96
+      "count": 98
     },
     {
       "name": "Email",
@@ -88,8 +88,8 @@
     },
     {
       "day": "2026-02-10",
-      "count": 55
+      "count": 57
     }
   ],
-  "generatedAt": "2026-02-10T22:39:20.189Z"
+  "generatedAt": "2026-02-10T23:23:43.021Z"
 }
