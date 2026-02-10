@@ -5,7 +5,7 @@
 
 const { zdRequest, getJiraLinks, getAuth } = require('./_zendesk');
 
-async function createJiraLink(ticketId, issueKey) {
+async function createJiraLink(ticketId, issueId, issueKey) {
   const { baseUrl, auth } = getAuth();
   const url = `${baseUrl}/api/services/jira/links`;
   const resp = await fetch(url, {
@@ -14,7 +14,7 @@ async function createJiraLink(ticketId, issueKey) {
       'Authorization': `Basic ${auth}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ ticket_id: Number(ticketId), issue_key: issueKey }),
+    body: JSON.stringify({ ticket_id: String(ticketId), issue_id: String(issueId), issue_key: issueKey }),
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
 
     // Create actual Jira links on the incident ticket via the integration API
     const results = await Promise.all(
-      jiraLinks.map(j => createJiraLink(ticketId, j.issueKey).catch(err => ({ error: err.message, issueKey: j.issueKey })))
+      jiraLinks.map(j => createJiraLink(ticketId, j.issueId, j.issueKey).catch(err => ({ error: err.message, issueKey: j.issueKey })))
     );
 
     const linked = results.filter(r => !r || !r.error);

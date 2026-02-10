@@ -59,6 +59,7 @@ async function getJiraLinks(ticketId) {
     if (!resp.ok) return [];
     const data = await resp.json();
     return (data.links || []).map(l => ({
+      issueId: l.issue_id,
       issueKey: l.issue_key,
       url: `https://autovitals.atlassian.net/browse/${l.issue_key}`,
     }));

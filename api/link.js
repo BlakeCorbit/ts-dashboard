@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
           fetch(`${baseUrl}/api/services/jira/links`, {
             method: 'POST',
             headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticket_id: Number(ticketId), issue_key: j.issueKey }),
+            body: JSON.stringify({ ticket_id: String(ticketId), issue_id: String(j.issueId), issue_key: j.issueKey }),
           }).catch(() => {})
         )
       );
