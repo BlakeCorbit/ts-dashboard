@@ -96,9 +96,7 @@ function renderIncidents(d){
     h+='</div>';
     h+='<div class="incident-subject">'+CC.esc(i.subject)+'</div>';
     h+='<div class="incident-meta">';
-    if(i.linkedCount){
-      h+='<span><span class="label">Linked:</span> <span class="linked-count">'+i.linkedCount+' tickets</span></span>';
-    }
+    h+='<span><span class="label">Linked:</span> <span class="linked-count">'+(i.linkedCount||0)+' tickets</span></span>';
     if(i.jiraLinks&&i.jiraLinks.length>0){
       i.jiraLinks.forEach(function(j){
         h+='<span><span class="label">Jira:</span> <a href="'+CC.esc(j.url)+'" target="_blank"><strong>'+CC.esc(j.issueKey)+'</strong></a></span>';
@@ -108,7 +106,36 @@ function renderIncidents(d){
     if(i.createdAt){
       h+='<span><span class="label">Created:</span> <span class="value">'+CC.relTime(i.createdAt)+'</span></span>';
     }
-    h+='</div></div>';
+    h+='</div>';
+
+    // Linked tickets expandable section
+    if(i.linkedTickets&&i.linkedTickets.length>0){
+      var pid=i.problemId;
+      h+='<div style="margin-top:12px">';
+      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="margin-bottom:8px">Show '+i.linkedTickets.length+' Linked Tickets</button>';
+      h+='<div id="linked-'+pid+'" style="display:none">';
+      h+='<table style="width:100%;font-size:0.78rem;border-collapse:collapse;margin-top:4px">';
+      h+='<thead><tr><th style="text-align:left;padding:4px 8px;color:var(--text-muted);font-size:0.68rem;border-bottom:1px solid var(--border)">Ticket</th>';
+      h+='<th style="text-align:left;padding:4px 8px;color:var(--text-muted);font-size:0.68rem;border-bottom:1px solid var(--border)">Subject</th>';
+      h+='<th style="text-align:left;padding:4px 8px;color:var(--text-muted);font-size:0.68rem;border-bottom:1px solid var(--border)">Status</th>';
+      if(i.jiraLinks&&i.jiraLinks.length>0){
+        h+='<th style="text-align:left;padding:4px 8px;color:var(--text-muted);font-size:0.68rem;border-bottom:1px solid var(--border)">Jira</th>';
+      }
+      h+='</tr></thead><tbody>';
+      i.linkedTickets.forEach(function(t){
+        h+='<tr style="border-bottom:1px solid var(--border-subtle)">';
+        h+='<td style="padding:6px 8px;font-family:var(--font-mono)"><a href="'+CC.ZD+t.id+'" target="_blank">#'+t.id+'</a></td>';
+        h+='<td style="padding:6px 8px">'+CC.esc(CC.trunc(t.subject,50))+'</td>';
+        h+='<td style="padding:6px 8px;color:var(--text-secondary)">'+CC.esc(t.status)+'</td>';
+        if(i.jiraLinks&&i.jiraLinks.length>0){
+          h+='<td style="padding:6px 8px"><button class="btn btn-link btn-sm" onclick="propagateJira('+t.id+','+pid+',this)">Add Jira</button></td>';
+        }
+        h+='</tr>';
+      });
+      h+='</tbody></table></div></div>';
+    }
+
+    h+='</div>';
   });
   h+='</div>';
   box.innerHTML=h;
@@ -209,6 +236,44 @@ window.sendToApproval = function(idx, btn){
   CC.toast('Sent to approval queue', true);
 
   if(typeof updateApprovalBadge === 'function') updateApprovalBadge();
+};
+
+// ---- Toggle Linked Tickets ----
+window.toggleLinked = function(problemId, btn){
+  var el=document.getElementById('linked-'+problemId);
+  if(!el)return;
+  if(el.style.display==='none'){
+    el.style.display='block';
+    btn.textContent=btn.textContent.replace('Show','Hide');
+  } else {
+    el.style.display='none';
+    btn.textContent=btn.textContent.replace('Hide','Show');
+  }
+};
+
+// ---- Propagate Jira to Linked Ticket ----
+window.propagateJira = function(ticketId, problemId, btn){
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span>';
+  CC.api('propagate-jira',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:ticketId, problemId:problemId})
+  }).then(function(d){
+    if(d&&d.success){
+      var jira=d.jiraLinks&&d.jiraLinks.length?d.jiraLinks[0].issueKey:'';
+      CC.toast('Jira '+jira+' added to #'+ticketId, true);
+      btn.outerHTML='<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Done</span>';
+    } else {
+      CC.toast('Failed to propagate Jira', false);
+      btn.classList.remove('loading');
+      btn.textContent='Add Jira';
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent='Add Jira';
+  });
 };
 
 // ---- Refresh All ----
