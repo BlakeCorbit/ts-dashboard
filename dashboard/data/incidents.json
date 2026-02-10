@@ -1,0 +1,218 @@
+{
+  "incidents": [
+    {
+      "problemId": 135108,
+      "subject": "PT - AV.X 6.9.4.1 - Media not uploading from device into AV.X at any length",
+      "pattern": "Media Upload Issue",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-19033",
+          "url": "https://autovitals.atlassian.net/browse/AV-19033"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-02-05T18:25:24Z"
+    },
+    {
+      "problemId": 135074,
+      "subject": "PT - AV.X freezing and deleting inspection data on iPad (iPad11,6) running app version 6.9.4.1",
+      "pattern": "App Issues",
+      "posTag": "NAPA TRACS",
+      "jiraLinks": [
+        {
+          "issueKey": "AV-19029",
+          "url": "https://autovitals.atlassian.net/browse/AV-19029"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-02-05T12:22:22Z"
+    },
+    {
+      "problemId": 135007,
+      "subject": "PT - AV.X 6.9.4 Auto Rotate does not work",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-19028",
+          "url": "https://autovitals.atlassian.net/browse/AV-19028"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-02-04T15:28:55Z"
+    },
+    {
+      "problemId": 134997,
+      "subject": "PT - 6.9.3 AVx Android + IOS not alerting",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-19027",
+          "url": "https://autovitals.atlassian.net/browse/AV-19027"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-02-04T13:13:32Z"
+    },
+    {
+      "problemId": 134996,
+      "subject": "PT - 6.9.3 Android App crashes for multiple photos.",
+      "pattern": "App Issues",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-19026",
+          "url": "https://autovitals.atlassian.net/browse/AV-19026"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-02-04T12:59:58Z"
+    },
+    {
+      "problemId": 134464,
+      "subject": "PT - AV.X 6.9.3 GM VIN Scan Captures RPO Codes Causing Overflow",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-18725",
+          "url": "https://autovitals.atlassian.net/browse/AV-18725"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-01-23T19:49:29Z"
+    },
+    {
+      "problemId": 134297,
+      "subject": "PT - AV.X 6.9.3 Sound not working ",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-18912",
+          "url": "https://autovitals.atlassian.net/browse/AV-18912"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-01-21T20:51:23Z"
+    },
+    {
+      "problemId": 134267,
+      "subject": "PT - AV.X 6.9.3 - Techs receiving excessive notifications on device",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [],
+      "linkedCount": 0,
+      "createdAt": "2026-01-21T16:16:49Z"
+    },
+    {
+      "problemId": 134241,
+      "subject": "PT - Tracs API labor lines not syncing.",
+      "pattern": "Custom Pattern",
+      "posTag": "NAPA TRACS",
+      "jiraLinks": [
+        {
+          "issueKey": "AV-18670",
+          "url": "https://autovitals.atlassian.net/browse/AV-18670"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-01-21T13:29:19Z"
+    },
+    {
+      "problemId": 134200,
+      "subject": "PT - AV.X 6.9.3 Focus Issues",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-18860",
+          "url": "https://autovitals.atlassian.net/browse/AV-18860"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-01-20T17:58:05Z"
+    },
+    {
+      "problemId": 134156,
+      "subject": "PT - AV.X 6.9.3 - Techs unable to see notes add to labor by other techs",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [],
+      "linkedCount": 0,
+      "createdAt": "2026-01-20T15:29:47Z"
+    },
+    {
+      "problemId": 132339,
+      "subject": "PT - AVSync requires reinstall ",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-18664",
+          "url": "https://autovitals.atlassian.net/browse/AV-18664"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2025-12-12T18:05:10Z"
+    },
+    {
+      "problemId": 128341,
+      "subject": "Reports of Text Messages Going to Spam",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [],
+      "linkedCount": 0,
+      "createdAt": "2025-10-09T17:18:30Z"
+    },
+    {
+      "problemId": 122233,
+      "subject": "Problem: Costar Integration Issues",
+      "pattern": "Integration Issue",
+      "posTag": null,
+      "jiraLinks": [],
+      "linkedCount": 0,
+      "createdAt": "2025-04-29T17:14:57Z"
+    },
+    {
+      "problemId": 121651,
+      "subject": "AVX Issues Resolved with Apr 2025 Release",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [],
+      "linkedCount": 0,
+      "createdAt": "2025-04-14T19:09:25Z"
+    },
+    {
+      "problemId": 110892,
+      "subject": "Problem: AVX Galaxy 9+ Camera Zoom Issue",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-14231",
+          "url": "https://autovitals.atlassian.net/browse/AV-14231"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2024-09-05T19:26:01Z"
+    },
+    {
+      "problemId": 103084,
+      "subject": "Problem: AV.X alerts not working when devices are asleep",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-13536",
+          "url": "https://autovitals.atlassian.net/browse/AV-13536"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2024-07-27T15:21:45Z"
+    }
+  ],
+  "generatedAt": "2026-02-10T13:56:01.649Z"
+}

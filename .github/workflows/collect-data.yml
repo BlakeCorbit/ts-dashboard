@@ -1,0 +1,43 @@
+name: Collect Dashboard Data
+
+on:
+  schedule:
+    # Every 15 minutes during business hours (Mon-Fri, 7am-7pm MT / 14:00-02:00 UTC)
+    - cron: '*/15 14-23 * * 1-5'
+    - cron: '*/15 0-2 * * 2-6'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd dashboard && npm install
+          cd ../auto-tag-and-bag && npm install
+          cd ../ticket-triage && npm install
+          cd ../auto-metrics && npm install
+
+      - name: Collect data
+        env:
+          ZENDESK_SUBDOMAIN: ${{ secrets.ZENDESK_SUBDOMAIN }}
+          ZENDESK_EMAIL: ${{ secrets.ZENDESK_EMAIL }}
+          ZENDESK_API_TOKEN: ${{ secrets.ZENDESK_API_TOKEN }}
+        run: node dashboard/collect.js
+
+      - name: Commit and push data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard/data/*.json
+          git diff --staged --quiet || git commit -m "Update dashboard data [skip ci]"
+          git push

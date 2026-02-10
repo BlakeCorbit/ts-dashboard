@@ -1,0 +1,12 @@
+{
+  "name": "ts-automation-dashboard-collector",
+  "version": "1.0.0",
+  "description": "Data collector for the TS Automation static dashboard. Fetches Zendesk data and outputs JSON files.",
+  "main": "collect.js",
+  "scripts": {
+    "collect": "node collect.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

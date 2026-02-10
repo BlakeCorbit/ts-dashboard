@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --av-green: #75c29a;
+  --av-green-dark: #216843;
+  --av-blue: #76c3ce;
+  --av-offwhite: #f5f7f7;
+  --av-charcoal: #404040;
+  --av-grey: #a7a9ac;
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-card: #1c2333;
+  --bg-card-hover: #222d3f;
+  --bg-input: #0d1117;
+  --border: #30363d;
+  --border-subtle: #21262d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #545d68;
+  --accent-green: var(--av-green);
+  --accent-green-dark: var(--av-green-dark);
+  --accent-blue: var(--av-blue);
+  --accent-yellow: #f0c050;
+  --accent-orange: #e8863a;
+  --accent-red: #f85149;
+  --severity-urgent: #f85149;
+  --severity-high: #e8863a;
+  --severity-normal: var(--av-blue);
+  --severity-low: #545d68;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.4);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --font-main: 'Montserrat', system-ui, sans-serif;
+  --font-sub: 'Raleway', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; scroll-behavior: smooth; }
+body { font-family: var(--font-main); background: var(--bg-primary); color: var(--text-primary); line-height: 1.5; min-height: 100vh; }
+a { color: var(--accent-green); text-decoration: none; transition: color 150ms; }
+a:hover { color: var(--av-green-dark); filter: brightness(1.3); }
+
+.dashboard { max-width: 1480px; margin: 0 auto; padding: 0 24px 40px; }
+
+/* Header */
+.header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  padding: 14px 24px; background: var(--bg-secondary); border-bottom: 2px solid var(--av-green);
+  margin-bottom: 20px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px);
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-logo { height: 32px; opacity: 0.95; }
+.header-divider { width: 1px; height: 28px; background: var(--border); }
+.header-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; color: var(--av-green); }
+.header-subtitle { font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-sub); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.status-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.status-badge .dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
+.status-green { background: rgba(117,194,154,0.12); color: var(--av-green); }
+.status-green .dot { background: var(--av-green); }
+.status-yellow { background: rgba(240,192,80,0.12); color: var(--accent-yellow); }
+.status-yellow .dot { background: var(--accent-yellow); }
+.status-red { background: rgba(248,81,73,0.12); color: var(--accent-red); }
+.status-red .dot { background: var(--accent-red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.last-updated { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* Action Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card);
+  color: var(--text-secondary); font-family: var(--font-main); font-size: 0.75rem;
+  font-weight: 600; cursor: pointer; transition: all 150ms; white-space: nowrap;
+}
+.btn:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: var(--av-green); }
+.btn-primary { background: var(--av-green-dark); color: #fff; border-color: var(--av-green); }
+.btn-primary:hover { background: var(--av-green); color: #0d1117; }
+.btn-approve { background: rgba(117,194,154,0.1); color: var(--av-green); border-color: rgba(117,194,154,0.3); }
+.btn-approve:hover { background: var(--av-green); color: #0d1117; }
+.btn-link { background: rgba(118,195,206,0.1); color: var(--av-blue); border-color: rgba(118,195,206,0.3); }
+.btn-link:hover { background: var(--av-blue); color: #0d1117; }
+.btn-sm { padding: 3px 10px; font-size: 0.7rem; }
+.btn.loading { opacity: 0.6; pointer-events: none; }
+.btn .spinner { width: 12px; height: 12px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Section Headers */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 4px; }
+.section-title {
+  font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text-secondary);
+}
+
+/* Incidents */
+.incidents-section { margin-bottom: 20px; }
+.incidents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 12px; }
+.incident-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--accent-yellow);
+  border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow);
+  transition: all 200ms;
+}
+.incident-card:hover { background: var(--bg-card-hover); box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+.incident-card.age-critical { border-left-color: var(--accent-red); }
+.incident-card.age-warning { border-left-color: var(--accent-yellow); }
+.incident-card.age-ok { border-left-color: var(--accent-green); }
+.incident-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.incident-id { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: var(--av-blue); }
+.incident-id a { color: var(--av-blue); }
+.age-pill { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; }
+.age-pill.age-critical { background: rgba(248,81,73,0.15); color: var(--accent-red); }
+.age-pill.age-warning { background: rgba(240,192,80,0.15); color: var(--accent-yellow); }
+.age-pill.age-ok { background: rgba(117,194,154,0.15); color: var(--accent-green); }
+.incident-subject { font-size: 0.9rem; font-weight: 500; margin-bottom: 10px; line-height: 1.4; }
+.incident-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: var(--text-secondary); }
+.incident-meta .label { color: var(--text-muted); }
+.incident-meta .value { font-weight: 600; }
+.incident-meta a { font-family: var(--font-mono); font-size: 0.78rem; }
+.linked-count { font-family: var(--font-mono); font-weight: 700; color: var(--accent-orange); }
+
+.all-clear {
+  background: linear-gradient(135deg, rgba(117,194,154,0.08), rgba(118,195,206,0.05));
+  border: 1px solid rgba(117,194,154,0.2); border-radius: var(--radius-lg);
+  padding: 30px; text-align: center;
+}
+.all-clear .title { font-size: 1.2rem; font-weight: 700; color: var(--av-green); }
+.all-clear .sub { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
+
+/* Stat Cards */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; box-shadow: var(--shadow);
+}
+.stat-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px; }
+.stat-value { font-family: var(--font-mono); font-size: 1.9rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
+.stat-detail { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; font-family: var(--font-sub); }
+
+/* Charts */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+.chart-title { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.bar-chart-v { display: flex; align-items: flex-end; justify-content: space-around; height: 150px; gap: 6px; }
+.bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+.bar-val { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 3px; }
+.bar-fill { width: 100%; max-width: 44px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--av-green), var(--av-green-dark)); transition: height 0.6s ease; min-height: 2px; }
+.bar-lbl { font-size: 0.68rem; color: var(--text-muted); margin-top: 5px; font-weight: 500; white-space: nowrap; }
+
+.hbar-chart { display: flex; flex-direction: column; gap: 8px; }
+.hbar-row { display: flex; align-items: center; gap: 8px; }
+.hbar-label { font-size: 0.78rem; color: var(--text-secondary); min-width: 120px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { flex: 1; height: 20px; background: var(--bg-input); border-radius: 4px; overflow: hidden; }
+.hbar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; min-width: 2px; }
+.hbar-fill.c0 { background: linear-gradient(90deg, var(--av-green), #9dd6b5); }
+.hbar-fill.c1 { background: linear-gradient(90deg, var(--av-blue), #a0dce5); }
+.hbar-fill.c2 { background: linear-gradient(90deg, #bb86fc, #d0a0ff); }
+.hbar-fill.c3 { background: linear-gradient(90deg, var(--av-green-dark), #3a9060); }
+.hbar-fill.c4 { background: linear-gradient(90deg, var(--accent-yellow), #f5d680); }
+.hbar-fill.c5 { background: linear-gradient(90deg, var(--accent-orange), #f0a868); }
+.hbar-fill.c6 { background: linear-gradient(90deg, var(--accent-red), #ff8080); }
+.hbar-fill.c7 { background: linear-gradient(90deg, #26a69a, #4db6ac); }
+.hbar-count { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); min-width: 32px; text-align: right; }
+
+/* Triage Table */
+.triage-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.triage-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+thead th {
+  background: var(--bg-input); color: var(--text-muted); font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em; padding: 10px 12px; text-align: left;
+  border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10;
+}
+tbody tr { border-bottom: 1px solid var(--border-subtle); transition: background 100ms; }
+tbody tr:hover { background: rgba(117,194,154,0.04); }
+td { padding: 10px 12px; vertical-align: middle; }
+.td-ticket { font-family: var(--font-mono); font-weight: 600; font-size: 0.82rem; white-space: nowrap; }
+.td-subject { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-cat { color: var(--text-secondary); white-space: nowrap; }
+.priority-badge {
+  display: inline-block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 2px 8px; border-radius: 10px;
+}
+.p-urgent { background: rgba(248,81,73,0.15); color: var(--accent-red); }
+.p-high { background: rgba(232,134,58,0.15); color: var(--accent-orange); }
+.p-normal { background: rgba(118,195,206,0.12); color: var(--av-blue); }
+.p-low { background: rgba(84,93,104,0.2); color: var(--text-muted); }
+
+.toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--av-green-dark); color: #fff;
+  padding: 10px 20px; border-radius: var(--radius); font-size: 0.85rem; font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 1000; opacity: 0; transform: translateY(10px);
+  transition: all 300ms;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+.no-data { text-align: center; padding: 28px; color: var(--text-muted); font-size: 0.85rem; }
+.loading-shimmer { background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius); height: 80px; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.fade-in { animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+@media(max-width:1100px) { .charts-grid{grid-template-columns:1fr} .stats-grid{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:768px) { .dashboard{padding:0 12px 30px} .header{flex-direction:column;align-items:flex-start} .stats-grid{grid-template-columns:1fr 1fr} .incidents-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Loading...</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Active Incidents -->
+  <section class="incidents-section">
+    <div class="section-header">
+      <div class="section-title">Active Problem Tickets</div>
+      <button class="btn btn-sm" onclick="loadIncidents()">Refresh</button>
+    </div>
+    <div id="incidents-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Stats -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Weekly Metrics</div>
+      <button class="btn btn-sm" onclick="loadMetrics()">Refresh</button>
+    </div>
+    <div class="stats-grid" id="stats-box">
+      <div class="loading-shimmer"></div><div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div><div class="loading-shimmer"></div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section>
+    <div class="section-header"><div class="section-title">Breakdown</div></div>
+    <div class="charts-grid" id="charts-box">
+      <div class="loading-shimmer" style="height:200px"></div>
+      <div class="loading-shimmer" style="height:200px"></div>
+    </div>
+  </section>
+
+  <!-- Triage -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Ticket Triage (Last 24h)</div>
+      <button class="btn btn-sm" onclick="loadTriage()">Refresh</button>
+    </div>
+    <div id="triage-box"><div class="loading-shimmer" style="height:300px"></div></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+var API = '/api/';
+var ZD = 'https://bayiq.zendesk.com/agent/tickets/';
+var JIRA = 'https://autovitals.atlassian.net/browse/';
+var metricsData = null, incidentsData = null, triageData = null;
+
+// Check if running locally (file:// or localhost without API)
+var useStaticData = location.protocol === 'file:' || (location.hostname === 'localhost' && !location.port);
+
+function api(path, opts) {
+  if (useStaticData) {
+    // Fall back to static JSON files
+    var map = { 'metrics': 'data/metrics.json', 'incidents': 'data/incidents.json', 'tickets?hours=24': 'data/triage.json' };
+    var file = map[path] || 'data/metrics.json';
+    return fetch(file + '?_=' + Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
+  return fetch(API + path, opts).then(function(r){ return r.ok ? r.json() : r.json().then(function(e){ throw new Error(e.error); }); });
+}
+
+function esc(s){ if(!s)return''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function fmt(n){ return n==null?'--':Number(n).toLocaleString('en-US'); }
+function trunc(s,n){ return!s?'':s.length>n?s.slice(0,n)+'...':s; }
+function relTime(iso){
+  if(!iso)return'--';
+  var ms=Date.now()-new Date(iso).getTime();
+  if(ms<60000)return'just now';
+  var m=Math.floor(ms/60000); if(m<60)return m+'m ago';
+  var h=Math.floor(m/60); if(h<24)return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+}
+function ageH(iso){ return iso?(Date.now()-new Date(iso).getTime())/3600000:0; }
+function dayLbl(d){ if(!d)return''; var x=new Date(d+'T12:00:00'); return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][x.getDay()]+' '+(x.getMonth()+1)+'/'+x.getDate(); }
+function fmtTime(iso){ if(!iso)return'--'; var d=new Date(iso); return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+
+function toast(msg, ok){
+  var el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.background=ok?'var(--av-green-dark)':'var(--accent-red)';
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 3000);
+}
+
+// ---- Incidents ----
+function loadIncidents(){
+  api('incidents').then(function(d){
+    if(!d)return;
+    incidentsData=d;
+    renderIncidents(d);
+    renderStatus(d);
+  }).catch(function(e){ toast('Incidents: '+e.message, false); });
+}
+
+function renderStatus(d){
+  var el=document.getElementById('status-badge');
+  var n=(d&&d.incidents)?d.incidents.length:0;
+  var cls,txt;
+  if(n===0){cls='status-green';txt='All Clear';}
+  else if(n>=5){cls='status-red';txt=n+' Problems';}
+  else{cls='status-yellow';txt=n+' Problem'+(n>1?'s':'');}
+  el.innerHTML='<span class="status-badge '+cls+'"><span class="dot"></span>'+txt+'</span>';
+}
+
+function renderIncidents(d){
+  var box=document.getElementById('incidents-box');
+  if(!d||!d.incidents||d.incidents.length===0){
+    box.innerHTML='<div class="all-clear fade-in"><div class="title">All Clear</div><div class="sub">No active problem tickets</div></div>';
+    return;
+  }
+  var h='<div class="incidents-grid fade-in">';
+  d.incidents.forEach(function(i){
+    var age=ageH(i.createdAt);
+    var ac=age>24?'age-critical':age>4?'age-warning':'age-ok';
+    h+='<div class="incident-card '+ac+'">';
+    h+='<div class="incident-header">';
+    h+='<span class="incident-id"><a href="'+ZD+i.problemId+'" target="_blank">ZD#'+i.problemId+'</a></span>';
+    h+='<span class="age-pill '+ac+'">'+relTime(i.createdAt)+'</span>';
+    h+='</div>';
+    h+='<div class="incident-subject">'+esc(i.subject)+'</div>';
+    h+='<div class="incident-meta">';
+    if(i.jiraLinks&&i.jiraLinks.length>0){
+      i.jiraLinks.forEach(function(j){
+        h+='<span><span class="label">Jira:</span> <a href="'+esc(j.url)+'" target="_blank"><strong>'+esc(j.issueKey)+'</strong></a></span>';
+      });
+    }
+    h+='<span><span class="label">Status:</span> <span class="value">'+esc(i.status)+'</span></span>';
+    h+='</div></div>';
+  });
+  h+='</div>';
+  box.innerHTML=h;
+}
+
+// ---- Metrics ----
+function loadMetrics(){
+  api('metrics').then(function(d){
+    if(!d)return;
+    metricsData=d;
+    renderStats(d);
+    renderCharts(d);
+    document.getElementById('header-sub').textContent=
+      d.byDay&&d.byDay.length?d.byDay[0].day+' to '+d.byDay[d.byDay.length-1].day:'Current week';
+    document.getElementById('last-updated').textContent='Updated '+fmtTime(d.generatedAt);
+  }).catch(function(e){ toast('Metrics: '+e.message, false); });
+}
+
+function renderStats(d){
+  var box=document.getElementById('stats-box');
+  var cards=[
+    {l:'Tickets This Week',v:fmt(d.totalTickets),det:'Resolved: '+fmt(d.resolvedTickets)},
+    {l:'Avg Per Day',v:d.avgPerDay?d.avgPerDay.toFixed(1):'--',det:'7-day average'},
+    {l:'Open Backlog',v:fmt(d.openBacklog),det:'Unresolved tickets'},
+    {l:'Triage Match Rate',v:triageData&&triageData.stats?triageData.stats.matchRate+'%':'--',det:triageData&&triageData.stats?'Triaged: '+fmt(triageData.stats.total):''},
+  ];
+  var h='';
+  cards.forEach(function(c){
+    h+='<div class="stat-card fade-in"><div class="stat-label">'+esc(c.l)+'</div><div class="stat-value">'+c.v+'</div><div class="stat-detail">'+esc(c.det)+'</div></div>';
+  });
+  box.innerHTML=h;
+}
+
+function renderCharts(d){
+  var box=document.getElementById('charts-box');
+  var h='';
+  // Tickets by day
+  h+='<div class="chart-card fade-in"><div class="chart-title">Tickets by Day</div>';
+  if(d.byDay&&d.byDay.length){
+    var mx=Math.max.apply(null,d.byDay.map(function(x){return x.count;}));
+    h+='<div class="bar-chart-v">';
+    d.byDay.forEach(function(x){
+      var pct=mx>0?(x.count/mx)*100:0;
+      h+='<div class="bar-col"><div class="bar-val">'+x.count+'</div><div class="bar-fill" style="height:'+pct+'%"></div><div class="bar-lbl">'+esc(dayLbl(x.day))+'</div></div>';
+    });
+    h+='</div>';
+  } else h+='<div class="no-data">No data</div>';
+  h+='</div>';
+  // By category
+  h+=hBar('By Category',d.byCategory);
+  // By POS
+  h+=hBar('By POS',d.byPOS);
+  box.innerHTML=h;
+}
+
+function hBar(title,items){
+  var h='<div class="chart-card fade-in"><div class="chart-title">'+esc(title)+'</div>';
+  if(items&&items.length){
+    var mx=Math.max.apply(null,items.map(function(x){return x.count;}));
+    h+='<div class="hbar-chart">';
+    items.slice(0,8).forEach(function(x,i){
+      var w=mx>0?(x.count/mx)*100:0;
+      h+='<div class="hbar-row"><div class="hbar-label" title="'+esc(x.name)+'">'+esc(x.name)+'</div><div class="hbar-track"><div class="hbar-fill c'+i%8+'" style="width:'+w+'%"></div></div><div class="hbar-count">'+fmt(x.count)+'</div></div>';
+    });
+    h+='</div>';
+  } else h+='<div class="no-data">No data</div>';
+  h+='</div>';
+  return h;
+}
+
+// ---- Triage ----
+function loadTriage(){
+  api('tickets?hours=24').then(function(d){
+    if(!d)return;
+    triageData=d;
+    renderTriage(d);
+  }).catch(function(e){ toast('Triage: '+e.message, false); });
+}
+
+function renderTriage(d){
+  var box=document.getElementById('triage-box');
+  var tickets=(d&&d.tickets)?d.tickets:(d&&d.recentTickets)?d.recentTickets:[];
+  if(!tickets.length){
+    box.innerHTML='<div class="triage-card"><div class="no-data">No recent tickets</div></div>';
+    return;
+  }
+  var h='<div class="triage-card fade-in"><div class="triage-wrap"><table>';
+  h+='<thead><tr><th>Ticket</th><th>Subject</th><th>Status</th><th>Priority</th><th>Type</th><th>Actions</th></tr></thead><tbody>';
+  tickets.slice(0,30).forEach(function(t){
+    var id=t.id;
+    var pri=(t.priority||'normal').toLowerCase();
+    var pcls='p-'+pri;
+    h+='<tr>';
+    h+='<td class="td-ticket"><a href="'+ZD+id+'" target="_blank">#'+id+'</a></td>';
+    h+='<td class="td-subject" title="'+esc(t.subject)+'">'+esc(trunc(t.subject,55))+'</td>';
+    h+='<td><span class="td-cat">'+esc(t.status||'--')+'</span></td>';
+    h+='<td><span class="priority-badge '+pcls+'">'+esc(pri)+'</span></td>';
+    h+='<td class="td-cat">'+esc(t.type||'ticket')+'</td>';
+    h+='<td>';
+    if(t.category){
+      h+='<button class="btn btn-approve btn-sm" onclick="approveTicket('+id+',this)" title="Add triage note to ZD">Approve</button> ';
+    }
+    if(!t.problemId && incidentsData && incidentsData.incidents && incidentsData.incidents.length){
+      h+='<button class="btn btn-link btn-sm" onclick="showLinkMenu('+id+',this)" title="Link to Problem ticket">Link</button>';
+    }
+    h+='</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  box.innerHTML=h;
+}
+
+// ---- Actions ----
+window.approveTicket = function(ticketId, btn){
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span>';
+  api('approve',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:ticketId, category:'Auto-triaged', suggestedAction:'Review triage suggestion'})
+  }).then(function(d){
+    if(d&&d.success){ toast('Internal note added to #'+ticketId, true); btn.textContent='Done'; btn.disabled=true; }
+    else { toast('Failed', false); btn.classList.remove('loading'); btn.textContent='Approve'; }
+  }).catch(function(e){ toast(e.message, false); btn.classList.remove('loading'); btn.textContent='Approve'; });
+};
+
+window.showLinkMenu = function(ticketId, btn){
+  var incidents = incidentsData ? incidentsData.incidents : [];
+  if(!incidents.length){ toast('No active incidents', false); return; }
+  // Simple: link to most recent incident. Could be a dropdown later.
+  var menu='<select onchange="linkTicket('+ticketId+',this.value,this)" style="font-size:0.7rem;padding:2px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px">';
+  menu+='<option value="">Pick incident...</option>';
+  incidents.forEach(function(i){
+    var jira=i.jiraLinks&&i.jiraLinks.length?'('+i.jiraLinks[0].issueKey+')':'';
+    menu+='<option value="'+i.problemId+'">ZD#'+i.problemId+' '+jira+' '+esc(trunc(i.subject,30))+'</option>';
+  });
+  menu+='</select>';
+  btn.outerHTML=menu;
+};
+
+window.linkTicket = function(ticketId, problemId, sel){
+  if(!problemId)return;
+  sel.disabled=true;
+  api('link',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:ticketId, problemId:parseInt(problemId,10)})
+  }).then(function(d){
+    if(d&&d.success){
+      var jira=d.jiraLinks&&d.jiraLinks.length?' + '+d.jiraLinks[0].issueKey:'';
+      toast('Linked #'+ticketId+' to Problem #'+problemId+jira, true);
+      sel.outerHTML='<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Linked</span>';
+    } else { toast('Link failed', false); sel.disabled=false; }
+  }).catch(function(e){ toast(e.message, false); sel.disabled=false; });
+};
+
+// ---- Refresh All ----
+window.refreshAll = function(){
+  var btn=document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span> Refreshing...';
+  Promise.all([
+    api('incidents').then(function(d){ if(d){incidentsData=d;renderIncidents(d);renderStatus(d);} }),
+    api('metrics').then(function(d){ if(d){metricsData=d;renderStats(d);renderCharts(d);document.getElementById('last-updated').textContent='Updated '+fmtTime(d.generatedAt);} }),
+    api('tickets?hours=24').then(function(d){ if(d){triageData=d;renderTriage(d);} }),
+  ]).then(function(){
+    btn.classList.remove('loading');
+    btn.textContent='Refresh All';
+    toast('All data refreshed', true);
+  }).catch(function(){
+    btn.classList.remove('loading');
+    btn.textContent='Refresh All';
+  });
+};
+
+// ---- Init ----
+loadIncidents();
+loadMetrics();
+loadTriage();
+setInterval(function(){ loadIncidents(); loadMetrics(); loadTriage(); }, 5*60*1000);
+
+})();
+</script>
+</body>
+</html>

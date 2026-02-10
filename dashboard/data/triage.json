@@ -1,0 +1,503 @@
+{
+  "recentTickets": [
+    {
+      "id": 135277,
+      "subject": "ro 82954",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - Unknown POS",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.606Z"
+    },
+    {
+      "id": 135275,
+      "subject": "IMAGE/NOTES EDITOR NOT LOADING PICTURES ",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.606Z"
+    },
+    {
+      "id": 135271,
+      "subject": "(Emergency) Integrity Automotive - Brandy Rd [13093]: NAPA TRACS Ent (version 2.x-7.x) parser did not run since 2/9/2026 1:54:44 PM",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.606Z"
+    },
+    {
+      "id": 135270,
+      "subject": "(Emergency) Integrity Automotive - Main Street [13091]: NAPA TRACS Ent (version 2.x-7.x) parser did not run since 2/9/2026 1:54:44 PM",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135267,
+      "subject": "TEST LOGIC SUCCESS 4",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135260,
+      "subject": "Slow Day Blast",
+      "category": "Marketing",
+      "subcategory": "Slow Day Blast",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135259,
+      "subject": "Autovital keeps glitching out and loggiASAP. And other",
+      "category": "App Issue",
+      "subcategory": "AV.X - Crash/Freeze/Performance",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135258,
+      "subject": "Integration link not working for shop",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135257,
+      "subject": "SLOW DAY BLAST",
+      "category": "Marketing",
+      "subcategory": "Slow Day Blast",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135255,
+      "subject": "RO 66524 ",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135254,
+      "subject": "i need to add a user",
+      "category": "Login/Access",
+      "subcategory": "Add New User",
+      "runbook": "Common Phone Support Requests",
+      "priority": "low",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135253,
+      "subject": "I used to be able to see notes that the other technicians",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135252,
+      "subject": "Will not go into \"Customer View\"",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135251,
+      "subject": "Technician tile is not lit",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135250,
+      "subject": "New Voicemail from CHAD O (720) 987-4763 to Main Auto Receptionist (Ext. 801) on Mon Feb 9, 2026 12:49",
+      "category": "Platform Issue",
+      "subcategory": "Vehicle Data Issue",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135248,
+      "subject": "Pictures won't load",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135247,
+      "subject": "RO29202 IS NOT SHOWING UP ON TECHNICIANS TABLET ",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135246,
+      "subject": "Everytime a tech submits an inspection report all of the techs tablet set off the alarm.",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135245,
+      "subject": "Veichle changing to something else",
+      "category": "Platform Issue",
+      "subcategory": "Vehicle Data Issue",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135242,
+      "subject": "Videos taken have no sound",
+      "category": "App Issue",
+      "subcategory": "AV.X - Video No Sound",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135239,
+      "subject": "Dickenson Service Center SID 8521 - Shop needs radiator page updated ",
+      "category": "Website",
+      "subcategory": "Website/Page Request",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135236,
+      "subject": "All photos on all different devices blurry after update",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.607Z"
+    },
+    {
+      "id": 135233,
+      "subject": "NEW CUSTOMER NOT GETTING TEXTS ABOUT APPOINT",
+      "category": "Email/SMS",
+      "subcategory": "SMS Reminders Not Sending",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135232,
+      "subject": "Rooney's Tire & Auto SID 14796 - issues with website appt request and newsletter missing",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135231,
+      "subject": "Quality Control Count",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135230,
+      "subject": "AV not sending reminder texts",
+      "category": "Email/SMS",
+      "subcategory": "SMS Reminders Not Sending",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135229,
+      "subject": "(Emergency) Reno Vulcanizing Auto Care and Tires - SPARKS [9068]: R.O. Writer (version 2+) parser did not run since 2/7/2026 12:19:37 PM",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135227,
+      "subject": "Overnight Compare and Sync - sql ROWriter - 13593",
+      "category": "POS Integration",
+      "subcategory": "Overnight Compare & Sync Alert",
+      "runbook": "Binary Troubleshooting",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135226,
+      "subject": "time clock",
+      "category": "Platform Issue",
+      "subcategory": "TeE-Times / Time Clock",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135221,
+      "subject": "Camera Issues",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135219,
+      "subject": "I HAVE LOST MY PASSWORD FOR SYSTEM SETTINGS ",
+      "category": "Login/Access",
+      "subcategory": "Password Reset",
+      "runbook": "Common Phone Support Requests",
+      "priority": "low",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135203,
+      "subject": "RO's not showing in AV",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135193,
+      "subject": "Logged me out",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135187,
+      "subject": "RO number does not display in vehicle chat on mobile device unless YMM is clicked",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135186,
+      "subject": "Service History for Richard Carranza missing",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - Tekmetric",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135185,
+      "subject": "ro not going to the system",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135184,
+      "subject": "Tablet replacement",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135183,
+      "subject": "tech tablets are lagging/no working",
+      "category": "App Issue",
+      "subcategory": "AV.X - Crash/Freeze/Performance",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135181,
+      "subject": "Integration ",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135179,
+      "subject": "ro50385",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135178,
+      "subject": "cannot log into inspection sheets",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135176,
+      "subject": "INTEGRATION",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135175,
+      "subject": "Inspection not showing up from 2/3",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135174,
+      "subject": "CUSTOMER TEXT ISSUE",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135173,
+      "subject": "33209",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135172,
+      "subject": "Ticket not transfering to TVP",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - Unknown POS",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "high",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135171,
+      "subject": "add tech",
+      "category": "Login/Access",
+      "subcategory": "Add New Tech/SA",
+      "runbook": "Common Phone Support Requests",
+      "priority": "low",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135170,
+      "subject": "Quotes Appearing On TVP",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135168,
+      "subject": "Overnight Compare and Sync - Art Morse Auto Repair - 5183",
+      "category": "POS Integration",
+      "subcategory": "Overnight Compare & Sync Alert",
+      "runbook": "Binary Troubleshooting",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    },
+    {
+      "id": 135166,
+      "subject": "Incorrect engine sizes pulling in the RO",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "normal",
+      "matchedAt": "2026-02-10T13:55:46.608Z"
+    }
+  ],
+  "stats": {
+    "total": 153,
+    "matched": 132,
+    "unmatched": 21,
+    "matchRate": 86
+  },
+  "topCategories": [
+    {
+      "name": "App Issue",
+      "count": 43
+    },
+    {
+      "name": "POS Integration",
+      "count": 27
+    },
+    {
+      "name": "Platform Issue",
+      "count": 26
+    },
+    {
+      "name": "Emergency",
+      "count": 19
+    },
+    {
+      "name": "Login/Access",
+      "count": 8
+    },
+    {
+      "name": "Marketing",
+      "count": 3
+    },
+    {
+      "name": "Email/SMS",
+      "count": 2
+    },
+    {
+      "name": "Account",
+      "count": 2
+    },
+    {
+      "name": "Website",
+      "count": 1
+    },
+    {
+      "name": "BayIQ",
+      "count": 1
+    }
+  ],
+  "generatedAt": "2026-02-10T13:55:46.613Z"
+}
