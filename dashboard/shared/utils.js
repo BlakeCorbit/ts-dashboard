@@ -19,7 +19,20 @@ function api(path, opts) {
     var file = map[path] || 'data/metrics.json';
     return fetch(file + '?_=' + Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
   }
-  return fetch(API + path, opts).then(function(r){ return r.ok ? r.json() : r.json().then(function(e){ throw new Error(e.error); }); });
+  // Inject auth token if available
+  var fetchOpts = opts ? Object.assign({}, opts) : {};
+  if (window.CCAuth && window.CCAuth.getToken()) {
+    fetchOpts.headers = Object.assign({}, fetchOpts.headers || {});
+    fetchOpts.headers['Authorization'] = 'Bearer ' + window.CCAuth.getToken();
+  }
+  return fetch(API + path, fetchOpts).then(function(r){
+    if (r.status === 401) {
+      localStorage.removeItem('av_passcode');
+      location.reload();
+      throw new Error('Authentication required');
+    }
+    return r.ok ? r.json() : r.json().then(function(e){ throw new Error(e.error); });
+  });
 }
 
 function esc(s){ if(!s)return''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }

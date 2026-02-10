@@ -97,6 +97,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="shared/auth.js"></script>
 <script src="shared/utils.js"></script>
 <script src="shared/nav.js"></script>
 <script>
@@ -374,8 +375,9 @@ function renderAgents(d){
       h += '<div class="agent-stat-item"><div class="value">--</div><div class="label">Velocity</div></div>';
     }
 
-    // Solved/Day
-    h += '<div class="agent-stat-item"><div class="value">' + velPerDay + '</div><div class="label">Solved/Day</div></div>';
+    // Med Res (no Jira)
+    var medRes = velDetails.medianResolutionHours != null ? velDetails.medianResolutionHours.toFixed(1) + 'h' : '--';
+    h += '<div class="agent-stat-item"><div class="value">' + medRes + '</div><div class="label">Med Res (no Jira)</div></div>';
     h += '</div>';
 
     // Velocity component detail bars
