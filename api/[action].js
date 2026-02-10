@@ -14,6 +14,7 @@ const HANDLERS = {
   comment:          () => require('./_handlers/comment'),
   'create-problem': () => require('./_handlers/create-problem'),
   detect:           () => require('./_handlers/detect'),
+  feedback:         () => require('./_handlers/feedback'),
   incidents:        () => require('./_handlers/incidents'),
   link:             () => require('./_handlers/link'),
   metrics:          () => require('./_handlers/metrics'),

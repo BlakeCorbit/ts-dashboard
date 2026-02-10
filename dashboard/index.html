@@ -88,11 +88,57 @@
 
 var metricsData = null, incidentsData = null;
 var triageQueueData = null;
-var seenTicketIds = {};
-var dismissedIds = {};
-var handledIds = {};
 var currentFilter = 'all';
 var firstLoad = true;
+
+// Persistent state via localStorage
+function loadState(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+  catch(e) { return fallback; }
+}
+function saveState(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+
+var seenTicketIds = loadState('triage_seenIds', {});
+var dismissedIds = loadState('triage_dismissedIds', {});
+var handledIds = loadState('triage_handledIds', {});
+var triageFeedback = loadState('triage_feedback', { patterns: {} });
+
+// Prune entries older than 30 days on load
+(function pruneOldFeedback() {
+  var cutoff = Date.now() - 30 * 24 * 3600000;
+  var patterns = triageFeedback.patterns;
+  for (var key in patterns) {
+    if (new Date(patterns[key].last).getTime() < cutoff) {
+      delete patterns[key];
+    }
+  }
+  saveState('triage_feedback', triageFeedback);
+})();
+
+function recordFeedback(action, errorPattern, problemId) {
+  if (!errorPattern || errorPattern === 'other' || !problemId) return;
+  var key = errorPattern + '::' + problemId;
+  var entry = triageFeedback.patterns[key] || { approved: 0, dismissed: 0, last: '' };
+  if (action === 'dismiss') entry.dismissed++;
+  else if (action === 'approve') entry.approved++;
+  entry.last = new Date().toISOString();
+  triageFeedback.patterns[key] = entry;
+  saveState('triage_feedback', triageFeedback);
+}
+
+function getFeedbackAdjustment(errorPattern, problemId) {
+  if (!errorPattern || errorPattern === 'other' || !problemId) return 'neutral';
+  var key = errorPattern + '::' + problemId;
+  var entry = triageFeedback.patterns[key];
+  if (!entry) return 'neutral';
+  var total = entry.approved + entry.dismissed;
+  if (total < 3) return 'neutral';
+  if (entry.dismissed / total > 0.6) return 'suppress';
+  if (entry.approved / total > 0.7) return 'boost';
+  return 'neutral';
+}
 
 // ---- Incidents ----
 window.loadIncidents = function(){
@@ -159,6 +205,7 @@ window.loadTriageQueue = function(){
 
     triageQueueData = d;
     firstLoad = false;
+    saveState('triage_seenIds', seenTicketIds);
 
     // Flash new badge
     var badge = document.getElementById('triage-new-badge');
@@ -200,10 +247,32 @@ function renderTriageQueue(d){
   // Apply filter + remove dismissed/handled
   var filtered = queue.filter(function(item){
     if(dismissedIds[item.ticketId] || handledIds[item.ticketId]) return false;
-    if(currentFilter === 'matched') return item.match !== null;
-    if(currentFilter === 'unmatched') return item.match === null;
     return true;
   });
+
+  // Apply feedback-based learning adjustments
+  filtered = filtered.map(function(item) {
+    if (!item.match) return item;
+    var adj = getFeedbackAdjustment(item.errorPattern, item.match.problemId);
+    if (adj === 'suppress') {
+      return Object.assign({}, item, { match: null, suggestedReply: null });
+    }
+    if (adj === 'boost' && item.match.confidence !== 'high') {
+      var boosted = Object.assign({}, item.match);
+      if (boosted.confidence === 'low') boosted.confidence = 'medium';
+      else if (boosted.confidence === 'medium') boosted.confidence = 'high';
+      boosted.matchReason = boosted.matchReason + ' (boosted by feedback)';
+      return Object.assign({}, item, { match: boosted });
+    }
+    return item;
+  });
+
+  // Apply matched/unmatched filter
+  if (currentFilter === 'matched') {
+    filtered = filtered.filter(function(item) { return item.match !== null; });
+  } else if (currentFilter === 'unmatched') {
+    filtered = filtered.filter(function(item) { return item.match === null; });
+  }
 
   if(!filtered.length){
     box.innerHTML = '<div class="all-clear fade-in"><div class="title">Queue Clear</div>' +
@@ -310,6 +379,13 @@ window.approveAndLink = function(ticketId, problemId, btn){
   btn.classList.add('loading');
   btn.innerHTML = '<span class="spinner"></span> Linking...';
 
+  // Look up item for feedback learning
+  var queueItem = null;
+  if (triageQueueData && triageQueueData.queue) {
+    queueItem = triageQueueData.queue.find(function(q) { return q.ticketId === ticketId; });
+  }
+  var errorPattern = queueItem ? queueItem.errorPattern : null;
+
   var replyEl = document.getElementById('reply-' + ticketId);
   var replyBody = replyEl ? replyEl.value.trim() : '';
 
@@ -335,6 +411,21 @@ window.approveAndLink = function(ticketId, problemId, btn){
     return { success: true };
   }).then(function(){
     handledIds[ticketId] = true;
+    saveState('triage_handledIds', handledIds);
+
+    // Record feedback locally + persist to Zendesk
+    recordFeedback('approve', errorPattern, problemId);
+    CC.api('feedback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        ticketId: ticketId,
+        action: 'approve',
+        errorPattern: errorPattern,
+        problemId: problemId
+      })
+    }).catch(function() {});
+
     var card = document.getElementById('tq-' + ticketId);
     if(card){
       card.style.borderLeftColor = 'var(--av-green)';
@@ -353,6 +444,29 @@ window.approveAndLink = function(ticketId, problemId, btn){
 // ---- Dismiss ----
 window.dismissTriageItem = function(ticketId){
   dismissedIds[ticketId] = true;
+  saveState('triage_dismissedIds', dismissedIds);
+
+  // Look up item for feedback learning
+  var item = null;
+  if (triageQueueData && triageQueueData.queue) {
+    item = triageQueueData.queue.find(function(q) { return q.ticketId === ticketId; });
+  }
+
+  // Record feedback locally if there was a match
+  if (item && item.match) {
+    recordFeedback('dismiss', item.errorPattern, item.match.problemId);
+  }
+
+  // Persist to Zendesk (fire-and-forget)
+  CC.api('feedback', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      ticketId: ticketId,
+      action: 'dismiss'
+    })
+  }).catch(function() {});
+
   var card = document.getElementById('tq-' + ticketId);
   if(card) card.remove();
 };
@@ -381,6 +495,7 @@ window.linkTicket = function(ticketId, problemId, sel){
   }).then(function(d){
     if(d&&d.success){
       handledIds[ticketId] = true;
+      saveState('triage_handledIds', handledIds);
       var jira=d.jiraLinks&&d.jiraLinks.length?' + '+d.jiraLinks[0].issueKey:'';
       CC.toast('Linked #'+ticketId+' to Problem #'+problemId+jira, true);
       sel.outerHTML='<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Linked</span>';

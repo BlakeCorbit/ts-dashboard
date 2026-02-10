@@ -31,29 +31,42 @@ function tokenize(s) {
 
 function scoreMatch(ticket, pt) {
   let score = 0;
+  let hasAnchor = false;
 
-  // Error pattern match (+40)
+  // Error pattern match (+40) — ANCHOR
   if (ticket.errorPattern !== 'other' && ticket.errorPattern === pt.errorPattern) {
     score += 40;
+    hasAnchor = true;
   }
 
-  // Same category (+15)
+  // Same category (+15) — modifier only
   if (ticket.category === pt.category && ticket.category !== 'general') {
     score += 15;
   }
 
-  // Same POS (+20)
+  // Same POS (+20) — modifier only
   if (ticket.pos && pt.pos && ticket.pos.toLowerCase() === pt.pos.toLowerCase()) {
     score += 20;
   }
 
-  // Subject keyword overlap (up to +25)
-  const ticketWords = new Set(tokenize(ticket.subject));
-  const ptWords = new Set(tokenize(pt.subject));
+  // Combined keyword overlap: subject + description (up to +25) — ANCHOR if >= 40%
+  const ticketWords = new Set([
+    ...tokenize(ticket.subject),
+    ...tokenize(ticket.description),
+  ]);
+  const ptWords = new Set([
+    ...tokenize(pt.subject),
+    ...tokenize(pt.description || ''),
+  ]);
   if (ptWords.size > 0) {
     const overlap = [...ticketWords].filter(w => ptWords.has(w));
-    score += Math.round((overlap.length / ptWords.size) * 25);
+    const overlapRatio = overlap.length / ptWords.size;
+    score += Math.round(overlapRatio * 25);
+    if (overlapRatio >= 0.4) hasAnchor = true;
   }
+
+  // No anchor = no match (POS + category alone is not enough)
+  if (!hasAnchor) return 0;
 
   return score;
 }
@@ -69,7 +82,16 @@ function buildMatchReason(ticket, pt) {
   if (ticket.pos && pt.pos && ticket.pos.toLowerCase() === pt.pos.toLowerCase()) {
     reasons.push('Same POS: ' + ticket.pos);
   }
-  return reasons.join('; ') || 'Subject keyword overlap';
+  const ticketWords = new Set([...tokenize(ticket.subject), ...tokenize(ticket.description)]);
+  const ptWords = new Set([...tokenize(pt.subject), ...tokenize(pt.description || '')]);
+  if (ptWords.size > 0) {
+    const overlap = [...ticketWords].filter(w => ptWords.has(w));
+    const pct = Math.round((overlap.length / ptWords.size) * 100);
+    if (pct >= 20) {
+      reasons.push('Keyword overlap: ' + pct + '% (' + overlap.slice(0, 5).join(', ') + ')');
+    }
+  }
+  return reasons.join('; ') || 'Keyword overlap';
 }
 
 module.exports = async function handler(req, res) {
@@ -90,7 +112,7 @@ module.exports = async function handler(req, res) {
     const [ticketsData, problemsData] = await Promise.all([
       zdRequest('/search.json', {
         params: {
-          query: `type:ticket created>${since} status<solved`,
+          query: `type:ticket created>${since} status<solved -tags:triage_dismissed`,
           sort_by: 'created_at',
           sort_order: 'desc',
           per_page: '100',
@@ -109,6 +131,7 @@ module.exports = async function handler(req, res) {
     // Normalize tickets — exclude already-linked and problem-type
     const tickets = (ticketsData.results || [])
       .filter(t => !t.problem_id && t.type !== 'problem' && !clusterer.shouldIgnore(t))
+      .filter(t => !(t.tags || []).includes('triage_dismissed'))
       .map(t => ({
         id: t.id,
         subject: t.subject || '',
@@ -130,6 +153,7 @@ module.exports = async function handler(req, res) {
         return {
           problemId: p.id,
           subject: p.subject || '',
+          description: (p.description || '').substring(0, 300),
           status: p.status,
           tags: p.tags || [],
           createdAt: p.created_at,
@@ -145,7 +169,7 @@ module.exports = async function handler(req, res) {
     const queue = tickets.map(ticket => {
       const matches = problems
         .map(pt => ({ pt, score: scoreMatch(ticket, pt) }))
-        .filter(m => m.score > 0)
+        .filter(m => m.score >= 40)
         .sort((a, b) => b.score - a.score);
 
       const best = matches[0] || null;
