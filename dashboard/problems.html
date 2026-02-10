@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Problem Tickets - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Problem Tickets</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Active Problem Tickets -->
+  <section class="incidents-section">
+    <div class="section-header">
+      <div class="section-title">Active Problem Tickets</div>
+      <button class="btn btn-sm" onclick="loadIncidents()">Refresh</button>
+    </div>
+    <div id="incidents-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Detected Potential Problems -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Detected Potential Problems</div>
+      <button class="btn btn-sm" onclick="loadDetected()">Refresh</button>
+    </div>
+    <div id="detected-box"><div class="loading-shimmer" style="height:200px"></div></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var incidentsData = null;
+var detectedData = null;
+// Track which clusters have been queued (by index in current session)
+var queuedIndices = {};
+
+// ---- Incidents ----
+window.loadIncidents = function(){
+  CC.api('incidents').then(function(d){
+    if(!d)return;
+    incidentsData=d;
+    renderIncidents(d);
+    renderStatus(d);
+  }).catch(function(e){ CC.toast('Incidents: '+e.message, false); });
+};
+
+function renderStatus(d){
+  var el=document.getElementById('status-badge');
+  var n=(d&&d.incidents)?d.incidents.length:0;
+  var cls,txt;
+  if(n===0){cls='status-green';txt='All Clear';}
+  else if(n>=5){cls='status-red';txt=n+' Problems';}
+  else{cls='status-yellow';txt=n+' Problem'+(n>1?'s':'');}
+  el.innerHTML='<span class="status-badge '+cls+'"><span class="dot"></span>'+txt+'</span>';
+}
+
+function renderIncidents(d){
+  var box=document.getElementById('incidents-box');
+  if(!d||!d.incidents||d.incidents.length===0){
+    box.innerHTML='<div class="all-clear fade-in"><div class="title">All Clear</div><div class="sub">No active problem tickets</div></div>';
+    return;
+  }
+  var h='<div class="incidents-grid fade-in" style="grid-template-columns:1fr">';
+  d.incidents.forEach(function(i){
+    var age=CC.ageH(i.createdAt);
+    var ac=age>24?'age-critical':age>4?'age-warning':'age-ok';
+    h+='<div class="incident-card '+ac+'">';
+    h+='<div class="incident-header">';
+    h+='<span class="incident-id"><a href="'+CC.ZD+i.problemId+'" target="_blank">ZD#'+i.problemId+'</a></span>';
+    h+='<span class="age-pill '+ac+'">'+CC.relTime(i.createdAt)+'</span>';
+    h+='</div>';
+    h+='<div class="incident-subject">'+CC.esc(i.subject)+'</div>';
+    h+='<div class="incident-meta">';
+    if(i.linkedCount){
+      h+='<span><span class="label">Linked:</span> <span class="linked-count">'+i.linkedCount+' tickets</span></span>';
+    }
+    if(i.jiraLinks&&i.jiraLinks.length>0){
+      i.jiraLinks.forEach(function(j){
+        h+='<span><span class="label">Jira:</span> <a href="'+CC.esc(j.url)+'" target="_blank"><strong>'+CC.esc(j.issueKey)+'</strong></a></span>';
+      });
+    }
+    h+='<span><span class="label">Status:</span> <span class="value">'+CC.esc(i.status)+'</span></span>';
+    if(i.createdAt){
+      h+='<span><span class="label">Created:</span> <span class="value">'+CC.relTime(i.createdAt)+'</span></span>';
+    }
+    h+='</div></div>';
+  });
+  h+='</div>';
+  box.innerHTML=h;
+}
+
+// ---- Detected Potential Problems ----
+window.loadDetected = function(){
+  CC.api('detect').then(function(d){
+    if(!d)return;
+    detectedData=d;
+    renderDetected(d);
+  }).catch(function(e){ CC.toast('Detection: '+e.message, false); });
+};
+
+function renderDetected(d){
+  var box=document.getElementById('detected-box');
+  var clusters=(d&&d.clusters)?d.clusters:(d&&d.detected)?d.detected:[];
+  if(!clusters.length){
+    box.innerHTML='<div class="all-clear fade-in"><div class="title">No Patterns Detected</div><div class="sub">No recurring ticket clusters found in the recent window</div></div>';
+    return;
+  }
+
+  // Check which ones are already in the approval queue
+  var queue = JSON.parse(localStorage.getItem('approvalQueue') || '[]');
+  var queuedPatterns = {};
+  queue.forEach(function(item){ if(item.pattern) queuedPatterns[item.pattern] = true; });
+
+  var h='<div style="display:grid;grid-template-columns:1fr;gap:12px" class="fade-in">';
+  clusters.forEach(function(c, idx){
+    var pattern = c.pattern || c.name || 'Unknown Pattern';
+    var ticketIds = c.ticketIds || c.tickets || [];
+    var ticketCount = c.ticketCount || ticketIds.length || 0;
+    var orgCount = c.orgCount || c.uniqueOrgs || 0;
+    var timeSpan = c.timeSpan || c.window || '';
+    var isQueued = queuedPatterns[pattern] || queuedIndices[idx];
+
+    h+='<div class="cluster-card">';
+    h+='<div class="cluster-header">';
+    h+='<div class="cluster-pattern">'+CC.esc(pattern)+'</div>';
+    h+='</div>';
+    h+='<div class="cluster-stats">';
+    h+='<strong>'+ticketCount+'</strong> tickets';
+    if(orgCount) h+=' across <strong>'+orgCount+'</strong> orgs';
+    if(timeSpan) h+=' &middot; '+CC.esc(timeSpan);
+    h+='</div>';
+
+    // Ticket ID chips
+    if(ticketIds.length){
+      h+='<div class="cluster-tickets">';
+      ticketIds.forEach(function(tid){
+        h+='<span class="cluster-ticket-chip"><a href="'+CC.ZD+tid+'" target="_blank">#'+tid+'</a></span>';
+      });
+      h+='</div>';
+    }
+
+    // Description if available
+    if(c.suggestedDescription || c.description){
+      h+='<div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">'+CC.esc(CC.trunc(c.suggestedDescription||c.description, 200))+'</div>';
+    }
+
+    h+='<div class="cluster-actions">';
+    if(isQueued){
+      h+='<button class="btn btn-sm" disabled>Queued</button>';
+    } else {
+      h+='<button class="btn btn-approve btn-sm" onclick="sendToApproval('+idx+',this)">Send to Approval</button>';
+    }
+    h+='</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  box.innerHTML=h;
+}
+
+window.sendToApproval = function(idx, btn){
+  var clusters=(detectedData&&detectedData.clusters)?detectedData.clusters:(detectedData&&detectedData.detected)?detectedData.detected:[];
+  var c = clusters[idx];
+  if(!c) return;
+
+  var queue = JSON.parse(localStorage.getItem('approvalQueue') || '[]');
+  var item = {
+    pattern: c.pattern || c.name || 'Unknown Pattern',
+    ticketIds: c.ticketIds || c.tickets || [],
+    ticketCount: c.ticketCount || (c.ticketIds||c.tickets||[]).length || 0,
+    orgCount: c.orgCount || c.uniqueOrgs || 0,
+    timeSpan: c.timeSpan || c.window || '',
+    suggestedSubject: c.suggestedSubject || c.pattern || c.name || '',
+    suggestedDescription: c.suggestedDescription || c.description || '',
+    addedAt: new Date().toISOString()
+  };
+  queue.push(item);
+  localStorage.setItem('approvalQueue', JSON.stringify(queue));
+
+  queuedIndices[idx] = true;
+  btn.textContent = 'Queued';
+  btn.disabled = true;
+  btn.classList.remove('btn-approve');
+
+  CC.toast('Sent to approval queue', true);
+
+  if(typeof updateApprovalBadge === 'function') updateApprovalBadge();
+};
+
+// ---- Refresh All ----
+window.refreshAll = function(){
+  var btn=document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span> Refreshing...';
+  Promise.all([
+    CC.api('incidents').then(function(d){ if(d){incidentsData=d;renderIncidents(d);renderStatus(d);} }),
+    CC.api('detect').then(function(d){ if(d){detectedData=d;renderDetected(d);} }),
+  ]).then(function(){
+    btn.classList.remove('loading');
+    btn.textContent='Refresh All';
+    document.getElementById('last-updated').textContent='Updated '+CC.fmtTime(new Date().toISOString());
+    CC.toast('All data refreshed', true);
+  }).catch(function(){
+    btn.classList.remove('loading');
+    btn.textContent='Refresh All';
+  });
+};
+
+// ---- Init ----
+loadIncidents();
+loadDetected();
+setInterval(function(){ loadIncidents(); loadDetected(); }, 5*60*1000);
+
+})();
+</script>
+</body>
+</html>

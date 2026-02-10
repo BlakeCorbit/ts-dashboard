@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporting - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Reporting &amp; Agent Performance</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Agent Performance -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Agent Performance</div>
+      <button class="btn btn-sm" onclick="loadAgents()">Refresh</button>
+    </div>
+    <div id="agents-box" class="agents-grid">
+      <div class="loading-shimmer" style="height:220px"></div>
+      <div class="loading-shimmer" style="height:220px"></div>
+      <div class="loading-shimmer" style="height:220px"></div>
+    </div>
+  </section>
+
+  <!-- Weekly Trends -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Weekly Trends</div>
+      <button class="btn btn-sm" onclick="loadMetrics()">Refresh</button>
+    </div>
+    <div class="charts-grid" id="trends-box">
+      <div class="loading-shimmer" style="height:250px"></div>
+      <div class="loading-shimmer" style="height:250px"></div>
+    </div>
+  </section>
+
+  <!-- Category & POS Breakdown -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Breakdown</div>
+    </div>
+    <div class="charts-grid" id="breakdown-box">
+      <div class="loading-shimmer" style="height:250px"></div>
+      <div class="loading-shimmer" style="height:250px"></div>
+    </div>
+  </section>
+
+  <!-- Resolution Stats -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Resolution Summary</div>
+    </div>
+    <div class="stats-grid" id="resolution-box">
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var metricsData = null;
+var agentsData = null;
+
+var AGENT_NAMES = ['Blake Corbit', 'Brien Nunn', 'Jacob Ryder'];
+
+// ---- Agents ----
+window.loadAgents = function(){
+  CC.api('agents').then(function(d){
+    if(!d) return;
+    agentsData = d;
+    renderAgents(d);
+  }).catch(function(e){ CC.toast('Agents: ' + e.message, false); });
+};
+
+function renderAgents(d){
+  var box = document.getElementById('agents-box');
+  var agents = d.agents || d;
+
+  // If agents is an object/map keyed by name, convert
+  if(!Array.isArray(agents)){
+    var arr = [];
+    AGENT_NAMES.forEach(function(name){
+      var key = name.toLowerCase().replace(/\s+/g, '_');
+      var a = agents[key] || agents[name] || null;
+      if(a){
+        a.name = a.name || name;
+        arr.push(a);
+      }
+    });
+    // If nothing matched by known keys, try all keys
+    if(arr.length === 0){
+      Object.keys(agents).forEach(function(k){
+        var a = agents[k];
+        if(typeof a === 'object' && a !== null){
+          a.name = a.name || k;
+          arr.push(a);
+        }
+      });
+    }
+    agents = arr;
+  }
+
+  if(!agents.length){
+    // Fallback: render placeholder cards for known agents
+    var h = '';
+    AGENT_NAMES.forEach(function(name){
+      h += '<div class="agent-card fade-in">';
+      h += '<div class="agent-name">' + CC.esc(name) + '</div>';
+      h += '<div class="no-data">No data available</div>';
+      h += '</div>';
+    });
+    box.innerHTML = h;
+    return;
+  }
+
+  var h = '';
+  agents.forEach(function(a){
+    var name = a.name || 'Agent';
+    var assigned = a.assignedThisWeek || a.assigned || a.ticketsThisWeek || 0;
+    var solved = a.solved || a.resolvedThisWeek || a.resolved || 0;
+    var open = a.currentlyOpen || a.open || a.openCount || 0;
+    var avgRes = a.avgResolutionTime || a.avgResolution || a.avgResolveHours || null;
+    var avgResStr = avgRes ? (typeof avgRes === 'number' ? avgRes.toFixed(1) + 'h' : avgRes) : '--';
+    var categories = a.categories || a.byCategory || [];
+    var todayCount = a.today || a.todayCount || null;
+
+    h += '<div class="agent-card fade-in">';
+    h += '<div class="agent-name">' + CC.esc(name) + '</div>';
+
+    // 2x2 stat grid
+    h += '<div class="agent-stats">';
+    h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(assigned) + '</div><div class="label">Assigned This Week</div></div>';
+    h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(solved) + '</div><div class="label">Solved</div></div>';
+    h += '<div class="agent-stat-item"><div class="value">' + CC.fmt(open) + '</div><div class="label">Currently Open</div></div>';
+    h += '<div class="agent-stat-item"><div class="value">' + CC.esc(avgResStr) + '</div><div class="label">Avg Resolution</div></div>';
+    h += '</div>';
+
+    // Category breakdown
+    if(categories.length){
+      h += '<div style="margin-top:8px">';
+      var mx = Math.max.apply(null, categories.map(function(c){ return c.count || 0; }));
+      categories.slice(0, 5).forEach(function(c, i){
+        var w = mx > 0 ? ((c.count || 0) / mx) * 100 : 0;
+        h += '<div class="hbar-row" style="margin-bottom:4px">';
+        h += '<div class="hbar-label" style="min-width:90px;font-size:0.72rem" title="' + CC.esc(c.name) + '">' + CC.esc(CC.trunc(c.name, 18)) + '</div>';
+        h += '<div class="hbar-track" style="height:14px"><div class="hbar-fill c' + i % 8 + '" style="width:' + w + '%"></div></div>';
+        h += '<div class="hbar-count" style="font-size:0.7rem">' + (c.count || 0) + '</div>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+
+    // Today's numbers
+    if(todayCount !== null){
+      h += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle);font-size:0.78rem;color:var(--text-secondary)">';
+      h += 'Today: <strong style="color:var(--text-primary);font-family:var(--font-mono)">' + CC.fmt(todayCount) + '</strong> tickets';
+      h += '</div>';
+    }
+
+    h += '</div>';
+  });
+  box.innerHTML = h;
+}
+
+// ---- Metrics / Weekly Trends ----
+window.loadMetrics = function(){
+  CC.api('metrics').then(function(d){
+    if(!d) return;
+    metricsData = d;
+    renderTrends(d);
+    renderBreakdown(d);
+    renderResolution(d);
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
+
+    var sub = document.getElementById('header-sub');
+    if(d.byDay && d.byDay.length){
+      sub.textContent = 'Reporting: ' + d.byDay[0].day + ' to ' + d.byDay[d.byDay.length - 1].day;
+    }
+  }).catch(function(e){ CC.toast('Metrics: ' + e.message, false); });
+};
+
+function renderTrends(d){
+  var box = document.getElementById('trends-box');
+  var h = '';
+
+  // Tickets by day (larger version)
+  h += '<div class="chart-card fade-in" style="grid-column:1/-1"><div class="chart-title">Tickets by Day</div>';
+  if(d.byDay && d.byDay.length){
+    var mx = Math.max.apply(null, d.byDay.map(function(x){ return x.count; }));
+    h += '<div class="bar-chart-v" style="height:200px">';
+    d.byDay.forEach(function(x){
+      var pct = mx > 0 ? (x.count / mx) * 100 : 0;
+      h += '<div class="bar-col">';
+      h += '<div class="bar-val">' + x.count + '</div>';
+      h += '<div class="bar-fill" style="height:' + pct + '%"></div>';
+      h += '<div class="bar-lbl">' + CC.esc(CC.dayLbl(x.day)) + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="no-data">No daily data available</div>';
+  }
+  h += '</div>';
+
+  box.innerHTML = h;
+}
+
+function renderBreakdown(d){
+  var box = document.getElementById('breakdown-box');
+  var h = '';
+  h += CC.hBar('By Category', d.byCategory);
+  h += CC.hBar('By POS', d.byPOS);
+  box.innerHTML = h;
+}
+
+function renderResolution(d){
+  var box = document.getElementById('resolution-box');
+  var total = d.totalTickets || 0;
+  var resolved = d.resolvedTickets || 0;
+  var backlog = d.openBacklog || 0;
+  var rate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+  var avg = d.avgPerDay ? d.avgPerDay.toFixed(1) : '--';
+
+  var h = '';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Total This Week</div><div class="stat-value">' + CC.fmt(total) + '</div><div class="stat-detail">All tickets received</div></div>';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Resolved</div><div class="stat-value">' + CC.fmt(resolved) + '</div><div class="stat-detail">' + rate + '% resolution rate</div></div>';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Open Backlog</div><div class="stat-value">' + CC.fmt(backlog) + '</div><div class="stat-detail">Unresolved tickets</div></div>';
+  h += '<div class="stat-card fade-in"><div class="stat-label">Avg Per Day</div><div class="stat-value">' + avg + '</div><div class="stat-detail">7-day average</div></div>';
+  box.innerHTML = h;
+}
+
+// ---- Status Badge ----
+function updateStatus(){
+  var el = document.getElementById('status-badge');
+  el.innerHTML = '<span class="status-badge status-green"><span class="dot"></span>Reporting</span>';
+}
+
+// ---- Refresh All ----
+window.refreshAll = function(){
+  var btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Refreshing...';
+  Promise.all([
+    CC.api('agents').then(function(d){ if(d){ agentsData=d; renderAgents(d); } }),
+    CC.api('metrics').then(function(d){
+      if(d){
+        metricsData=d;
+        renderTrends(d);
+        renderBreakdown(d);
+        renderResolution(d);
+        document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
+      }
+    }),
+  ]).then(function(){
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh All';
+    CC.toast('All data refreshed', true);
+  }).catch(function(){
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh All';
+  });
+};
+
+// ---- Init ----
+updateStatus();
+loadAgents();
+loadMetrics();
+setInterval(function(){ loadAgents(); loadMetrics(); }, 5*60*1000);
+
+})();
+</script>
+</body>
+</html>

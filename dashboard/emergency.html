@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergency Triage - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Emergency Triage</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Summary Cards -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Emergency Overview</div>
+    </div>
+    <div class="emergency-summary" id="summary-box">
+      <div class="loading-shimmer" style="height:100px"></div>
+      <div class="loading-shimmer" style="height:100px"></div>
+      <div class="loading-shimmer" style="height:100px"></div>
+    </div>
+  </section>
+
+  <!-- Emergency Table -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Urgent &amp; High Priority Tickets</div>
+      <button class="btn btn-sm" onclick="loadEmergency()">Refresh</button>
+    </div>
+    <div id="emergency-box"><div class="loading-shimmer" style="height:300px"></div></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+// SLA definitions (in hours)
+var SLA = {
+  urgent: { firstReply: 1, resolve: 8 },
+  high:   { firstReply: 4, resolve: 24 }
+};
+
+var emergencyData = null;
+var incidentsData = null;
+
+function calcSlaRemaining(ticket, priority){
+  var pri = (priority || '').toLowerCase();
+  var sla = SLA[pri];
+  if(!sla) return null;
+
+  var createdAt = ticket.created_at || ticket.createdAt;
+  if(!createdAt) return null;
+
+  var ageMs = Date.now() - new Date(createdAt).getTime();
+  var ageH = ageMs / 3600000;
+
+  // Use resolve SLA as the primary timer
+  var resolveLimit = sla.resolve;
+  var remaining = resolveLimit - ageH;
+
+  // Check first reply SLA
+  var firstReplyRemaining = sla.firstReply - ageH;
+  var hasReplied = ticket.firstReplyAt || ticket.first_reply_at || false;
+
+  return {
+    resolveRemaining: remaining,
+    firstReplyRemaining: hasReplied ? null : firstReplyRemaining,
+    breached: remaining <= 0,
+    firstReplyBreached: !hasReplied && firstReplyRemaining <= 0
+  };
+}
+
+function formatSlaTime(hours){
+  if(hours <= 0){
+    var overH = Math.abs(hours);
+    if(overH < 1) return '-' + Math.round(overH * 60) + 'm';
+    return '-' + overH.toFixed(1) + 'h';
+  }
+  if(hours < 1) return Math.round(hours * 60) + 'm';
+  return hours.toFixed(1) + 'h';
+}
+
+function slaClass(hours){
+  if(hours <= 0) return 'danger';
+  if(hours <= 1) return 'warning';
+  return 'ok';
+}
+
+window.loadEmergency = function(){
+  Promise.all([
+    CC.api('tickets?hours=24'),
+    CC.api('incidents')
+  ]).then(function(results){
+    var triageResult = results[0];
+    incidentsData = results[1];
+
+    if(!triageResult) return;
+
+    var tickets = (triageResult.tickets) ? triageResult.tickets : (triageResult.recentTickets) ? triageResult.recentTickets : [];
+
+    // Filter for urgent and high priority only
+    var emergency = tickets.filter(function(t){
+      var pri = (t.priority || '').toLowerCase();
+      return pri === 'urgent' || pri === 'high';
+    });
+
+    // Sort: urgent first, then by age (oldest first)
+    emergency.sort(function(a, b){
+      var pa = (a.priority||'').toLowerCase() === 'urgent' ? 0 : 1;
+      var pb = (b.priority||'').toLowerCase() === 'urgent' ? 0 : 1;
+      if(pa !== pb) return pa - pb;
+      var da = new Date(a.created_at || a.createdAt || 0).getTime();
+      var db = new Date(b.created_at || b.createdAt || 0).getTime();
+      return da - db;
+    });
+
+    emergencyData = emergency;
+    renderSummary(emergency);
+    renderTable(emergency);
+    renderStatus(emergency);
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
+  }).catch(function(e){
+    CC.toast('Emergency: ' + e.message, false);
+  });
+};
+
+function renderStatus(tickets){
+  var el = document.getElementById('status-badge');
+  var urgentCount = tickets.filter(function(t){ return (t.priority||'').toLowerCase() === 'urgent'; }).length;
+  var cls, txt;
+  if(urgentCount > 0){
+    cls = 'status-red'; txt = urgentCount + ' Urgent';
+  } else if(tickets.length > 0){
+    cls = 'status-yellow'; txt = tickets.length + ' High Priority';
+  } else {
+    cls = 'status-green'; txt = 'All Clear';
+  }
+  el.innerHTML = '<span class="status-badge ' + cls + '"><span class="dot"></span>' + txt + '</span>';
+}
+
+function renderSummary(tickets){
+  var box = document.getElementById('summary-box');
+  var urgentCount = 0, highCount = 0, breachCount = 0;
+
+  tickets.forEach(function(t){
+    var pri = (t.priority||'').toLowerCase();
+    if(pri === 'urgent') urgentCount++;
+    else if(pri === 'high') highCount++;
+
+    var sla = calcSlaRemaining(t, pri);
+    if(sla && (sla.breached || sla.firstReplyBreached)) breachCount++;
+  });
+
+  var h = '';
+  h += '<div class="emergency-stat fade-in"><div class="num urgent">' + urgentCount + '</div><div class="lbl">Urgent Tickets</div></div>';
+  h += '<div class="emergency-stat fade-in"><div class="num high">' + highCount + '</div><div class="lbl">High Priority</div></div>';
+  h += '<div class="emergency-stat fade-in"><div class="num breach">' + breachCount + '</div><div class="lbl">Approaching / Breached SLA</div></div>';
+  box.innerHTML = h;
+}
+
+function renderTable(tickets){
+  var box = document.getElementById('emergency-box');
+
+  if(!tickets.length){
+    box.innerHTML = '<div class="all-clear fade-in"><div class="title">No Emergency Tickets</div><div class="sub">No urgent or high priority tickets in the last 24 hours</div></div>';
+    return;
+  }
+
+  var h = '<div class="triage-card fade-in"><div class="triage-wrap"><table>';
+  h += '<thead><tr><th>Ticket</th><th>Subject</th><th>Priority</th><th>Age</th><th>SLA Remaining</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+
+  tickets.forEach(function(t){
+    var id = t.id;
+    var pri = (t.priority||'normal').toLowerCase();
+    var pcls = 'p-' + pri;
+    var rowCls = pri === 'urgent' ? 'row-urgent' : 'row-high';
+    var createdAt = t.created_at || t.createdAt;
+    var sla = calcSlaRemaining(t, pri);
+
+    h += '<tr class="' + rowCls + '">';
+    h += '<td class="td-ticket"><a href="' + CC.ZD + id + '" target="_blank">#' + id + '</a></td>';
+    h += '<td class="td-subject" title="' + CC.esc(t.subject) + '">' + CC.esc(CC.trunc(t.subject, 50)) + '</td>';
+    h += '<td><span class="priority-badge ' + pcls + '">' + CC.esc(pri) + '</span></td>';
+    h += '<td style="white-space:nowrap">' + CC.relTime(createdAt) + '</td>';
+
+    // SLA column
+    h += '<td>';
+    if(sla){
+      // Show resolve SLA
+      var resolveC = slaClass(sla.resolveRemaining);
+      h += '<div class="sla-timer ' + resolveC + '">Resolve: ' + formatSlaTime(sla.resolveRemaining) + '</div>';
+      // Show first reply SLA if not yet replied
+      if(sla.firstReplyRemaining !== null){
+        var frC = slaClass(sla.firstReplyRemaining);
+        h += '<div class="sla-timer ' + frC + '">1st Reply: ' + formatSlaTime(sla.firstReplyRemaining) + '</div>';
+      }
+    } else {
+      h += '<span style="color:var(--text-muted)">--</span>';
+    }
+    h += '</td>';
+
+    h += '<td><span class="td-cat">' + CC.esc(t.status || '--') + '</span></td>';
+
+    // Actions
+    h += '<td style="white-space:nowrap">';
+    if(t.category){
+      h += '<button class="btn btn-approve btn-sm" onclick="approveEmergency(' + id + ',this)">Approve</button> ';
+    }
+    if(!t.problemId && incidentsData && incidentsData.incidents && incidentsData.incidents.length){
+      h += '<button class="btn btn-link btn-sm" onclick="showLinkMenu(' + id + ',this)">Link</button>';
+    }
+    h += '</td></tr>';
+  });
+
+  h += '</tbody></table></div></div>';
+  box.innerHTML = h;
+}
+
+window.approveEmergency = function(ticketId, btn){
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span>';
+  CC.api('approve', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ticketId: ticketId, category: 'Emergency-triaged', suggestedAction: 'Priority review'})
+  }).then(function(d){
+    if(d && d.success){
+      CC.toast('Internal note added to #' + ticketId, true);
+      btn.textContent = 'Done';
+      btn.disabled = true;
+    } else {
+      CC.toast('Failed', false);
+      btn.classList.remove('loading');
+      btn.textContent = 'Approve';
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent = 'Approve';
+  });
+};
+
+window.showLinkMenu = function(ticketId, btn){
+  var incidents = incidentsData ? incidentsData.incidents : [];
+  if(!incidents.length){ CC.toast('No active incidents', false); return; }
+  var menu = '<select onchange="linkTicket(' + ticketId + ',this.value,this)" style="font-size:0.7rem;padding:2px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px">';
+  menu += '<option value="">Pick incident...</option>';
+  incidents.forEach(function(i){
+    var jira = i.jiraLinks && i.jiraLinks.length ? '(' + i.jiraLinks[0].issueKey + ')' : '';
+    menu += '<option value="' + i.problemId + '">ZD#' + i.problemId + ' ' + jira + ' ' + CC.esc(CC.trunc(i.subject, 30)) + '</option>';
+  });
+  menu += '</select>';
+  btn.outerHTML = menu;
+};
+
+window.linkTicket = function(ticketId, problemId, sel){
+  if(!problemId) return;
+  sel.disabled = true;
+  CC.api('link', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ticketId: ticketId, problemId: parseInt(problemId, 10)})
+  }).then(function(d){
+    if(d && d.success){
+      var jira = d.jiraLinks && d.jiraLinks.length ? ' + ' + d.jiraLinks[0].issueKey : '';
+      CC.toast('Linked #' + ticketId + ' to Problem #' + problemId + jira, true);
+      sel.outerHTML = '<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Linked</span>';
+    } else {
+      CC.toast('Link failed', false);
+      sel.disabled = false;
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    sel.disabled = false;
+  });
+};
+
+// ---- Refresh All ----
+window.refreshAll = function(){
+  var btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Refreshing...';
+  loadEmergency();
+  setTimeout(function(){
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh All';
+  }, 1000);
+};
+
+// ---- Init ----
+loadEmergency();
+// Refresh every 2 minutes for emergency page
+setInterval(function(){ loadEmergency(); }, 2*60*1000);
+
+})();
+</script>
+</body>
+</html>
