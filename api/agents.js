@@ -2,7 +2,7 @@
 // Agent performance data for Blake Corbit, Brien Nunn, Jacob Ryder.
 // Returns weekly and daily stats with category breakdowns.
 
-const { zdRequest } = require('./_zendesk');
+const { zdRequest, getAuth } = require('./_zendesk');
 
 const AGENTS = [
   { name: 'Blake Corbit' },
@@ -115,6 +115,10 @@ module.exports = async function handler(req, res) {
         });
         const todaySolved = todaySolvedData.count || 0;
 
+        // Velocity: solved per business day this week
+        const daysElapsed = Math.max(1, Math.min(dayOfWeek === 0 ? 5 : dayOfWeek, 5));
+        const velocityPerDay = solved > 0 ? Math.round((solved / daysElapsed) * 10) / 10 : 0;
+
         return {
           name: agent.name,
           userId: agent.userId,
@@ -123,6 +127,7 @@ module.exports = async function handler(req, res) {
             solved,
             open: openCount,
             avgResolutionHours,
+            velocityPerDay,
             categories: categoryBreakdown,
           },
           today: {
@@ -133,7 +138,46 @@ module.exports = async function handler(req, res) {
       })
     );
 
-    res.json({ agents, generatedAt: new Date().toISOString() });
+    // Step 4: Fetch CSAT ratings for the week (good + bad) in parallel
+    const { baseUrl, auth } = getAuth();
+    const csatHeaders = { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' };
+    const weekStartTs = Math.floor(weekStart.getTime() / 1000);
+
+    const [goodResp, badResp] = await Promise.all([
+      fetch(`${baseUrl}/api/v2/satisfaction_ratings.json?score=good&start_time=${weekStartTs}&per_page=100`, { headers: csatHeaders }).then(r => r.ok ? r.json() : { satisfaction_ratings: [] }),
+      fetch(`${baseUrl}/api/v2/satisfaction_ratings.json?score=bad&start_time=${weekStartTs}&per_page=100`, { headers: csatHeaders }).then(r => r.ok ? r.json() : { satisfaction_ratings: [] }),
+    ]);
+
+    // Build per-agent CSAT map by userId
+    const csatByUser = {};
+    for (const r of (goodResp.satisfaction_ratings || [])) {
+      if (!csatByUser[r.assignee_id]) csatByUser[r.assignee_id] = { good: 0, bad: 0 };
+      csatByUser[r.assignee_id].good++;
+    }
+    for (const r of (badResp.satisfaction_ratings || [])) {
+      if (!csatByUser[r.assignee_id]) csatByUser[r.assignee_id] = { good: 0, bad: 0 };
+      csatByUser[r.assignee_id].bad++;
+    }
+
+    // Attach CSAT to each agent
+    const totalGood = (goodResp.satisfaction_ratings || []).length;
+    const totalBad = (badResp.satisfaction_ratings || []).length;
+    const teamTotal = totalGood + totalBad;
+    const teamCsatPct = teamTotal > 0 ? Math.round((totalGood / teamTotal) * 100) : null;
+
+    for (const a of agents) {
+      if (!a.userId) continue;
+      const c = csatByUser[a.userId] || { good: 0, bad: 0 };
+      const total = c.good + c.bad;
+      a.csat = {
+        good: c.good,
+        bad: c.bad,
+        total,
+        pct: total > 0 ? Math.round((c.good / total) * 100) : null,
+      };
+    }
+
+    res.json({ agents, teamCsat: { good: totalGood, bad: totalBad, total: teamTotal, pct: teamCsatPct }, generatedAt: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
