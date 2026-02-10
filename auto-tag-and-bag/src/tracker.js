@@ -177,15 +177,32 @@ class IncidentTracker {
       if (matchedPattern) break;
     }
 
-    // If no pattern matched, extract keywords from the Problem ticket subject
+    // If no pattern matched, build multi-word phrases from the subject.
+    // 2-word phrases are much more distinctive than single words.
     if (!matchedPattern) {
-      const words = problemTicket.subject.toLowerCase()
+      // Strip the common "PT - " prefix from subject
+      const cleanSubject = problemTicket.subject.replace(/^PT\s*-\s*/i, '');
+      const words = cleanSubject.toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
         .split(/\s+/)
-        .filter(w => w.length > 3)
-        .filter(w => !['this', 'that', 'with', 'from', 'have', 'been', 'they',
-                       'their', 'about', 'auto', 'work', 'does', 'into'].includes(w));
-      keywords = words.slice(0, 5);
+        .filter(w => w.length > 2);
+
+      // Build 2-word phrases (bigrams) — these are specific enough to match on
+      const bigrams = [];
+      for (let i = 0; i < words.length - 1; i++) {
+        bigrams.push(`${words[i]} ${words[i + 1]}`);
+      }
+
+      // Also keep distinctive single words (5+ chars, not common)
+      const COMMON = new Set([
+        'auto', 'work', 'working', 'issue', 'issues', 'problem', 'device',
+        'devices', 'unable', 'error', 'showing', 'notes', 'labor', 'lines',
+        'techs', 'about', 'their', 'other', 'causing', 'receiving', 'requires',
+        'resolved', 'does', 'android',
+      ]);
+      const distinctive = words.filter(w => w.length >= 5 && !COMMON.has(w));
+
+      keywords = [...bigrams.slice(0, 4), ...distinctive.slice(0, 3)];
       matchedPattern = { description: 'Custom Pattern', keywords };
     }
 

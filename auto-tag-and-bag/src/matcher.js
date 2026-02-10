@@ -3,13 +3,24 @@
  * Uses a scoring system with safeguards against false positives.
  */
 
-// Words too generic to use as standalone keywords
+// Words too generic to use as standalone keywords — these match way too many tickets
 const STOP_WORDS = new Set([
-  'auto', 'work', 'working', 'issue', 'issues', 'problem', 'problems',
-  'help', 'need', 'please', 'shop', 'customer', 'support', 'ticket',
-  'call', 'called', 'device', 'resolved', 'update', 'release',
-  'does', 'that', 'this', 'with', 'from', 'have', 'been', 'they',
-  'their', 'about', 'into', 'causing', 'other',
+  // Common English
+  'auto', 'work', 'working', 'does', 'that', 'this', 'with', 'from',
+  'have', 'been', 'they', 'their', 'about', 'into', 'causing', 'other',
+  'when', 'what', 'where', 'which', 'every', 'time', 'some', 'also',
+  'just', 'only', 'more', 'very', 'still', 'back', 'after', 'before',
+  // Generic support words
+  'issue', 'issues', 'problem', 'problems', 'help', 'need', 'please',
+  'shop', 'customer', 'support', 'ticket', 'call', 'called', 'report',
+  'reports', 'device', 'devices', 'resolved', 'update', 'release',
+  'unable', 'error', 'able', 'getting', 'showing', 'trying', 'tried',
+  'says', 'said', 'told', 'want', 'wants', 'like', 'goes', 'going',
+  // Generic tech words
+  'data', 'system', 'page', 'screen', 'button', 'click', 'open',
+  'close', 'save', 'send', 'receive', 'check', 'find', 'view',
+  'text', 'messages', 'notes', 'labor', 'lines', 'techs', 'user',
+  'users', 'account', 'login', 'email', 'phone', 'number',
 ]);
 
 class TicketMatcher {
