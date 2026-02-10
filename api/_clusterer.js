@@ -37,7 +37,7 @@ const TAG_TO_CATEGORY = {
   'access_issue': 'access',
 };
 
-const IGNORE_TAGS = ['twilio_rejected', 'twilio_category', 'web', 'website', 'voicemail'];
+const IGNORE_TAGS = ['twilio_rejected', 'twilio_category', 'web', 'web_category', 'website', 'voicemail'];
 
 const ERROR_PATTERNS = [
   { pattern: /ro.*(not|missing|gone|disappeared|showing)/i, label: 'ROs not showing' },
