@@ -1,7 +1,7 @@
 {
   "totalTickets": 368,
-  "resolvedTickets": 336,
-  "openBacklog": 501,
+  "resolvedTickets": 338,
+  "openBacklog": 499,
   "avgPerDay": 52.6,
   "byCategory": [
     {
@@ -14,7 +14,7 @@
     },
     {
       "name": "App/Work Order",
-      "count": 64
+      "count": 65
     },
     {
       "name": "Integration",
@@ -22,7 +22,7 @@
     },
     {
       "name": "System Issue",
-      "count": 37
+      "count": 36
     }
   ],
   "byPOS": [
@@ -91,5 +91,5 @@
       "count": 57
     }
   ],
-  "generatedAt": "2026-02-10T23:23:43.021Z"
+  "generatedAt": "2026-02-10T23:58:55.237Z"
 }
