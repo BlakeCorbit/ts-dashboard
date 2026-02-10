@@ -31,10 +31,11 @@ module.exports = async function handler(req, res) {
     const agentResults = await Promise.all(
       AGENTS.map(async (agent) => {
         const data = await zdRequest('/users/search.json', {
-          params: { query: 'role:agent "' + agent.name + '"' },
+          params: { query: '"' + agent.name + '"' },
         });
         const user = (data.users || []).find(u =>
-          u.name.toLowerCase() === agent.name.toLowerCase()
+          u.name.toLowerCase() === agent.name.toLowerCase() &&
+          (u.role === 'agent' || u.role === 'admin')
         );
         return { ...agent, userId: user ? user.id : null };
       })
