@@ -35,15 +35,46 @@
     <button class="btn btn-sm" id="btn-30" onclick="setPeriod(30)" style="background:var(--av-green-dark);color:#fff">30 days</button>
   </div>
 
-  <!-- Suggested Articles -->
+  <!-- How to use banner -->
+  <div id="how-to-use" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px">
+    <span style="font-size:1.2rem;flex-shrink:0">&#128161;</span>
+    <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5">
+      <strong style="color:var(--text-primary)">How agents flag tickets for articles:</strong> Add the tag <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--av-green)">needs_article</code> to any Zendesk ticket. It will appear here with similar tickets and a suggested article draft.
+    </div>
+    <button onclick="this.parentNode.style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:0;flex-shrink:0">&times;</button>
+  </div>
+
+  <!-- Source 1: Agent-Flagged Tickets -->
   <section>
     <div class="section-header">
-      <div class="section-title">Suggested Articles</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span style="font-size:0.78rem;color:var(--text-muted)" id="gap-count"></span>
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--accent-yellow)">&#9873;</span> Agent-Flagged Tickets
       </div>
+      <span style="font-size:0.78rem;color:var(--text-muted)" id="flagged-count"></span>
     </div>
-    <div id="suggestions-box"><div class="loading-shimmer"></div></div>
+    <div id="flagged-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Source 2: Jira Works As Designed -->
+  <section style="margin-top:28px">
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--av-blue)">&#9881;</span> Jira: Works As Designed
+      </div>
+      <span style="font-size:0.78rem;color:var(--text-muted)" id="jira-count"></span>
+    </div>
+    <div id="jira-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Source 3: Auto-Detected Patterns -->
+  <section style="margin-top:28px">
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--av-green)">&#9776;</span> Auto-Detected Patterns
+      </div>
+      <span style="font-size:0.78rem;color:var(--text-muted)" id="pattern-count"></span>
+    </div>
+    <div id="patterns-box"><div class="loading-shimmer"></div></div>
   </section>
 
   <!-- Recently Created -->
@@ -68,7 +99,7 @@
 'use strict';
 
 var currentDays = 30;
-var suggestions = [];
+var data = null;
 var dismissed = JSON.parse(localStorage.getItem('articleDismissed') || '[]');
 
 function getCreated(){
@@ -76,6 +107,14 @@ function getCreated(){
 }
 function saveCreated(list){
   localStorage.setItem('articleCreated', JSON.stringify(list));
+}
+
+function isDismissed(s){
+  var key = (s.source || '') + ':' + (s.errorPattern || '') + (s.jiraKey || '');
+  return dismissed.indexOf(key) !== -1;
+}
+function dismissKey(s){
+  return (s.source || '') + ':' + (s.errorPattern || '') + (s.jiraKey || '');
 }
 
 // Period selector
@@ -95,78 +134,140 @@ window.setPeriod = function(days){
 
 // Load suggestions from API
 window.loadSuggestions = function(){
-  var box = document.getElementById('suggestions-box');
-  box.innerHTML = '<div class="loading-shimmer"></div>';
+  document.getElementById('flagged-box').innerHTML = '<div class="loading-shimmer"></div>';
+  document.getElementById('jira-box').innerHTML = '<div class="loading-shimmer"></div>';
+  document.getElementById('patterns-box').innerHTML = '<div class="loading-shimmer"></div>';
 
   CC.api('article-suggestions?days=' + currentDays + '&threshold=5').then(function(d){
     if(!d){
-      box.innerHTML = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Failed to load suggestions</div></div>';
+      var err = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Failed to load suggestions</div></div>';
+      document.getElementById('flagged-box').innerHTML = err;
+      document.getElementById('jira-box').innerHTML = err;
+      document.getElementById('patterns-box').innerHTML = err;
       return;
     }
-    suggestions = d.suggestions || [];
+    data = d;
     document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
-    renderSuggestions();
-    updateStatus(d);
+    renderFlagged();
+    renderJira();
+    renderPatterns();
+    updateStatus();
   }).catch(function(e){
-    box.innerHTML = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Error: ' + CC.esc(e.message) + '</div></div>';
+    var err = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Error: ' + CC.esc(e.message) + '</div></div>';
+    document.getElementById('flagged-box').innerHTML = err;
+    document.getElementById('jira-box').innerHTML = err;
+    document.getElementById('patterns-box').innerHTML = err;
   });
 };
 
-function renderSuggestions(){
-  var box = document.getElementById('suggestions-box');
-  var countEl = document.getElementById('gap-count');
+// ---- Render Source 1: Agent-Flagged ----
+function renderFlagged(){
+  var box = document.getElementById('flagged-box');
+  var countEl = document.getElementById('flagged-count');
+  var items = (data.flagged || []).filter(function(s){ return !isDismissed(s); });
 
-  // Filter out dismissed patterns
-  var visible = suggestions.filter(function(s){
-    return dismissed.indexOf(s.errorPattern + (s.pos || '')) === -1;
+  countEl.textContent = items.length + ' flagged ticket' + (items.length !== 1 ? 's' : '');
+
+  if(items.length === 0){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px">' +
+      '<div style="font-size:0.88rem;color:var(--text-muted)">No tickets tagged <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--av-green)">needs_article</code>. Agents can add this tag to any Zendesk ticket to suggest an article.</div></div>';
+    return;
+  }
+
+  var h = '<div class="fade-in">';
+  items.forEach(function(s, idx){
+    h += buildCard(s, 'f-' + idx, true, 'var(--accent-yellow)');
   });
+  h += '</div>';
+  box.innerHTML = h;
+}
 
-  var gaps = visible.filter(function(s){ return s.hasGap; });
-  var covered = visible.filter(function(s){ return !s.hasGap; });
+// ---- Render Source 2: Jira WAD ----
+function renderJira(){
+  var box = document.getElementById('jira-box');
+  var countEl = document.getElementById('jira-count');
 
-  countEl.textContent = gaps.length + ' gap' + (gaps.length !== 1 ? 's' : '') + ' found, ' + covered.length + ' covered';
+  if(data && !data.jiraConfigured){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px"><div style="font-size:0.88rem;color:var(--text-muted)">Jira integration not configured. Set JIRA_EMAIL and JIRA_API_TOKEN environment variables to enable.</div></div>';
+    countEl.textContent = 'not configured';
+    return;
+  }
 
-  if(visible.length === 0){
-    box.innerHTML = '<div class="all-clear fade-in" style="padding:50px">' +
-      '<div style="font-size:2.5rem;margin-bottom:12px;color:var(--av-green)">&#10003;</div>' +
-      '<div class="title">No Gaps Detected</div>' +
-      '<div class="sub">All high-frequency ticket patterns have matching Help Center articles</div>' +
-      '</div>';
+  var items = (data.jiraWAD || []).filter(function(s){ return !isDismissed(s); });
+  countEl.textContent = items.length + ' issue' + (items.length !== 1 ? 's' : '');
+
+  if(items.length === 0){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px"><div style="font-size:0.88rem;color:var(--text-muted)">No Jira issues with "Works As Designed" status found.</div></div>';
+    return;
+  }
+
+  var h = '<div class="fade-in">';
+  items.forEach(function(s, idx){
+    h += buildCard(s, 'j-' + idx, true, 'var(--av-blue)');
+  });
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- Render Source 3: Patterns ----
+function renderPatterns(){
+  var box = document.getElementById('patterns-box');
+  var countEl = document.getElementById('pattern-count');
+  var items = (data.patterns || []).filter(function(s){ return !isDismissed(s); });
+
+  var gaps = items.filter(function(s){ return s.hasGap; });
+  var covered = items.filter(function(s){ return !s.hasGap; });
+
+  countEl.textContent = gaps.length + ' gap' + (gaps.length !== 1 ? 's' : '') + ', ' + covered.length + ' covered';
+
+  if(items.length === 0){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px">' +
+      '<div style="font-size:2rem;margin-bottom:8px;color:var(--av-green)">&#10003;</div>' +
+      '<div style="font-size:0.88rem;color:var(--text-muted)">All frequent patterns have matching Help Center articles. POS integration issues are excluded (shop-specific).</div></div>';
     return;
   }
 
   var h = '<div class="fade-in">';
 
-  // Gaps first
   if(gaps.length > 0){
     h += '<div style="font-size:0.82rem;color:var(--accent-yellow);font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Missing Articles (' + gaps.length + ')</div>';
-    gaps.forEach(function(s, idx){ h += buildCard(s, idx, true); });
+    gaps.forEach(function(s, idx){ h += buildCard(s, 'p-' + idx, true, 'var(--accent-yellow)'); });
   }
 
-  // Already covered
   if(covered.length > 0){
     h += '<div style="font-size:0.82rem;color:var(--text-muted);font-weight:600;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.5px">Already Covered (' + covered.length + ')</div>';
-    covered.forEach(function(s, idx){ h += buildCard(s, gaps.length + idx, false); });
+    covered.forEach(function(s, idx){ h += buildCard(s, 'pc-' + idx, false, 'var(--av-green)'); });
   }
 
   h += '</div>';
   box.innerHTML = h;
 }
 
-function buildCard(s, idx, isGap){
-  var cardClass = isGap ? 'approval-card' : 'approval-card';
-  var borderColor = isGap ? 'var(--accent-yellow)' : 'var(--av-green)';
-  var h = '<div class="' + cardClass + '" id="article-card-' + idx + '" style="border-left:3px solid ' + borderColor + '">';
+// ---- Generic card builder ----
+function buildCard(s, id, isGap, borderColor){
+  var h = '<div class="approval-card" id="card-' + id + '" style="border-left:3px solid ' + borderColor + '">';
 
-  // Header
+  // Header row
   h += '<div class="cluster-header">';
   h += '<div class="cluster-pattern">' + CC.esc(s.pattern) + '</div>';
-  h += '<span class="age-pill ' + (isGap ? 'age-warning' : 'age-ok') + '">' + (isGap ? 'No Article' : 'Covered') + '</span>';
-  h += '</div>';
+  h += '<div style="display:flex;gap:6px;align-items:center">';
 
-  // Stats
+  // Source badge
+  if(s.source === 'flagged') h += '<span class="age-pill" style="background:rgba(255,193,7,0.15);color:var(--accent-yellow);font-size:0.7rem">FLAGGED</span>';
+  else if(s.source === 'jira-wad') h += '<span class="age-pill" style="background:rgba(59,130,246,0.15);color:var(--av-blue);font-size:0.7rem">JIRA WAD</span>';
+  else h += '<span class="age-pill ' + (isGap ? 'age-warning' : 'age-ok') + '" style="font-size:0.7rem">' + (isGap ? 'No Article' : 'Covered') + '</span>';
+
+  h += '</div></div>';
+
+  // Stats line
   h += '<div class="cluster-stats">';
-  h += '<strong>' + s.ticketCount + '</strong> tickets from <strong>' + s.orgCount + '</strong> shop(s)';
+  if(s.source === 'jira-wad'){
+    h += '<a href="' + CC.esc(s.jiraUrl) + '" target="_blank" style="color:var(--av-blue)">' + CC.esc(s.jiraKey) + '</a>';
+    if(s.updatedAt) h += ' &middot; Updated ' + CC.relTime(s.updatedAt);
+  } else {
+    if(s.ticketCount) h += '<strong>' + s.ticketCount + '</strong> ticket' + (s.ticketCount !== 1 ? 's' : '');
+    if(s.orgCount) h += ' from <strong>' + s.orgCount + '</strong> shop(s)';
+  }
   if(s.category) h += ' &middot; <span style="color:var(--av-blue)">' + CC.esc(s.category) + '</span>';
   h += '</div>';
 
@@ -198,36 +299,50 @@ function buildCard(s, idx, isGap){
 
   if(isGap){
     // Editable form
-    h += '<div class="approval-form" id="form-' + idx + '">';
+    h += '<div class="approval-form" id="form-' + id + '">';
     h += '<label>Article Title</label>';
-    h += '<input type="text" id="title-' + idx + '" value="' + CC.esc(s.suggestedTitle || '') + '">';
-    h += '<label>Article Body (HTML) &mdash; <a href="javascript:void(0)" onclick="togglePreview(' + idx + ')" style="color:var(--av-blue);font-weight:400">Toggle Preview</a></label>';
-    h += '<textarea id="body-' + idx + '" rows="12">' + CC.esc(s.suggestedBody || '') + '</textarea>';
-    h += '<div id="preview-' + idx + '" style="display:none;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-top:8px;font-family:var(--font-sub);line-height:1.6;color:var(--text-primary)"></div>';
+    h += '<input type="text" id="title-' + id + '" value="' + CC.esc(s.suggestedTitle || '') + '">';
+    h += '<label>Article Body (HTML) &mdash; <a href="javascript:void(0)" onclick="togglePreview(\'' + id + '\')" style="color:var(--av-blue);font-weight:400">Toggle Preview</a></label>';
+    h += '<textarea id="body-' + id + '" rows="10">' + CC.esc(s.suggestedBody || '') + '</textarea>';
+    h += '<div id="preview-' + id + '" style="display:none;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-top:8px;font-family:var(--font-sub);line-height:1.6;color:var(--text-primary)"></div>';
     h += '</div>';
 
     // Actions
     h += '<div style="display:flex;gap:8px;margin-top:16px">';
-    h += '<button class="btn btn-approve" onclick="createArticle(' + idx + ',this)" id="create-btn-' + idx + '">Create Draft</button>';
-    h += '<button class="btn btn-muted" onclick="dismissSuggestion(' + idx + ')">Dismiss</button>';
+    h += '<button class="btn btn-approve" onclick="createArticle(\'' + id + '\',this)">Create Draft</button>';
+    h += '<button class="btn btn-muted" onclick="dismissSuggestion(\'' + id + '\')">Dismiss</button>';
     h += '</div>';
   } else {
-    // Dismiss only for covered
     h += '<div style="display:flex;gap:8px;margin-top:12px">';
-    h += '<button class="btn btn-muted btn-sm" onclick="dismissSuggestion(' + idx + ')">Hide</button>';
+    h += '<button class="btn btn-muted btn-sm" onclick="dismissSuggestion(\'' + id + '\')">Hide</button>';
     h += '</div>';
   }
 
-  // Result area
-  h += '<div id="result-' + idx + '"></div>';
+  h += '<div id="result-' + id + '"></div>';
   h += '</div>';
   return h;
 }
 
+// Get suggestion object by card id
+function getSuggestion(id){
+  if(!data) return null;
+  var prefix = id.split('-')[0];
+  var idx = parseInt(id.split('-')[1], 10);
+
+  var list;
+  if(prefix === 'f') list = (data.flagged || []).filter(function(s){ return !isDismissed(s); });
+  else if(prefix === 'j') list = (data.jiraWAD || []).filter(function(s){ return !isDismissed(s); });
+  else if(prefix === 'p') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && s.hasGap; });
+  else if(prefix === 'pc') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && !s.hasGap; });
+  else return null;
+
+  return list[idx] || null;
+}
+
 // Toggle HTML preview
-window.togglePreview = function(idx){
-  var textarea = document.getElementById('body-' + idx);
-  var preview = document.getElementById('preview-' + idx);
+window.togglePreview = function(id){
+  var textarea = document.getElementById('body-' + id);
+  var preview = document.getElementById('preview-' + id);
   if(preview.style.display === 'none'){
     preview.innerHTML = textarea.value;
     preview.style.display = 'block';
@@ -237,38 +352,23 @@ window.togglePreview = function(idx){
 };
 
 // Create article draft
-window.createArticle = function(idx, btn){
-  var gaps = suggestions.filter(function(s){
-    return s.hasGap && dismissed.indexOf(s.errorPattern + (s.pos || '')) === -1;
-  });
-  var s = gaps[idx];
-  if(!s){
-    // Try all visible
-    var visible = suggestions.filter(function(s2){
-      return dismissed.indexOf(s2.errorPattern + (s2.pos || '')) === -1;
-    });
-    s = visible[idx];
-  }
+window.createArticle = function(id, btn){
+  var s = getSuggestion(id);
   if(!s) return;
 
-  var title = document.getElementById('title-' + idx).value.trim();
-  var body = document.getElementById('body-' + idx).value.trim();
+  var title = document.getElementById('title-' + id).value.trim();
+  var body = document.getElementById('body-' + id).value.trim();
 
-  if(!title){
-    CC.toast('Title is required', false);
-    return;
-  }
-  if(!body){
-    CC.toast('Body is required', false);
-    return;
-  }
+  if(!title){ CC.toast('Title is required', false); return; }
+  if(!body){ CC.toast('Body is required', false); return; }
 
   btn.classList.add('loading');
   btn.innerHTML = '<span class="spinner"></span> Creating...';
 
   var labels = ['internal', 'troubleshooting', 'auto-generated'];
+  if(s.source === 'flagged') labels.push('agent-flagged');
+  if(s.source === 'jira-wad') labels.push('works-as-designed');
   if(s.category) labels.push(s.category.toLowerCase().replace(/[^a-z0-9]/g, '-'));
-  if(s.pos) labels.push(s.pos.toLowerCase().replace(/[^a-z0-9]/g, '-'));
 
   CC.api('create-article', {
     method: 'POST',
@@ -276,38 +376,33 @@ window.createArticle = function(idx, btn){
     body: JSON.stringify({ title: title, body: body, labels: labels })
   }).then(function(d){
     if(d && d.success){
-      // Success state
-      var card = document.getElementById('article-card-' + idx);
+      var card = document.getElementById('card-' + id);
       card.classList.add('approved');
       card.style.borderLeftColor = 'var(--av-green)';
 
-      var form = document.getElementById('form-' + idx);
-      form.style.display = 'none';
+      var form = document.getElementById('form-' + id);
+      if(form) form.style.display = 'none';
       btn.parentNode.style.display = 'none';
 
-      var resultEl = document.getElementById('result-' + idx);
+      var resultEl = document.getElementById('result-' + id);
       resultEl.innerHTML = '<div style="margin-top:16px">' +
         '<div style="font-size:1rem;font-weight:700;color:var(--av-green);margin-bottom:8px">' +
-        'Draft Created: <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-green)">' + CC.esc(d.title) + '</a>' +
-        '</div>' +
-        '<div style="font-size:0.82rem;color:var(--text-muted)">Article ID: ' + d.articleId + ' &middot; Status: Draft &middot; <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">Open in Help Center</a></div>' +
-        '</div>';
+        'Draft Created: <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-green)">' + CC.esc(d.title) + '</a></div>' +
+        '<div style="font-size:0.82rem;color:var(--text-muted)">Article ID: ' + d.articleId + ' &middot; Status: Draft &middot; <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">Open in Help Center</a></div></div>';
 
-      // Save to created list
       var created = getCreated();
       created.unshift({
         articleId: d.articleId,
         title: d.title,
         url: d.url,
-        pattern: s.errorPattern,
+        pattern: s.errorPattern || s.pattern,
+        source: s.source,
         createdAt: new Date().toISOString(),
       });
       saveCreated(created);
 
       CC.toast('Draft article created', true);
       renderCreated();
-
-      setTimeout(function(){ loadSuggestions(); }, 5000);
     } else {
       CC.toast('Failed to create article', false);
       btn.classList.remove('loading');
@@ -321,18 +416,18 @@ window.createArticle = function(idx, btn){
 };
 
 // Dismiss suggestion
-window.dismissSuggestion = function(idx){
-  var visible = suggestions.filter(function(s){
-    return dismissed.indexOf(s.errorPattern + (s.pos || '')) === -1;
-  });
-  var s = visible[idx];
+window.dismissSuggestion = function(id){
+  var s = getSuggestion(id);
   if(!s) return;
 
-  var key = s.errorPattern + (s.pos || '');
+  var key = dismissKey(s);
   dismissed.push(key);
   localStorage.setItem('articleDismissed', JSON.stringify(dismissed));
-  CC.toast('Dismissed: ' + s.errorPattern, true);
-  renderSuggestions();
+  CC.toast('Dismissed: ' + (s.errorPattern || s.pattern), true);
+
+  renderFlagged();
+  renderJira();
+  renderPatterns();
   updateStatus();
 };
 
@@ -350,10 +445,11 @@ function renderCreated(){
 
   var h = '<div class="fade-in" style="display:grid;gap:8px">';
   created.forEach(function(a){
+    var sourceLabel = a.source === 'flagged' ? 'Flagged' : a.source === 'jira-wad' ? 'Jira WAD' : 'Pattern';
     h += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border)">';
     h += '<div style="flex:1">';
     h += '<a href="' + CC.esc(a.url) + '" target="_blank" style="color:var(--av-green);font-weight:600">' + CC.esc(a.title) + '</a>';
-    h += '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">' + CC.esc(a.pattern) + ' &middot; ' + CC.relTime(a.createdAt) + ' &middot; ID: ' + a.articleId + '</div>';
+    h += '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">' + CC.esc(a.pattern) + ' &middot; ' + sourceLabel + ' &middot; ' + CC.relTime(a.createdAt) + ' &middot; ID: ' + a.articleId + '</div>';
     h += '</div>';
     h += '<span class="age-pill age-ok" style="font-size:0.72rem">Draft</span>';
     h += '</div>';
@@ -373,16 +469,11 @@ window.clearCreated = function(){
 };
 
 // Status badge
-function updateStatus(data){
+function updateStatus(){
   var el = document.getElementById('status-badge');
-  if(!el) return;
+  if(!el || !data) return;
 
-  var gapCount = 0;
-  if(data && typeof data.gapCount === 'number'){
-    gapCount = data.gapCount;
-  } else {
-    gapCount = suggestions.filter(function(s){ return s.hasGap; }).length;
-  }
+  var gapCount = data.totalGaps || 0;
 
   if(gapCount === 0){
     el.innerHTML = '<span class="status-badge status-green"><span class="dot"></span>Fully Covered</span>';
