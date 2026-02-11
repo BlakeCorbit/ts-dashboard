@@ -27,6 +27,19 @@ async function getTicketData(ticketId) {
     } catch { /* use fallback */ }
   }
 
+  // Get assignee (ZD agent) name + email for SF user lookup
+  let assigneeName = null;
+  let assigneeEmail = null;
+  if (ticket.assignee_id) {
+    try {
+      const user = await zdRequest(`/users/${ticket.assignee_id}.json`);
+      if (user && user.user) {
+        assigneeName = user.user.name;
+        assigneeEmail = user.user.email;
+      }
+    } catch { /* assignee lookup failed */ }
+  }
+
   // Get organization name
   let orgName = null;
   if (ticket.organization_id) {
@@ -50,6 +63,8 @@ async function getTicketData(ticketId) {
     id: ticket.id,
     subject: ticket.subject,
     requesterName,
+    assigneeName,
+    assigneeEmail,
     orgName,
     lastComment: lastComment.substring(0, 5000), // Trim for SF field limits
     url: `https://bayiq.zendesk.com/agent/tickets/${ticket.id}`,
@@ -91,8 +106,22 @@ async function getAdvisorUser(advisorId) {
   }
 }
 
+// ---- Find SF User by email (to map ZD agent → SF user) ----
+async function findSfUserByEmail(email) {
+  if (!email) return null;
+  try {
+    const escaped = email.replace(/'/g, "\\'");
+    const query = `SELECT Id, Name, Email FROM User WHERE Email = '${escaped}' AND IsActive = true LIMIT 1`;
+    const result = await sfRequest(`/query?q=${encodeURIComponent(query)}`);
+    if (result && result.records && result.records.length > 0) {
+      return result.records[0];
+    }
+  } catch { /* SF user lookup failed */ }
+  return null;
+}
+
 // ---- Create SF Task ----
-async function createSfTask({ account, advisorId, requesterName, ticketUrl, lastComment }) {
+async function createSfTask({ account, advisorId, requesterName, ticketUrl, lastComment, createdById, assigneeName }) {
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
   const taskData = {
@@ -103,13 +132,33 @@ async function createSfTask({ account, advisorId, requesterName, ticketUrl, last
     Priority: 'High',
     ActivityDate: today,                 // Due Date
     Status: 'Not Started',
-    Description: `Zendesk Ticket: ${ticketUrl}\n\n--- Last Message ---\n${lastComment}`,
+    Description: `Zendesk Ticket: ${ticketUrl}\n${assigneeName ? `Created by: ${assigneeName}\n` : ''}\n--- Last Message ---\n${lastComment}`,
   };
 
-  const result = await sfRequest('/sobjects/Task', {
-    method: 'POST',
-    body: taskData,
-  });
+  // If we found the ZD agent as an SF User, set CreatedById
+  // (requires "Set Audit Fields upon Record Creation" permission in SF)
+  if (createdById) {
+    taskData.CreatedById = createdById;
+  }
+
+  let result;
+  try {
+    result = await sfRequest('/sobjects/Task', {
+      method: 'POST',
+      body: taskData,
+    });
+  } catch (err) {
+    // If CreatedById failed (permission not enabled), retry without it
+    if (createdById && err.message && err.message.includes('CreatedById')) {
+      delete taskData.CreatedById;
+      result = await sfRequest('/sobjects/Task', {
+        method: 'POST',
+        body: taskData,
+      });
+    } else {
+      throw err;
+    }
+  }
 
   if (!result || !result.id) {
     throw new Error('Salesforce returned unexpected response when creating Task');
@@ -186,19 +235,24 @@ module.exports = async function handler(req, res) {
 
     const advisor = await getAdvisorUser(advisorId);
 
-    // 4. Create SF Task
+    // 4. Map ZD agent → SF User (for CreatedById)
+    const sfAgent = await findSfUserByEmail(ticket.assigneeEmail);
+
+    // 5. Create SF Task
     const sfTask = await createSfTask({
       account,
       advisorId,
       requesterName: ticket.requesterName,
       ticketUrl: ticket.url,
       lastComment: ticket.lastComment,
+      createdById: sfAgent ? sfAgent.Id : null,
+      assigneeName: ticket.assigneeName,
     });
 
-    // 5. Get instance URL for link building
+    // 6. Get instance URL for link building
     const instanceUrl = await getInstanceUrl();
 
-    // 6. Write back to ZD
+    // 7. Write back to ZD
     let sfTaskUrl;
     try {
       sfTaskUrl = await writeBackToZd(ticketId, sfTask.id, instanceUrl);
