@@ -189,9 +189,38 @@ function renderIncidents(d){
     h+='<span><span class="label">Status:</span> <span class="value">'+CC.esc(i.status)+'</span></span>';
     h+='</div>';
 
-    // Linked tickets toggle (compact)
+    // Action buttons row
     if(i.linkedTickets&&i.linkedTickets.length>0){
-      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="margin-top:8px;font-size:0.7rem">'+linked+' Linked</button>';
+      var lastUp=getLastUpdate(pid);
+      h+='<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">';
+      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="font-size:0.7rem">'+linked+' Linked</button>';
+      h+='<button class="btn btn-sm" onclick="toggleUpdatePanel('+pid+')" style="font-size:0.7rem;background:var(--bg-input);border:1px solid var(--border)">Send Update</button>';
+      h+='<span id="last-update-'+pid+'" style="font-size:0.62rem;color:var(--text-muted);font-family:var(--font-mono)">'+(lastUp?CC.relTime(lastUp):'no updates')+'</span>';
+      h+='</div>';
+
+      // Send Update panel (hidden)
+      h+='<div id="update-panel-'+pid+'" style="display:none;margin-top:10px;padding:12px;background:rgba(118,195,206,0.04);border:1px solid var(--border);border-radius:var(--radius)">';
+      h+='<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Bulk Update for ZD#'+pid+'</div>';
+      h+='<textarea id="update-msg-'+pid+'" style="width:100%;min-height:70px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-sub);font-size:0.8rem;resize:vertical;box-sizing:border-box" placeholder="Type update message..."></textarea>';
+      h+='<div style="margin-top:8px;margin-bottom:8px">';
+      h+='<label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;color:var(--text-secondary);cursor:pointer;margin-bottom:4px">';
+      h+='<input type="checkbox" checked onchange="toggleAllChecks('+pid+',this.checked)" style="accent-color:var(--av-green)"> All '+i.linkedTickets.length+' tickets';
+      h+='</label>';
+      h+='<div id="update-checks-'+pid+'" style="display:flex;flex-direction:column;gap:2px;margin-left:4px">';
+      i.linkedTickets.forEach(function(t){
+        h+='<label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--text-secondary);cursor:pointer">';
+        h+='<input type="checkbox" checked class="update-check-'+pid+'" value="'+t.id+'" onchange="updateSendCount('+pid+')" style="accent-color:var(--av-green)">';
+        h+='#'+t.id+' <span style="color:var(--text-muted)">'+CC.esc(CC.trunc(t.subject,35))+'</span>';
+        h+='</label>';
+      });
+      h+='</div></div>';
+      h+='<div style="display:flex;gap:8px;align-items:center">';
+      h+='<button class="btn btn-approve btn-sm" id="send-update-btn-'+pid+'" onclick="sendBulkUpdate('+pid+',this)">Send Update to '+i.linkedTickets.length+' tickets</button>';
+      h+='<button class="btn btn-muted btn-sm" onclick="toggleUpdatePanel('+pid+')">Cancel</button>';
+      h+='<span id="update-status-'+pid+'" style="font-size:0.68rem;color:var(--text-muted)"></span>';
+      h+='</div></div>';
+
+      // Linked tickets list (hidden)
       h+='<div id="linked-'+pid+'" style="display:none;margin-top:8px">';
       i.linkedTickets.forEach(function(t){
         h+='<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);margin-bottom:6px;overflow:hidden">';
@@ -203,7 +232,6 @@ function renderIncidents(d){
         h+='<div style="display:flex;gap:4px;flex-shrink:0">';
         if(hasJira) h+='<button class="btn btn-link btn-sm" onclick="event.stopPropagation();propagateJira('+t.id+','+pid+',this)" style="font-size:0.62rem;padding:2px 6px">Jira</button>';
         h+='</div></div>';
-        // Expandable detail (hidden)
         h+='<div id="detail-'+t.id+'" style="display:none;padding:10px;border-top:1px solid var(--border-subtle)">';
         h+='<div id="detail-content-'+t.id+'" style="margin-bottom:10px"><div class="loading-shimmer" style="height:50px"></div></div>';
         h+='<div style="border-top:1px solid var(--border-subtle);padding-top:8px">';
@@ -586,6 +614,88 @@ function renderCharts(d){
   h+=CC.hBar('By POS',d.byPOS);
   box.innerHTML=h;
 }
+
+// ---- Get Last Update time from localStorage ----
+function getLastUpdate(pid){
+  try { return localStorage.getItem('pt_lastUpdate_'+pid) || ''; }
+  catch(e){ return ''; }
+}
+
+// ---- Toggle Send Update Panel ----
+window.toggleUpdatePanel = function(pid){
+  var el=document.getElementById('update-panel-'+pid);
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
+};
+
+// ---- Toggle All Checkboxes ----
+window.toggleAllChecks = function(pid, checked){
+  var boxes=document.querySelectorAll('.update-check-'+pid);
+  boxes.forEach(function(b){ b.checked=checked; });
+  updateSendCount(pid);
+};
+
+// ---- Update Send Button Count ----
+window.updateSendCount = function(pid){
+  var boxes=document.querySelectorAll('.update-check-'+pid+':checked');
+  var btn=document.getElementById('send-update-btn-'+pid);
+  if(btn) btn.textContent='Send Update to '+boxes.length+' ticket'+(boxes.length!==1?'s':'');
+};
+
+// ---- Send Bulk Update ----
+window.sendBulkUpdate = function(pid, btn){
+  var msgEl=document.getElementById('update-msg-'+pid);
+  var statusEl=document.getElementById('update-status-'+pid);
+  var message=(msgEl?msgEl.value:'').trim();
+  if(!message){ CC.toast('Type a message first',false); return; }
+
+  var boxes=document.querySelectorAll('.update-check-'+pid+':checked');
+  var ticketIds=[];
+  boxes.forEach(function(b){ ticketIds.push(parseInt(b.value,10)); });
+  if(!ticketIds.length){ CC.toast('Select at least one ticket',false); return; }
+
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span> Sending...';
+  statusEl.textContent='';
+
+  CC.api('bulk-update',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ problemId:pid, ticketIds:ticketIds, message:message })
+  }).then(function(d){
+    if(d&&d.success){
+      // Save last update time
+      var now=new Date().toISOString();
+      try{ localStorage.setItem('pt_lastUpdate_'+pid, now); }catch(e){}
+
+      // Update timer display
+      var timerEl=document.getElementById('last-update-'+pid);
+      if(timerEl) timerEl.textContent='just now';
+
+      // Collapse panel
+      var panel=document.getElementById('update-panel-'+pid);
+      if(panel) panel.style.display='none';
+
+      // Clear textarea
+      if(msgEl) msgEl.value='';
+
+      btn.classList.remove('loading');
+      btn.textContent='Send Update to '+ticketIds.length+' ticket'+(ticketIds.length!==1?'s':'');
+
+      var msg='Update sent to '+d.updatedCount+' ticket'+(d.updatedCount!==1?'s':'')+' on ZD#'+pid;
+      if(d.failedCount>0) msg+=' ('+d.failedCount+' failed)';
+      CC.toast(msg, true);
+    } else {
+      throw new Error('Unexpected response');
+    }
+  }).catch(function(e){
+    CC.toast('Error: '+e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent='Send Update';
+    statusEl.textContent='Failed: '+e.message;
+    statusEl.style.color='var(--accent-red)';
+  });
+};
 
 // ---- Toggle Linked Tickets ----
 window.toggleLinked = function(problemId, btn){
