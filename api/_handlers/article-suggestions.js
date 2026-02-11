@@ -89,10 +89,19 @@ function buildArticleBody(meta, cluster) {
   return lines.join('\n');
 }
 
+// Extract plain text from Jira v3 ADF (Atlassian Document Format) description
+function adfToText(node) {
+  if (!node) return '';
+  if (typeof node === 'string') return node;
+  if (node.type === 'text') return node.text || '';
+  if (!node.content || !Array.isArray(node.content)) return '';
+  return node.content.map(adfToText).join(node.type === 'paragraph' ? '\n' : ' ').trim();
+}
+
 function buildJiraArticleBody(issue) {
   const lines = [];
   const summary = issue.fields.summary || '';
-  const desc = issue.fields.description || '';
+  const desc = adfToText(issue.fields.description);
 
   lines.push(`<h2>Overview</h2>`);
   lines.push(`<p>This issue was resolved as <strong>Works As Designed</strong> in Jira. Creating an internal article so agents can quickly identify and respond to this type of request.</p>`);
@@ -102,7 +111,6 @@ function buildJiraArticleBody(issue) {
 
   if (desc) {
     lines.push(`<h2>Details</h2>`);
-    // Jira descriptions can be long; truncate and clean up for HTML
     const cleanDesc = desc.substring(0, 2000).replace(/\n/g, '<br>');
     lines.push(`<p>${escHtml(cleanDesc).replace(/&lt;br&gt;/g, '<br>')}</p>`);
   }
