@@ -25,6 +25,7 @@ const HANDLERS = {
   'article-suggestions':  () => require('./_handlers/article-suggestions'),
   'create-article':       () => require('./_handlers/create-article'),
   'sf-task':              () => require('./_handlers/sf-task'),
+  'pt-suggestions':       () => require('./_handlers/pt-suggestions'),
 };
 
 module.exports = (req, res) => {

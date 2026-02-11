@@ -2,7 +2,7 @@
 'use strict';
 var pages = [
   { href: '/', label: 'Overview' },
-  { href: '/problems.html', label: 'Problem Tickets' },
+  { href: '/problems.html', label: 'PT Identifier' },
   { href: '/approval.html', label: 'Approval' },
   { href: '/emergency.html', label: 'Emergency' },
   { href: '/reporting.html', label: 'Reporting' },
