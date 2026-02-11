@@ -1,24 +1,24 @@
 {
-  "totalTickets": 336,
-  "resolvedTickets": 308,
-  "openBacklog": 513,
-  "avgPerDay": 48,
+  "totalTickets": 345,
+  "resolvedTickets": 319,
+  "openBacklog": 511,
+  "avgPerDay": 49.3,
   "byCategory": [
     {
       "name": "Other",
-      "count": 104
+      "count": 108
     },
     {
       "name": "High Priority",
-      "count": 93
+      "count": 94
     },
     {
       "name": "App/Work Order",
-      "count": 55
+      "count": 58
     },
     {
       "name": "Integration",
-      "count": 50
+      "count": 51
     },
     {
       "name": "System Issue",
@@ -28,7 +28,7 @@
   "byPOS": [
     {
       "name": "Non-POS",
-      "count": 259
+      "count": 267
     },
     {
       "name": "Protractor",
@@ -36,7 +36,7 @@
     },
     {
       "name": "Tekmetric",
-      "count": 27
+      "count": 28
     },
     {
       "name": "NAPA TRACS",
@@ -46,11 +46,11 @@
   "bySource": [
     {
       "name": "TVP",
-      "count": 228
+      "count": 231
     },
     {
       "name": "Unknown",
-      "count": 88
+      "count": 94
     },
     {
       "name": "Email",
@@ -88,8 +88,8 @@
     },
     {
       "day": "2026-02-11",
-      "count": 46
+      "count": 55
     }
   ],
-  "generatedAt": "2026-02-11T18:50:13.024Z"
+  "generatedAt": "2026-02-11T19:50:34.537Z"
 }
