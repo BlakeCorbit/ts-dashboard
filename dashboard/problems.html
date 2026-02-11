@@ -179,12 +179,16 @@ window.createPT = function(idx, btn){
   // Collect unlinked ticket IDs
   var unlinkedIds = s.tickets.filter(function(t){ return !t.problemId; }).map(function(t){ return t.id; });
 
+  // Use first ticket's subject as the PT description (matches "PT - <description>" convention)
+  var firstSubject = s.tickets[0] ? s.tickets[0].subject : s.issueKey;
+  var ptSubject = 'PT - ' + firstSubject;
+
   CC.api('create-problem', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      subject: s.issueKey + ': Problem Ticket (auto-suggested)',
-      description: 'Auto-created Problem Ticket.\n\nJira: ' + s.jiraUrl + '\nTickets: ' + unlinkedIds.join(', '),
+      subject: ptSubject,
+      description: 'Auto-created Problem Ticket.\n\nJira: ' + s.jiraUrl + ' (' + s.issueKey + ')\nTickets: ' + unlinkedIds.join(', '),
       tags: ['auto-pt', 'jira-linked'],
       ticketIds: unlinkedIds,
       jiraIssueId: s.issueId,
