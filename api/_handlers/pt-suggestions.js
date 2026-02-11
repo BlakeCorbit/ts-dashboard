@@ -13,8 +13,8 @@ module.exports = async function handler(req, res) {
     const since = new Date(Date.now() - days * 24 * 3600000);
     const sinceStr = since.toISOString().replace(/\.\d{3}Z$/, 'Z');
 
-    // 1. Fetch recent open/pending/new tickets (non-problem, non-closed)
-    const searchQuery = `type:ticket ticket_type:incident ticket_type:question ticket_type:task created>${sinceStr} status<solved`;
+    // 1. Fetch recent open/pending/new tickets (exclude problem tickets and solved/closed)
+    const searchQuery = `type:ticket -ticket_type:problem status<solved created>${sinceStr}`;
     const data = await zdRequest('/search.json', {
       params: {
         query: searchQuery,
@@ -29,11 +29,19 @@ module.exports = async function handler(req, res) {
       return res.json({ suggestions: [], generatedAt: new Date().toISOString() });
     }
 
-    // 2. Get Jira links for all tickets (batched to avoid rate limits)
+    // 2. Pre-filter: only process tickets that have Jira links (tagged jira_auto_linked or have sidebar links)
+    const jiraTagged = tickets.filter(t =>
+      (t.tags || []).some(tag => tag === 'jira_auto_linked' || tag.startsWith('jira_'))
+    );
+
+    // If no Jira-tagged tickets, fall back to scanning all (slower)
+    const toScan = jiraTagged.length > 0 ? jiraTagged : tickets;
+
+    // Get Jira links for relevant tickets (batched)
     const ticketJiraMap = {}; // ticketId -> [{ issueId, issueKey, url }]
     const batchSize = 10;
-    for (let i = 0; i < tickets.length; i += batchSize) {
-      const batch = tickets.slice(i, i + batchSize);
+    for (let i = 0; i < toScan.length; i += batchSize) {
+      const batch = toScan.slice(i, i + batchSize);
       const results = await Promise.all(
         batch.map(t => getJiraLinks(t.id).then(links => ({ id: t.id, links })))
       );
@@ -42,7 +50,7 @@ module.exports = async function handler(req, res) {
 
     // 3. Group tickets by Jira issue key
     const jiraGroups = {}; // issueKey -> { issueKey, issueId, url, tickets: [] }
-    tickets.forEach(t => {
+    toScan.forEach(t => {
       const links = ticketJiraMap[t.id] || [];
       links.forEach(link => {
         if (!jiraGroups[link.issueKey]) {
@@ -96,9 +104,12 @@ module.exports = async function handler(req, res) {
     // Sort by total ticket count descending
     suggestions.sort((a, b) => b.totalTickets - a.totalTickets);
 
+    const withJira = Object.keys(ticketJiraMap).filter(id => ticketJiraMap[id].length > 0).length;
+
     res.json({
       suggestions,
       scannedTickets: tickets.length,
+      jiraLinkedTickets: withJira,
       days,
       generatedAt: new Date().toISOString(),
     });

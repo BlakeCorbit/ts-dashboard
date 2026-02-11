@@ -88,7 +88,7 @@ window.loadSuggestions = function(){
     suggestionsData = d;
     renderSuggestions(d);
     document.getElementById('last-updated').textContent = 'Scanned ' + CC.fmtTime(d.generatedAt);
-    document.getElementById('scan-info').textContent = d.scannedTickets + ' tickets scanned (' + d.days + ' days)';
+    document.getElementById('scan-info').textContent = d.scannedTickets + ' tickets scanned | ' + (d.jiraLinkedTickets || 0) + ' with Jira (' + d.days + ' days)';
 
     var count = (d.suggestions || []).filter(function(s){ return !dismissedKeys[s.issueKey]; }).length;
     var el = document.getElementById('status-badge');
