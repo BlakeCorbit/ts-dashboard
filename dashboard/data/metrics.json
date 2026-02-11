@@ -1,16 +1,16 @@
 {
-  "totalTickets": 359,
-  "resolvedTickets": 324,
-  "openBacklog": 520,
-  "avgPerDay": 51.3,
+  "totalTickets": 362,
+  "resolvedTickets": 328,
+  "openBacklog": 519,
+  "avgPerDay": 51.7,
   "byCategory": [
     {
       "name": "Other",
-      "count": 116
+      "count": 118
     },
     {
       "name": "High Priority",
-      "count": 97
+      "count": 98
     },
     {
       "name": "App/Work Order",
@@ -28,7 +28,7 @@
   "byPOS": [
     {
       "name": "Non-POS",
-      "count": 281
+      "count": 283
     },
     {
       "name": "Protractor",
@@ -40,17 +40,17 @@
     },
     {
       "name": "NAPA TRACS",
-      "count": 19
+      "count": 20
     }
   ],
   "bySource": [
     {
       "name": "TVP",
-      "count": 234
+      "count": 235
     },
     {
       "name": "Unknown",
-      "count": 101
+      "count": 103
     },
     {
       "name": "Email",
@@ -88,8 +88,8 @@
     },
     {
       "day": "2026-02-11",
-      "count": 69
+      "count": 72
     }
   ],
-  "generatedAt": "2026-02-11T21:47:58.650Z"
+  "generatedAt": "2026-02-11T22:20:45.601Z"
 }
