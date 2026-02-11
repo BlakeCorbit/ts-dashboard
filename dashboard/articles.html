@@ -7,6 +7,19 @@
 <link rel="icon" href="assets/av-icon-green.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared/styles.css">
+<style>
+.body-toggle {
+  display: inline-flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 8px;
+}
+.body-toggle-btn {
+  padding: 2px 10px; font-size: 0.68rem; font-weight: 600; font-family: var(--font-main);
+  border: none; cursor: pointer; transition: all 150ms;
+}
+.body-toggle-btn.active { background: var(--av-green-dark); color: #fff; }
+.body-toggle-btn:not(.active) { background: var(--bg-card); color: var(--text-secondary); }
+.body-toggle-btn:not(.active):hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.dest-btns { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+</style>
 </head>
 <body>
 
@@ -39,7 +52,10 @@
   <div id="how-to-use" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px">
     <span style="font-size:1.2rem;flex-shrink:0">&#128161;</span>
     <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5">
-      <strong style="color:var(--text-primary)">How agents flag tickets for articles:</strong> Add the tag <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--av-green)">needs_article</code> to any Zendesk ticket. It will appear here with similar tickets and a suggested article draft.
+      <strong style="color:var(--text-primary)">Two destinations:</strong>
+      <strong style="color:var(--av-blue)">Internal &rarr; Confluence</strong> (agent runbooks under Common Troubleshooting) and
+      <strong style="color:var(--av-green)">Customer &rarr; ZD Help Center</strong> (public-facing articles, created as drafts).
+      Toggle the body version before creating. Agents can flag tickets with the tag <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--av-green)">needs_article</code>.
     </div>
     <button onclick="this.parentNode.style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:0;flex-shrink:0">&times;</button>
   </div>
@@ -102,6 +118,9 @@ var currentDays = 30;
 var data = null;
 var dismissed = JSON.parse(localStorage.getItem('articleDismissed') || '[]');
 
+// Track which body version is active per card
+var bodyMode = {}; // id -> 'internal' | 'external'
+
 function getCreated(){
   return JSON.parse(localStorage.getItem('articleCreated') || '[]');
 }
@@ -147,6 +166,7 @@ window.loadSuggestions = function(){
       return;
     }
     data = d;
+    bodyMode = {};
     document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
     renderFlagged();
     renderJira();
@@ -298,18 +318,31 @@ function buildCard(s, id, isGap, borderColor){
   }
 
   if(isGap){
+    // Initialize body mode for this card
+    bodyMode[id] = 'internal';
+
     // Editable form
     h += '<div class="approval-form" id="form-' + id + '">';
     h += '<label>Article Title</label>';
     h += '<input type="text" id="title-' + id + '" value="' + CC.esc(s.suggestedTitle || '') + '">';
-    h += '<label>Article Body (HTML) &mdash; <a href="javascript:void(0)" onclick="togglePreview(\'' + id + '\')" style="color:var(--av-blue);font-weight:400">Toggle Preview</a></label>';
-    h += '<textarea id="body-' + id + '" rows="10">' + CC.esc(s.suggestedBody || '') + '</textarea>';
+
+    // Body label with toggle + preview link
+    h += '<label style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">';
+    h += 'Article Body (HTML)';
+    h += '<div class="body-toggle">';
+    h += '<button class="body-toggle-btn active" id="tog-int-' + id + '" onclick="switchBody(\'' + id + '\',\'internal\')">Internal</button>';
+    h += '<button class="body-toggle-btn" id="tog-ext-' + id + '" onclick="switchBody(\'' + id + '\',\'external\')">Customer</button>';
+    h += '</div>';
+    h += '<a href="javascript:void(0)" onclick="togglePreview(\'' + id + '\')" style="color:var(--av-blue);font-weight:400;margin-left:auto">Toggle Preview</a>';
+    h += '</label>';
+    h += '<textarea id="body-' + id + '" rows="10">' + CC.esc(s.suggestedBodyInternal || s.suggestedBody || '') + '</textarea>';
     h += '<div id="preview-' + id + '" style="display:none;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-top:8px;font-family:var(--font-sub);line-height:1.6;color:var(--text-primary)"></div>';
     h += '</div>';
 
-    // Actions
-    h += '<div style="display:flex;gap:8px;margin-top:16px">';
-    h += '<button class="btn btn-approve" onclick="createArticle(\'' + id + '\',this)">Create Draft</button>';
+    // Dual destination buttons
+    h += '<div class="dest-btns" id="btns-' + id + '">';
+    h += '<button class="btn btn-link" onclick="createArticle(\'' + id + '\',\'confluence\',this)">Internal &rarr; Confluence</button>';
+    h += '<button class="btn btn-approve" onclick="createArticle(\'' + id + '\',\'zendesk\',this)">Customer Article &rarr; ZD</button>';
     h += '<button class="btn btn-muted" onclick="dismissSuggestion(\'' + id + '\')">Dismiss</button>';
     h += '</div>';
   } else {
@@ -339,6 +372,31 @@ function getSuggestion(id){
   return list[idx] || null;
 }
 
+// Switch body version (internal/external)
+window.switchBody = function(id, mode){
+  var s = getSuggestion(id);
+  if(!s) return;
+
+  bodyMode[id] = mode;
+  var textarea = document.getElementById('body-' + id);
+  var preview = document.getElementById('preview-' + id);
+
+  if(mode === 'external'){
+    textarea.value = s.suggestedBodyExternal || '';
+    document.getElementById('tog-int-' + id).classList.remove('active');
+    document.getElementById('tog-ext-' + id).classList.add('active');
+  } else {
+    textarea.value = s.suggestedBodyInternal || s.suggestedBody || '';
+    document.getElementById('tog-int-' + id).classList.add('active');
+    document.getElementById('tog-ext-' + id).classList.remove('active');
+  }
+
+  // Update preview if visible
+  if(preview.style.display !== 'none'){
+    preview.innerHTML = textarea.value;
+  }
+};
+
 // Toggle HTML preview
 window.togglePreview = function(id){
   var textarea = document.getElementById('body-' + id);
@@ -351,8 +409,8 @@ window.togglePreview = function(id){
   }
 };
 
-// Create article draft
-window.createArticle = function(id, btn){
+// Create article — dual destination
+window.createArticle = function(id, destination, btn){
   var s = getSuggestion(id);
   if(!s) return;
 
@@ -363,55 +421,63 @@ window.createArticle = function(id, btn){
   if(!body){ CC.toast('Body is required', false); return; }
 
   btn.classList.add('loading');
+  var origText = btn.textContent;
   btn.innerHTML = '<span class="spinner"></span> Creating...';
 
-  var labels = ['internal', 'troubleshooting', 'auto-generated'];
+  var labels = ['troubleshooting', 'auto-generated'];
   if(s.source === 'flagged') labels.push('agent-flagged');
   if(s.source === 'jira-wad') labels.push('works-as-designed');
   if(s.category) labels.push(s.category.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+  if(destination === 'confluence') labels.push('internal');
 
   CC.api('create-article', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ title: title, body: body, labels: labels })
+    body: JSON.stringify({ title: title, body: body, labels: labels, destination: destination })
   }).then(function(d){
     if(d && d.success){
-      var card = document.getElementById('card-' + id);
-      card.classList.add('approved');
-      card.style.borderLeftColor = 'var(--av-green)';
-
-      var form = document.getElementById('form-' + id);
-      if(form) form.style.display = 'none';
-      btn.parentNode.style.display = 'none';
-
+      // Show success but keep card functional for the other destination
       var resultEl = document.getElementById('result-' + id);
-      resultEl.innerHTML = '<div style="margin-top:16px">' +
-        '<div style="font-size:1rem;font-weight:700;color:var(--av-green);margin-bottom:8px">' +
-        'Draft Created: <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-green)">' + CC.esc(d.title) + '</a></div>' +
-        '<div style="font-size:0.82rem;color:var(--text-muted)">Article ID: ' + d.articleId + ' &middot; Status: Draft &middot; <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">Open in Help Center</a></div></div>';
+      var destLabel = d.destination === 'confluence' ? 'Confluence Page' : 'ZD Help Center Draft';
+      var idField = d.destination === 'confluence' ? 'Page ID: ' + d.pageId : 'Article ID: ' + d.articleId;
+
+      // Append result (don't replace — user might create in both destinations)
+      var existing = resultEl.innerHTML || '';
+      resultEl.innerHTML = existing +
+        '<div style="margin-top:12px;padding:12px;background:rgba(117,194,154,0.06);border:1px solid rgba(117,194,154,0.2);border-radius:var(--radius)">' +
+        '<div style="font-size:0.88rem;font-weight:700;color:var(--av-green);margin-bottom:4px">' +
+        destLabel + ': <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-green)">' + CC.esc(d.title) + '</a></div>' +
+        '<div style="font-size:0.78rem;color:var(--text-muted)">' + idField + ' &middot; <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">Open</a></div></div>';
+
+      // Disable the button that was just used
+      btn.disabled = true;
+      btn.classList.remove('loading');
+      btn.textContent = 'Created';
+      btn.style.opacity = '0.5';
 
       var created = getCreated();
       created.unshift({
-        articleId: d.articleId,
+        articleId: d.articleId || d.pageId,
         title: d.title,
         url: d.url,
         pattern: s.errorPattern || s.pattern,
         source: s.source,
+        destination: d.destination,
         createdAt: new Date().toISOString(),
       });
       saveCreated(created);
 
-      CC.toast('Draft article created', true);
+      CC.toast(destLabel + ' created', true);
       renderCreated();
     } else {
       CC.toast('Failed to create article', false);
       btn.classList.remove('loading');
-      btn.innerHTML = 'Create Draft';
+      btn.textContent = origText;
     }
   }).catch(function(e){
     CC.toast(e.message, false);
     btn.classList.remove('loading');
-    btn.innerHTML = 'Create Draft';
+    btn.textContent = origText;
   });
 };
 
@@ -446,12 +512,14 @@ function renderCreated(){
   var h = '<div class="fade-in" style="display:grid;gap:8px">';
   created.forEach(function(a){
     var sourceLabel = a.source === 'flagged' ? 'Flagged' : a.source === 'jira-wad' ? 'Jira WAD' : 'Pattern';
+    var destLabel = a.destination === 'confluence' ? 'Confluence' : 'ZD';
+    var destColor = a.destination === 'confluence' ? 'var(--av-blue)' : 'var(--av-green)';
     h += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border)">';
     h += '<div style="flex:1">';
     h += '<a href="' + CC.esc(a.url) + '" target="_blank" style="color:var(--av-green);font-weight:600">' + CC.esc(a.title) + '</a>';
     h += '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">' + CC.esc(a.pattern) + ' &middot; ' + sourceLabel + ' &middot; ' + CC.relTime(a.createdAt) + ' &middot; ID: ' + a.articleId + '</div>';
     h += '</div>';
-    h += '<span class="age-pill age-ok" style="font-size:0.72rem">Draft</span>';
+    h += '<span class="age-pill" style="background:rgba(118,195,206,0.12);color:' + destColor + ';font-size:0.72rem">' + destLabel + '</span>';
     h += '</div>';
   });
   h += '</div>';

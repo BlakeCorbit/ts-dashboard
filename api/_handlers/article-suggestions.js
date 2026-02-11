@@ -3,6 +3,10 @@
 //   1. Agent-flagged tickets (needs_article tag in Zendesk)
 //   2. Jira "Works As Designed" issues
 //   3. Auto-detected repeat patterns (filtered: no POS integration)
+//
+// Each suggestion includes two body versions:
+//   suggestedBodyInternal — for Confluence (includes ticket links, Jira refs, runbook links)
+//   suggestedBodyExternal — for ZD Help Center (customer-facing, no internal refs)
 
 const { zdRequest } = require('../_zendesk');
 const { jiraRequest, isJiraConfigured } = require('../_jira');
@@ -32,6 +36,24 @@ const RULE_META = {
   'App freezing/crashing': { title: 'Troubleshooting: AV.X Crash and Freeze Issues', category: 'App Issue', runbook: 'https://autovitals.atlassian.net/wiki/spaces/TS/pages/2811527169', action: 'Check known bugs list. Get device model, OS version, app version. Try: force close, clear cache, reinstall. If reproducible, create JIRA with steps.' },
 };
 
+// Customer-facing action rewrites (friendlier language, no internal tools)
+const CUSTOMER_ACTIONS = {
+  'TVP issues':            'Refresh the page and clear your browser cache. Try a different browser (Chrome recommended). If the page still doesn\'t load, please contact support.',
+  'Email delivery':        'Check your spam/junk folder for any AutoVitals emails. Verify your email address is correct in your account settings. If you\'re still not receiving emails, contact our support team so we can verify your email configuration.',
+  'SMS delivery':          'Verify your phone number is correct in your account settings. Check that you haven\'t blocked the sending number. If texts are still not coming through, contact our support team.',
+  'Login/access':          'Try resetting your password using the "Forgot Password" link. Make sure you\'re using the correct login page for your account type. Clear your browser cache and cookies, then try again.',
+  'Inspection issues':     'Refresh the inspection page and check that all required fields are filled in. If an inspection is missing or showing the wrong status, try closing and reopening the work order.',
+  'Reminders/campaigns':   'Check your communication preferences in your account settings. Verify your contact information is up to date. If reminders are not being sent as expected, please contact support.',
+  'Chat issues':           'Refresh the page and check your internet connection. Try clearing your browser cache. If the chat feature is still not working, try using a different browser.',
+  'Performance/errors':    'Refresh the page and clear your browser cache. Try using a different browser (Chrome is recommended). If you\'re seeing error messages, please note the error code and contact support.',
+  'Appointments':          'Check that your appointment details are correct. If an appointment isn\'t showing up, try refreshing the page. For scheduling issues, contact your service advisor or our support team.',
+  'Media upload':          'Check that your device has enough storage space. Make sure the app has permission to access your camera and photos. Try restarting the app. Ensure you have a stable Wi-Fi or cellular connection.',
+  'Camera/photo issues':   'Make sure the app has camera permissions enabled in your device settings. Check that your device has enough storage space. Try restarting the app. If photo quality looks different than expected, this is a known issue we\'re working on.',
+  'Notification issues':   'Check that notifications are enabled for the app in your device settings. Make sure "Do Not Disturb" is turned off. Try restarting the app.',
+  'Audio/video issues':    'This is a known issue we\'re currently working to resolve. In the meantime, you can try restarting the app before recording. If videos are recording without sound, please contact support.',
+  'App freezing/crashing': 'Try force-closing the app and reopening it. Make sure your app and device operating system are updated to the latest version. If the issue persists, try uninstalling and reinstalling the app.',
+};
+
 function escHtml(s) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -46,7 +68,9 @@ function fuzzyMatch(articleTitle, pattern) {
   return keywords.length > 0 ? matched / keywords.length : 0;
 }
 
-function buildArticleBody(meta, cluster) {
+// ---- Internal body builders (agent-focused) ----
+
+function buildArticleBodyInternal(meta, cluster) {
   const lines = [];
   lines.push(`<h2>Overview</h2>`);
   lines.push(`<p>This article covers troubleshooting steps for <strong>${escHtml(cluster.errorPattern || cluster.pattern)}</strong> issues. This pattern has been identified as a frequent support topic.</p>`);
@@ -89,6 +113,51 @@ function buildArticleBody(meta, cluster) {
   return lines.join('\n');
 }
 
+// ---- Customer-facing body builders ----
+
+function buildArticleBodyExternal(meta, cluster) {
+  const pattern = cluster.errorPattern || cluster.pattern;
+  const customerAction = CUSTOMER_ACTIONS[cluster.errorPattern] || null;
+  const lines = [];
+
+  lines.push(`<h2>Overview</h2>`);
+  lines.push(`<p>If you're experiencing issues with <strong>${escHtml(pattern)}</strong>, this guide will help you resolve the problem.</p>`);
+
+  lines.push(`<h2>Symptoms</h2>`);
+  lines.push(`<p>You may be experiencing one or more of the following:</p>`);
+  lines.push(`<ul>`);
+  lines.push(`<li>${escHtml(pattern)} not working as expected</li>`);
+  if (meta.category) lines.push(`<li>Issues related to: <strong>${escHtml(meta.category)}</strong></li>`);
+  lines.push(`</ul>`);
+
+  lines.push(`<h2>Resolution Steps</h2>`);
+  if (customerAction) {
+    const steps = customerAction.split('. ').filter(Boolean);
+    lines.push(`<ol>`);
+    steps.forEach(s => lines.push(`<li>${s.trim().replace(/\.$/, '')}.</li>`));
+    lines.push(`</ol>`);
+  } else if (meta.action) {
+    // Fallback: use internal steps but clean up internal tool references
+    const steps = meta.action.split('. ').filter(Boolean);
+    lines.push(`<ol>`);
+    steps.forEach(s => {
+      let clean = s.trim().replace(/\.$/, '');
+      // Remove internal URLs and tool references
+      clean = clean.replace(/\(.*?autovitals\.com.*?\)/g, '');
+      clean = clean.replace(/shop\.autovitals\.com\S*/g, 'your account settings');
+      lines.push(`<li>${clean}.</li>`);
+    });
+    lines.push(`</ol>`);
+  } else {
+    lines.push(`<p>Please contact our support team for assistance with this issue.</p>`);
+  }
+
+  lines.push(`<h2>Still Need Help?</h2>`);
+  lines.push(`<p>If the steps above didn't resolve your issue, please <a href="https://bayiq.zendesk.com/hc/en-us/requests/new">submit a support request</a> and our team will be happy to assist you.</p>`);
+
+  return lines.join('\n');
+}
+
 // Extract plain text from Jira v3 ADF (Atlassian Document Format) description
 function adfToText(node) {
   if (!node) return '';
@@ -98,7 +167,7 @@ function adfToText(node) {
   return node.content.map(adfToText).join(node.type === 'paragraph' ? '\n' : ' ').trim();
 }
 
-function buildJiraArticleBody(issue) {
+function buildJiraArticleBodyInternal(issue) {
   const lines = [];
   const summary = issue.fields.summary || '';
   const desc = adfToText(issue.fields.description);
@@ -136,7 +205,38 @@ function buildJiraArticleBody(issue) {
   return lines.join('\n');
 }
 
-function buildFlaggedArticleBody(ticket, similarTickets) {
+function buildJiraArticleBodyExternal(issue) {
+  const lines = [];
+  const summary = issue.fields.summary || '';
+
+  lines.push(`<h2>Overview</h2>`);
+  lines.push(`<p>This article explains the expected behavior for: <strong>${escHtml(summary)}</strong></p>`);
+
+  lines.push(`<h2>Details</h2>`);
+  lines.push(`<p>The behavior you're seeing is working as designed. This is the expected functionality of the system.</p>`);
+
+  // Try to extract a useful explanation from the description
+  const desc = adfToText(issue.fields.description);
+  if (desc) {
+    // Only include description if it doesn't contain internal jargon
+    const cleanDesc = desc.substring(0, 800)
+      .replace(/SID:\s*\d+/gi, '')
+      .replace(/RO#?\s*\d+/gi, '')
+      .replace(/Shop Name:.*$/gm, '')
+      .trim();
+    if (cleanDesc.length > 50) {
+      lines.push(`<h2>Additional Information</h2>`);
+      lines.push(`<p>${escHtml(cleanDesc).replace(/\n/g, '<br>')}</p>`);
+    }
+  }
+
+  lines.push(`<h2>Still Need Help?</h2>`);
+  lines.push(`<p>If you believe this behavior is incorrect or need further assistance, please <a href="https://bayiq.zendesk.com/hc/en-us/requests/new">submit a support request</a> and our team will review your specific situation.</p>`);
+
+  return lines.join('\n');
+}
+
+function buildFlaggedArticleBodyInternal(ticket, similarTickets) {
   const lines = [];
 
   lines.push(`<h2>Overview</h2>`);
@@ -173,16 +273,38 @@ function buildFlaggedArticleBody(ticket, similarTickets) {
   return lines.join('\n');
 }
 
+function buildFlaggedArticleBodyExternal(ticket) {
+  const lines = [];
+  // Clean up the subject line for a title
+  const topic = (ticket.subject || 'this issue').replace(/^(re:|fwd:|fw:)\s*/i, '');
+
+  lines.push(`<h2>Overview</h2>`);
+  lines.push(`<p>This article provides guidance for resolving issues related to: <strong>${escHtml(topic)}</strong></p>`);
+
+  lines.push(`<h2>Resolution Steps</h2>`);
+  lines.push(`<p>Please try the following steps to resolve this issue:</p>`);
+  lines.push(`<ol>`);
+  lines.push(`<li>Refresh the page or restart the application.</li>`);
+  lines.push(`<li>Clear your browser cache and cookies.</li>`);
+  lines.push(`<li>Try using a different browser (Chrome is recommended).</li>`);
+  lines.push(`<li>If the issue persists, please contact our support team with details about what you're experiencing.</li>`);
+  lines.push(`</ol>`);
+
+  lines.push(`<h2>Still Need Help?</h2>`);
+  lines.push(`<p>If the steps above didn't resolve your issue, please <a href="https://bayiq.zendesk.com/hc/en-us/requests/new">submit a support request</a> with a description of the problem and our team will be happy to assist you.</p>`);
+
+  return lines.join('\n');
+}
+
 // ---- Source 1: Agent-flagged tickets (needs_article tag) ----
 async function fetchFlaggedTickets() {
   const query = 'type:ticket tags:needs_article';
-  let flagged = [];
-  let url = `/search.json?query=${encodeURIComponent(query)}&sort_by=created_at&sort_order=desc&per_page=50`;
+  const url = `/search.json?query=${encodeURIComponent(query)}&sort_by=created_at&sort_order=desc&per_page=50`;
 
   const data = await zdRequest(url);
   if (!data || !data.results) return [];
 
-  flagged = data.results.map(t => ({
+  return data.results.map(t => ({
     id: t.id,
     subject: t.subject || '',
     description: (t.description || '').substring(0, 1500),
@@ -191,13 +313,10 @@ async function fetchFlaggedTickets() {
     createdAt: t.created_at,
     organizationId: t.organization_id,
   }));
-
-  return flagged;
 }
 
 // Find tickets with similar subjects to a flagged ticket
 async function findSimilarTickets(ticket) {
-  // Extract key words from subject for searching
   const words = (ticket.subject || '')
     .replace(/[^a-zA-Z0-9\s]/g, '')
     .split(/\s+/)
@@ -269,7 +388,6 @@ async function fetchPatternSuggestions(days, threshold) {
   const clusterer = new TicketClusterer();
   let clusters = clusterer.findClusters(allTickets);
 
-  // Filter: minimum threshold, not "other", exclude POS integration patterns
   clusters = clusters.filter(c =>
     c.ticketCount >= threshold &&
     c.errorPattern !== 'other' &&
@@ -334,7 +452,8 @@ module.exports = async function handler(req, res) {
           ...similar.slice(0, 4).map(t => ({ id: t.id, subject: t.subject, createdAt: t.createdAt })),
         ],
         suggestedTitle: 'Troubleshooting: ' + ticket.subject.replace(/^(re:|fwd:|fw:)\s*/i, '').substring(0, 80),
-        suggestedBody: buildFlaggedArticleBody(ticket, similar),
+        suggestedBodyInternal: buildFlaggedArticleBodyInternal(ticket, similar),
+        suggestedBodyExternal: buildFlaggedArticleBodyExternal(ticket),
         existingArticles: existingArticles.filter(a => fuzzyMatch(a.title, ticket.subject) >= 0.4),
         hasGap: true,
         flaggedTicketId: ticket.id,
@@ -354,7 +473,8 @@ module.exports = async function handler(req, res) {
         ticketCount: 0,
         sampleTickets: [],
         suggestedTitle: 'Works As Designed: ' + summary.substring(0, 80),
-        suggestedBody: buildJiraArticleBody(issue),
+        suggestedBodyInternal: buildJiraArticleBodyInternal(issue),
+        suggestedBodyExternal: buildJiraArticleBodyExternal(issue),
         existingArticles: existingArticles.filter(a => fuzzyMatch(a.title, summary) >= 0.4),
         hasGap: true,
         updatedAt: issue.fields.updated,
@@ -389,10 +509,11 @@ module.exports = async function handler(req, res) {
         })),
         runbookUrl: meta.runbook || null,
         suggestedTitle: meta.title,
-        suggestedBody: buildArticleBody(meta, {
+        suggestedBodyInternal: buildArticleBodyInternal(meta, {
           ...cluster,
           sampleTickets: cluster.tickets.slice(0, 5),
         }),
+        suggestedBodyExternal: buildArticleBodyExternal(meta, cluster),
         existingArticles: matchingArticles,
         hasGap: matchingArticles.length === 0,
       };
