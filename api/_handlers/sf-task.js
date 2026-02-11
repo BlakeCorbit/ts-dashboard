@@ -1,0 +1,222 @@
+// sf-task.js — POST /api/sf-task
+// Creates a Salesforce Task for the Customer Success Advisor linked to a ZD ticket's org.
+// Also triggered by ZD webhook when `sf_task` tag is added.
+//
+// Flow:
+//   1. Get ticket data from ZD (org, requester, last comment)
+//   2. Look up SF Account by org name
+//   3. Get Customer Success Advisor from Account
+//   4. Create SF Task (Call In, Check In, High priority, due today)
+//   5. Write SF task link back to ZD ticket as internal note
+
+const { zdRequest } = require('../_zendesk');
+const { sfRequest, isSalesforceConfigured, getInstanceUrl } = require('../_salesforce');
+
+// ---- Fetch ZD ticket details ----
+async function getTicketData(ticketId) {
+  const data = await zdRequest(`/tickets/${ticketId}.json?include=comment_count`);
+  if (!data || !data.ticket) throw new Error('Ticket not found: ' + ticketId);
+  const ticket = data.ticket;
+
+  // Get requester name
+  let requesterName = 'Unknown';
+  if (ticket.requester_id) {
+    try {
+      const user = await zdRequest(`/users/${ticket.requester_id}.json`);
+      if (user && user.user) requesterName = user.user.name;
+    } catch { /* use fallback */ }
+  }
+
+  // Get organization name
+  let orgName = null;
+  if (ticket.organization_id) {
+    try {
+      const org = await zdRequest(`/organizations/${ticket.organization_id}.json`);
+      if (org && org.organization) orgName = org.organization.name;
+    } catch { /* org lookup failed */ }
+  }
+
+  // Get last public comment
+  let lastComment = '';
+  try {
+    const comments = await zdRequest(`/tickets/${ticketId}/comments.json?sort_order=desc&per_page=5`);
+    if (comments && comments.comments) {
+      const publicComment = comments.comments.find(c => c.public) || comments.comments[0];
+      if (publicComment) lastComment = publicComment.body || publicComment.plain_body || '';
+    }
+  } catch { /* no comments */ }
+
+  return {
+    id: ticket.id,
+    subject: ticket.subject,
+    requesterName,
+    orgName,
+    lastComment: lastComment.substring(0, 5000), // Trim for SF field limits
+    url: `https://bayiq.zendesk.com/agent/tickets/${ticket.id}`,
+  };
+}
+
+// ---- Look up SF Account by org name ----
+async function findSfAccount(orgName) {
+  if (!orgName) throw new Error('No organization on this ticket — cannot look up SF Account');
+
+  // SOQL query: find Account by name (exact match first, then fuzzy)
+  const escaped = orgName.replace(/'/g, "\\'");
+  const query = `SELECT Id, Name, Customer_Success_Advisor__c FROM Account WHERE Name = '${escaped}' LIMIT 1`;
+  const result = await sfRequest(`/query?q=${encodeURIComponent(query)}`);
+
+  if (result && result.records && result.records.length > 0) {
+    return result.records[0];
+  }
+
+  // Try fuzzy match with LIKE
+  const fuzzyQuery = `SELECT Id, Name, Customer_Success_Advisor__c FROM Account WHERE Name LIKE '%${escaped}%' LIMIT 1`;
+  const fuzzyResult = await sfRequest(`/query?q=${encodeURIComponent(fuzzyQuery)}`);
+
+  if (fuzzyResult && fuzzyResult.records && fuzzyResult.records.length > 0) {
+    return fuzzyResult.records[0];
+  }
+
+  throw new Error(`No Salesforce Account found matching "${orgName}"`);
+}
+
+// ---- Get advisor user info ----
+async function getAdvisorUser(advisorId) {
+  if (!advisorId) return null;
+  try {
+    const user = await sfRequest(`/sobjects/User/${advisorId}`);
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+// ---- Create SF Task ----
+async function createSfTask({ account, advisorId, requesterName, ticketUrl, lastComment }) {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  const taskData = {
+    Subject: `Call In: ${requesterName}`,
+    WhatId: account.Id,                  // Related To: the Account
+    OwnerId: advisorId,                  // Assigned To: Customer Success Advisor
+    Type: 'Check In',                    // Activity Type
+    Priority: 'High',
+    ActivityDate: today,                 // Due Date
+    Status: 'Not Started',
+    Description: `Zendesk Ticket: ${ticketUrl}\n\n--- Last Message ---\n${lastComment}`,
+  };
+
+  const result = await sfRequest('/sobjects/Task', {
+    method: 'POST',
+    body: taskData,
+  });
+
+  if (!result || !result.id) {
+    throw new Error('Salesforce returned unexpected response when creating Task');
+  }
+
+  return result;
+}
+
+// ---- Write SF link back to ZD ticket ----
+async function writeBackToZd(ticketId, sfTaskId, sfInstanceUrl) {
+  const sfTaskUrl = `${sfInstanceUrl}/lightning/r/Task/${sfTaskId}/view`;
+
+  // Add internal note with SF task link
+  await zdRequest(`/tickets/${ticketId}.json`, {
+    method: 'PUT',
+    body: {
+      ticket: {
+        comment: {
+          body: `Salesforce Task created: ${sfTaskUrl}`,
+          public: false, // Internal note
+        },
+      },
+    },
+  });
+
+  return sfTaskUrl;
+}
+
+// ---- Handler ----
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'POST only' });
+  }
+
+  try {
+    if (!isSalesforceConfigured()) {
+      return res.status(503).json({
+        error: 'Salesforce credentials not configured. Set SF_CLIENT_ID, SF_CLIENT_SECRET, SF_USERNAME, SF_PASSWORD in environment.',
+      });
+    }
+
+    // Support both direct POST (from dashboard) and ZD webhook format
+    let ticketId;
+    if (req.body && req.body.ticketId) {
+      // Direct call from dashboard or API
+      ticketId = req.body.ticketId;
+    } else if (req.body && req.body.ticket && req.body.ticket.id) {
+      // Zendesk webhook/trigger format (HTTP target with ticket JSON)
+      ticketId = req.body.ticket.id;
+    } else {
+      return res.status(400).json({ error: 'ticketId is required' });
+    }
+
+    // 1. Get ticket data from ZD
+    const ticket = await getTicketData(ticketId);
+
+    // 2. Look up SF Account
+    const account = await findSfAccount(ticket.orgName);
+
+    // 3. Get Customer Success Advisor
+    const advisorId = account.Customer_Success_Advisor__c;
+    if (!advisorId) {
+      return res.status(400).json({
+        error: `Account "${account.Name}" has no Customer Success Advisor assigned in Salesforce`,
+        accountId: account.Id,
+        accountName: account.Name,
+      });
+    }
+
+    const advisor = await getAdvisorUser(advisorId);
+
+    // 4. Create SF Task
+    const sfTask = await createSfTask({
+      account,
+      advisorId,
+      requesterName: ticket.requesterName,
+      ticketUrl: ticket.url,
+      lastComment: ticket.lastComment,
+    });
+
+    // 5. Get instance URL for link building
+    const instanceUrl = await getInstanceUrl();
+
+    // 6. Write back to ZD
+    let sfTaskUrl;
+    try {
+      sfTaskUrl = await writeBackToZd(ticketId, sfTask.id, instanceUrl);
+    } catch (e) {
+      // Non-critical: task was created, just couldn't write back
+      sfTaskUrl = `${instanceUrl}/lightning/r/Task/${sfTask.id}/view`;
+    }
+
+    return res.json({
+      success: true,
+      sfTaskId: sfTask.id,
+      sfTaskUrl,
+      accountName: account.Name,
+      advisorName: advisor ? advisor.Name : 'Unknown',
+      ticketId: ticket.id,
+      requesterName: ticket.requesterName,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};

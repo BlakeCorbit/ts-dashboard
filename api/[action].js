@@ -24,6 +24,7 @@ const HANDLERS = {
   'triage-queue':         () => require('./_handlers/triage-queue'),
   'article-suggestions':  () => require('./_handlers/article-suggestions'),
   'create-article':       () => require('./_handlers/create-article'),
+  'sf-task':              () => require('./_handlers/sf-task'),
 };
 
 module.exports = (req, res) => {
