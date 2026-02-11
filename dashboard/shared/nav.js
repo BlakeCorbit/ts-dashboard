@@ -7,6 +7,7 @@ var pages = [
   { href: '/emergency.html', label: 'Emergency' },
   { href: '/reporting.html', label: 'Reporting' },
   { href: '/articles.html', label: 'Articles' },
+  { href: '/bonus.html', label: 'Bonus' },
 ];
 
 var path = location.pathname;

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bonus Tracker - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+<style>
+.bonus-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.bonus-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.bonus-card .payout-hero {
+  text-align: center; padding: 16px 0 12px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.bonus-card .payout-hero .pct {
+  font-family: var(--font-mono); font-size: 2.8rem; font-weight: 800; line-height: 1;
+}
+.bonus-card .payout-hero .lbl {
+  font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-top: 4px;
+}
+.component-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid var(--border-subtle);
+}
+.component-row:last-child { border-bottom: none; }
+.component-row .comp-left { display: flex; align-items: center; gap: 8px; }
+.component-row .comp-name { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.component-row .comp-weight {
+  font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;
+  background: rgba(118,195,206,0.12); color: var(--av-blue);
+}
+.component-row .comp-right { text-align: right; }
+.component-row .comp-score {
+  font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700;
+}
+.component-row .comp-tier {
+  font-size: 0.62rem; color: var(--text-muted); font-family: var(--font-mono);
+}
+.comp-bar { height: 6px; background: var(--bg-input); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.comp-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+/* Proficiency grading */
+.prof-section { margin-bottom: 24px; }
+.prof-agent-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.prof-agent-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+}
+.prof-agent-name { font-size: 1rem; font-weight: 700; }
+.prof-score-badge {
+  font-family: var(--font-mono); font-size: 1.1rem; font-weight: 800;
+  padding: 2px 12px; border-radius: 6px;
+}
+.grade-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.grade-table th {
+  text-align: left; font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-muted); padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.grade-table td { padding: 8px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.grade-table .ticket-link { font-family: var(--font-mono); color: var(--av-blue); font-weight: 600; font-size: 0.8rem; }
+.grade-table .subject-cell { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.grade-stars { display: inline-flex; gap: 2px; }
+.grade-star {
+  width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-input); color: var(--text-muted); font-size: 0.72rem;
+  font-weight: 700; cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; transition: all 150ms; font-family: var(--font-mono);
+}
+.grade-star:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); background: rgba(240,192,80,0.1); }
+.grade-star.active { background: var(--accent-yellow); color: #0d1117; border-color: var(--accent-yellow); font-weight: 800; }
+.add-ticket-row { padding: 8px; text-align: center; }
+.add-ticket-btn {
+  font-size: 0.72rem; color: var(--text-muted); cursor: pointer; background: none;
+  border: 1px dashed var(--border); border-radius: 4px; padding: 6px 16px;
+  font-family: var(--font-main); transition: all 150ms;
+}
+.add-ticket-btn:hover { color: var(--av-green); border-color: var(--av-green); }
+
+/* Ticket picker modal */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 200; display: none;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 24px; width: 90%; max-width: 600px; max-height: 70vh; overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 12px; }
+.modal-ticket {
+  display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px;
+  cursor: pointer; transition: background 150ms;
+}
+.modal-ticket:hover { background: var(--bg-card-hover); }
+.modal-ticket .mt-id { font-family: var(--font-mono); font-size: 0.8rem; color: var(--av-blue); font-weight: 600; min-width: 70px; }
+.modal-ticket .mt-subject { font-size: 0.82rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* How-to banner */
+.how-to-banner {
+  background: linear-gradient(135deg, rgba(118,195,206,0.08), rgba(117,194,154,0.05));
+  border: 1px solid rgba(118,195,206,0.2); border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 20px; font-size: 0.82rem; color: var(--text-secondary);
+  line-height: 1.6;
+}
+.how-to-banner strong { color: var(--text-primary); }
+
+@media(max-width:1100px) {
+  .bonus-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Agent Bonus Tracker</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="month-label" style="font-size:0.82rem;font-weight:600;color:var(--text-secondary)"></div>
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+
+  <!-- How-to banner -->
+  <div class="how-to-banner" id="how-to">
+    <strong>Bonus Structure:</strong> Monthly bonus is calculated from 3 components &mdash;
+    <strong>CSAT</strong> (30% weight, target 90%+),
+    <strong>Product Proficiency</strong> (40% weight, 6 tickets graded 1-5),
+    <strong>Ticket Velocity</strong> (30% weight, target 80/100 pts).
+    Each component maps to a payout tier (50% &rarr; 125%). The combined payout is the weighted average.
+    <br>Grade tickets in the Proficiency section below to complete the bonus calculation.
+    <span style="float:right;cursor:pointer;color:var(--text-muted)" onclick="this.parentElement.style.display='none'" title="Dismiss">&times;</span>
+  </div>
+
+  <!-- Bonus Summary -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Bonus Summary</div>
+    </div>
+    <div class="bonus-grid" id="bonus-grid">
+      <div class="loading-shimmer" style="height:300px"></div>
+      <div class="loading-shimmer" style="height:300px"></div>
+      <div class="loading-shimmer" style="height:300px"></div>
+    </div>
+  </section>
+
+  <!-- Product Proficiency Grading -->
+  <section class="prof-section">
+    <div class="section-header">
+      <div class="section-title">Product Proficiency Grading</div>
+      <button class="btn btn-sm" onclick="resetGrades()" title="Clear all grades for this month">Reset Grades</button>
+    </div>
+    <div id="prof-grid">
+      <div class="loading-shimmer" style="height:200px;margin-bottom:12px"></div>
+      <div class="loading-shimmer" style="height:200px;margin-bottom:12px"></div>
+      <div class="loading-shimmer" style="height:200px"></div>
+    </div>
+  </section>
+
+  <!-- Detailed Velocity Breakdown -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Velocity Breakdown</div>
+    </div>
+    <div class="agents-grid" id="velocity-grid">
+      <div class="loading-shimmer" style="height:250px"></div>
+      <div class="loading-shimmer" style="height:250px"></div>
+      <div class="loading-shimmer" style="height:250px"></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="modal-overlay" id="ticket-modal">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="modal-title" id="modal-title">Select Ticket to Grade</div>
+      <button class="btn btn-sm" onclick="closeModal()">&times; Close</button>
+    </div>
+    <div id="modal-tickets"><div class="no-data">Loading tickets...</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var AGENT_NAMES = ['Blake Corbit', 'Brien Nunn', 'Jacob Ryder'];
+var agentsData = null;
+var currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+// ---- Storage keys ----
+function gradeKey() { return 'bonusGrades_' + currentMonth; }
+function loadGrades() {
+  try { return JSON.parse(localStorage.getItem(gradeKey()) || '{}'); } catch { return {}; }
+}
+function saveGrades(g) { localStorage.setItem(gradeKey(), JSON.stringify(g)); }
+
+// ---- Tier functions (match agents.js backend) ----
+function csatTierPct(pct) {
+  if (pct === null || pct === undefined) return 50;
+  if (pct >= 95) return 125;
+  if (pct >= 90) return 100;
+  if (pct >= 80) return 75;
+  if (pct >= 70) return 60;
+  return 50;
+}
+
+function velocityTierPct(score) {
+  if (score === null || score === undefined) return 50;
+  if (score >= 90) return 125;
+  if (score >= 80) return 100;
+  if (score >= 70) return 75;
+  if (score >= 60) return 60;
+  return 50;
+}
+
+function proficiencyTierPct(totalPoints) {
+  // 6 tickets * 5 max = 30 points. Convert to percentage for tier mapping.
+  if (totalPoints === null || totalPoints === undefined) return null;
+  var pct = (totalPoints / 30) * 100;
+  if (pct >= 90) return 125;  // 27-30 pts
+  if (pct >= 80) return 100;  // 24-26 pts
+  if (pct >= 70) return 75;   // 21-23 pts
+  if (pct >= 60) return 60;   // 18-20 pts
+  return 50;
+}
+
+function tierColor(tierPct) {
+  if (tierPct >= 125) return 'var(--av-green)';
+  if (tierPct >= 100) return 'var(--av-blue)';
+  if (tierPct >= 75) return 'var(--accent-yellow)';
+  if (tierPct >= 60) return 'var(--accent-orange)';
+  return 'var(--accent-red)';
+}
+
+function tierLabel(tierPct) {
+  if (tierPct === null) return '--';
+  return tierPct + '%';
+}
+
+// ---- Get proficiency score for an agent ----
+function getAgentProficiency(agentName) {
+  var grades = loadGrades();
+  var ag = grades[agentName] || [];
+  if (ag.length === 0) return { total: null, count: 0, grades: [] };
+  var total = ag.reduce(function(s, g) { return s + (g.score || 0); }, 0);
+  return { total: total, count: ag.length, grades: ag };
+}
+
+// ---- Calculate combined bonus payout ----
+function calcBonus(csatPct, profTotal, velScore) {
+  var cTier = csatTierPct(csatPct);
+  var vTier = velocityTierPct(velScore);
+  var pTier = profTotal !== null ? proficiencyTierPct(profTotal) : null;
+
+  if (pTier === null) {
+    // Can't calculate full bonus without proficiency grades
+    return { combined: null, csat: cTier, proficiency: pTier, velocity: vTier, complete: false };
+  }
+
+  var combined = Math.round((cTier * 0.30) + (pTier * 0.40) + (vTier * 0.30));
+  return { combined: combined, csat: cTier, proficiency: pTier, velocity: vTier, complete: true };
+}
+
+// ---- Month label ----
+function setMonthLabel() {
+  var d = new Date();
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('month-label').textContent = months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// ---- Component bar HTML ----
+function compBar(pct, color) {
+  return '<div class="comp-bar"><div class="comp-bar-fill" style="width:' + Math.min(pct, 100) + '%;background:' + color + '"></div></div>';
+}
+
+// ---- Render bonus summary cards ----
+function renderBonusSummary() {
+  if (!agentsData) return;
+  var agents = (agentsData.agents || []).filter(function(a) { return AGENT_NAMES.indexOf(a.name) !== -1; });
+  var box = document.getElementById('bonus-grid');
+
+  if (!agents.length) {
+    box.innerHTML = '<div class="no-data" style="grid-column:1/-1">No agent data available</div>';
+    return;
+  }
+
+  var h = '';
+  agents.forEach(function(a) {
+    var csat = a.csat || {};
+    var vel = (a.currentPeriod || {}).velocity || {};
+    var prof = getAgentProficiency(a.name);
+    var bonus = calcBonus(csat.pct, prof.total, vel.total);
+
+    var heroColor = bonus.complete ? tierColor(bonus.combined) : 'var(--text-muted)';
+    var heroVal = bonus.complete ? bonus.combined + '%' : '--';
+
+    h += '<div class="bonus-card fade-in">';
+    h += '<div class="agent-name" style="margin-bottom:0;font-size:0.95rem">' + CC.esc(a.name) + '</div>';
+
+    // Hero payout
+    h += '<div class="payout-hero">';
+    h += '<div class="pct" style="color:' + heroColor + '">' + heroVal + '</div>';
+    h += '<div class="lbl">Combined Payout</div>';
+    h += '</div>';
+
+    // CSAT component
+    var csatVal = csat.pct !== null && csat.pct !== undefined ? csat.pct + '%' : '--';
+    var csatTier = csatTierPct(csat.pct);
+    var csatClr = tierColor(csatTier);
+    h += '<div class="component-row">';
+    h += '<div class="comp-left"><span class="comp-name">CSAT</span><span class="comp-weight">30%</span></div>';
+    h += '<div class="comp-right">';
+    h += '<div class="comp-score" style="color:' + csatClr + '">' + csatVal + ' &rarr; ' + tierLabel(csatTier) + '</div>';
+    h += '<div class="comp-tier">' + CC.fmt(csat.good || 0) + ' good / ' + CC.fmt(csat.total || 0) + ' rated</div>';
+    h += '</div>';
+    h += '</div>';
+    h += compBar(csat.pct || 0, csatClr);
+
+    // Product Proficiency component
+    var profVal = prof.total !== null ? prof.total + '/30' : '--';
+    var profTier = prof.total !== null ? proficiencyTierPct(prof.total) : null;
+    var profClr = profTier !== null ? tierColor(profTier) : 'var(--text-muted)';
+    var profTierLbl = profTier !== null ? tierLabel(profTier) : 'Not graded';
+    h += '<div class="component-row">';
+    h += '<div class="comp-left"><span class="comp-name">Proficiency</span><span class="comp-weight">40%</span></div>';
+    h += '<div class="comp-right">';
+    h += '<div class="comp-score" style="color:' + profClr + '">' + profVal + ' &rarr; ' + CC.esc(profTierLbl) + '</div>';
+    h += '<div class="comp-tier">' + prof.count + '/6 tickets graded</div>';
+    h += '</div>';
+    h += '</div>';
+    h += compBar(prof.total !== null ? (prof.total / 30) * 100 : 0, profClr);
+
+    // Velocity component
+    var velVal = vel.total !== null && vel.total !== undefined ? vel.total + '/100' : '--';
+    var velTier = velocityTierPct(vel.total);
+    var velClr = tierColor(velTier);
+    h += '<div class="component-row">';
+    h += '<div class="comp-left"><span class="comp-name">Velocity</span><span class="comp-weight">30%</span></div>';
+    h += '<div class="comp-right">';
+    h += '<div class="comp-score" style="color:' + velClr + '">' + velVal + ' &rarr; ' + tierLabel(velTier) + '</div>';
+    h += '<div class="comp-tier">Target: 80/100</div>';
+    h += '</div>';
+    h += '</div>';
+    h += compBar(vel.total || 0, velClr);
+
+    // Incomplete warning
+    if (!bonus.complete) {
+      h += '<div style="margin-top:12px;padding:8px;background:rgba(240,192,80,0.08);border:1px solid rgba(240,192,80,0.2);border-radius:6px;font-size:0.75rem;color:var(--accent-yellow)">';
+      h += 'Grade ' + (6 - prof.count) + ' more ticket' + (6 - prof.count !== 1 ? 's' : '') + ' to complete bonus calculation';
+      h += '</div>';
+    }
+
+    h += '</div>';
+  });
+
+  box.innerHTML = h;
+}
+
+// ---- Render proficiency grading section ----
+function renderProficiency() {
+  if (!agentsData) return;
+  var agents = (agentsData.agents || []).filter(function(a) { return AGENT_NAMES.indexOf(a.name) !== -1 && a.userId; });
+  var box = document.getElementById('prof-grid');
+
+  var h = '';
+  agents.forEach(function(a) {
+    var prof = getAgentProficiency(a.name);
+    var totalClr = prof.total !== null ? tierColor(proficiencyTierPct(prof.total)) : 'var(--text-muted)';
+    var totalLbl = prof.total !== null ? prof.total + '/30' : '0/30';
+
+    h += '<div class="prof-agent-card fade-in">';
+    h += '<div class="prof-agent-header">';
+    h += '<div class="prof-agent-name">' + CC.esc(a.name) + '</div>';
+    h += '<div class="prof-score-badge" style="background:rgba(118,195,206,0.1);color:' + totalClr + '">' + totalLbl + ' pts</div>';
+    h += '</div>';
+
+    h += '<table class="grade-table">';
+    h += '<thead><tr><th style="width:80px">Ticket</th><th>Subject</th><th style="width:150px;text-align:center">Grade</th><th style="width:50px"></th></tr></thead>';
+    h += '<tbody>';
+
+    // Render graded tickets
+    prof.grades.forEach(function(g, idx) {
+      h += '<tr>';
+      h += '<td><a class="ticket-link" href="' + CC.ZD + g.ticketId + '" target="_blank">#' + g.ticketId + '</a></td>';
+      h += '<td class="subject-cell" title="' + CC.esc(g.subject || '') + '">' + CC.esc(CC.trunc(g.subject || '', 50)) + '</td>';
+      h += '<td style="text-align:center"><div class="grade-stars">';
+      for (var s = 1; s <= 5; s++) {
+        var active = s <= g.score ? ' active' : '';
+        h += '<button class="grade-star' + active + '" onclick="setGrade(\'' + CC.esc(a.name) + '\',' + idx + ',' + s + ')">' + s + '</button>';
+      }
+      h += '</div></td>';
+      h += '<td><button class="btn-muted" onclick="removeGrade(\'' + CC.esc(a.name) + '\',' + idx + ')" title="Remove">&times;</button></td>';
+      h += '</tr>';
+    });
+
+    // Add ticket button (if less than 6 graded)
+    if (prof.count < 6) {
+      h += '<tr><td colspan="4" class="add-ticket-row">';
+      h += '<button class="add-ticket-btn" onclick="openTicketPicker(\'' + CC.esc(a.name) + '\')">+ Add Ticket (' + (6 - prof.count) + ' remaining)</button>';
+      h += '</td></tr>';
+    }
+
+    h += '</tbody></table>';
+    h += '</div>';
+  });
+
+  box.innerHTML = h;
+}
+
+// ---- Velocity breakdown ----
+function renderVelocity() {
+  if (!agentsData) return;
+  var agents = (agentsData.agents || []).filter(function(a) { return AGENT_NAMES.indexOf(a.name) !== -1 && a.userId; });
+  var box = document.getElementById('velocity-grid');
+
+  var h = '';
+  agents.forEach(function(a) {
+    var vel = (a.currentPeriod || {}).velocity || {};
+    var det = vel.details || {};
+    var total = vel.total != null ? vel.total : 0;
+    var vc = tierColor(velocityTierPct(total));
+
+    h += '<div class="agent-card fade-in">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">';
+    h += '<div class="agent-name" style="margin-bottom:0">' + CC.esc(a.name) + '</div>';
+    h += '<div style="text-align:center">';
+    h += '<div style="font-family:var(--font-mono);font-size:1.6rem;font-weight:800;color:' + vc + ';line-height:1">' + total + '<span style="font-size:0.85rem;font-weight:600;color:var(--text-muted)">/100</span></div>';
+    h += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:' + vc + ';margin-top:2px">' + (vel.tier || '--') + ' Payout</div>';
+    h += '</div></div>';
+
+    // Volume
+    h += velBar('Volume', vel.volumeScore || 0, 25, det.teamAvgAssigned ? 'Team avg: ' + det.teamAvgAssigned : '');
+    // Solve Rate
+    h += velBar('Solve Rate', vel.solveScore || 0, 25, det.solveRate != null ? det.solveRate.toFixed(1) + '%' : '');
+    // First Reply
+    h += velBar('First Reply', vel.firstReplyScore || 0, 25, det.medianFirstReplyHours != null ? det.medianFirstReplyHours.toFixed(2) + ' hrs median' : '');
+    // Resolution
+    h += velBar('Resolution', vel.resolutionScore || 0, 25, det.medianResolutionHours != null ? det.medianResolutionHours.toFixed(1) + ' hrs median' : '');
+
+    h += '</div>';
+  });
+
+  box.innerHTML = h;
+}
+
+function velBar(label, score, max, rawLabel) {
+  var pct = max > 0 ? Math.min((score / max) * 100, 100) : 0;
+  var color = tierColor(velocityTierPct((score / max) * 100));
+  var h = '<div style="margin-bottom:8px">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">';
+  h += '<span style="font-size:0.72rem;color:var(--text-secondary)">' + CC.esc(label) + '</span>';
+  h += '<span style="font-size:0.72rem;font-family:var(--font-mono);font-weight:700;color:' + color + '">' + score + '/' + max + '</span>';
+  h += '</div>';
+  h += '<div style="height:8px;background:var(--bg-input);border-radius:4px;overflow:hidden">';
+  h += '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;transition:width 0.6s ease"></div>';
+  h += '</div>';
+  if (rawLabel) {
+    h += '<div style="font-size:0.62rem;color:var(--text-muted);margin-top:1px;font-family:var(--font-mono)">' + CC.esc(rawLabel) + '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+// ---- Ticket picker modal ----
+var pickerAgent = null;
+
+window.openTicketPicker = function(agentName) {
+  pickerAgent = agentName;
+  var modal = document.getElementById('ticket-modal');
+  document.getElementById('modal-title').textContent = 'Select Ticket for ' + agentName;
+  var box = document.getElementById('modal-tickets');
+  box.innerHTML = '<div class="no-data">Loading solved tickets...</div>';
+  modal.classList.add('show');
+
+  // Find agent data
+  var agent = (agentsData.agents || []).find(function(a) { return a.name === agentName; });
+  if (!agent || !agent.userId) {
+    box.innerHTML = '<div class="no-data">Agent not found</div>';
+    return;
+  }
+
+  // Fetch recent solved tickets for this agent
+  CC.api('agents?period=month').then(function() {
+    // Use a simple search - fetch solved tickets assigned to this agent
+    return fetch('/api/tickets?hours=' + (30 * 24) + '&assignee=' + agent.userId + '&status=solved');
+  }).then(function(r) {
+    // Fallback: just show tickets we already know about
+    // The agents endpoint doesn't return individual tickets, so let's use the search
+    return CC.api('tickets?hours=' + (30 * 24));
+  }).then(function(d) {
+    if (!d) { box.innerHTML = '<div class="no-data">Could not load tickets</div>'; return; }
+    var tickets = (d.tickets || d.results || []);
+
+    // Filter to this agent and solved/closed
+    var agent = (agentsData.agents || []).find(function(a) { return a.name === pickerAgent; });
+    var filtered = tickets.filter(function(t) {
+      return t.assignee_id === (agent && agent.userId) && (t.status === 'solved' || t.status === 'closed');
+    });
+
+    // If no filtered results, show all solved as fallback
+    if (filtered.length === 0) {
+      filtered = tickets.filter(function(t) { return t.status === 'solved' || t.status === 'closed'; });
+    }
+
+    // Remove already graded tickets
+    var grades = loadGrades();
+    var agentGrades = grades[pickerAgent] || [];
+    var gradedIds = agentGrades.map(function(g) { return g.ticketId; });
+    filtered = filtered.filter(function(t) { return gradedIds.indexOf(String(t.id)) === -1; });
+
+    if (filtered.length === 0) {
+      box.innerHTML = '<div class="no-data">No available tickets to grade</div>';
+      return;
+    }
+
+    var h = '';
+    filtered.slice(0, 30).forEach(function(t) {
+      h += '<div class="modal-ticket" onclick="pickTicket(\'' + t.id + '\',\'' + CC.esc((t.subject || '').replace(/'/g, '')) + '\')">';
+      h += '<span class="mt-id">#' + t.id + '</span>';
+      h += '<span class="mt-subject">' + CC.esc(CC.trunc(t.subject || '', 60)) + '</span>';
+      h += '</div>';
+    });
+    box.innerHTML = h;
+  }).catch(function() {
+    // Final fallback: allow manual ticket ID entry
+    box.innerHTML = '<div style="padding:12px">';
+    box.innerHTML += '<div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:8px">Could not load tickets. Enter a ticket ID manually:</div>';
+    box.innerHTML += '<div style="display:flex;gap:8px"><input type="text" id="manual-ticket-id" placeholder="Ticket ID" style="flex:1;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-mono)"><button class="btn btn-primary" onclick="pickManualTicket()">Add</button></div>';
+    box.innerHTML += '</div>';
+  });
+};
+
+window.pickTicket = function(ticketId, subject) {
+  if (!pickerAgent) return;
+  var grades = loadGrades();
+  if (!grades[pickerAgent]) grades[pickerAgent] = [];
+  grades[pickerAgent].push({ ticketId: String(ticketId), subject: subject, score: 3 }); // Default score 3
+  saveGrades(grades);
+  closeModal();
+  renderProficiency();
+  renderBonusSummary();
+};
+
+window.pickManualTicket = function() {
+  var input = document.getElementById('manual-ticket-id');
+  if (!input || !input.value.trim()) return;
+  var id = input.value.trim().replace('#', '');
+  pickTicket(id, 'Ticket #' + id);
+};
+
+window.closeModal = function() {
+  document.getElementById('ticket-modal').classList.remove('show');
+  pickerAgent = null;
+};
+
+// Close modal on overlay click
+document.getElementById('ticket-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ---- Grade management ----
+window.setGrade = function(agentName, idx, score) {
+  var grades = loadGrades();
+  if (!grades[agentName] || !grades[agentName][idx]) return;
+  grades[agentName][idx].score = score;
+  saveGrades(grades);
+  renderProficiency();
+  renderBonusSummary();
+};
+
+window.removeGrade = function(agentName, idx) {
+  var grades = loadGrades();
+  if (!grades[agentName]) return;
+  grades[agentName].splice(idx, 1);
+  saveGrades(grades);
+  renderProficiency();
+  renderBonusSummary();
+};
+
+window.resetGrades = function() {
+  if (!confirm('Clear all proficiency grades for ' + currentMonth + '?')) return;
+  localStorage.removeItem(gradeKey());
+  renderProficiency();
+  renderBonusSummary();
+  CC.toast('Grades cleared', true);
+};
+
+// ---- Load data ----
+function loadData() {
+  CC.api('agents?period=month').then(function(d) {
+    if (!d) return;
+    agentsData = d;
+    renderBonusSummary();
+    renderProficiency();
+    renderVelocity();
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
+
+    // Status badge
+    var grades = loadGrades();
+    var allComplete = AGENT_NAMES.every(function(name) {
+      return (grades[name] || []).length >= 6;
+    });
+    var el = document.getElementById('status-badge');
+    if (allComplete) {
+      el.innerHTML = '<span class="status-badge status-green"><span class="dot"></span>Complete</span>';
+    } else {
+      el.innerHTML = '<span class="status-badge status-yellow"><span class="dot"></span>Grading Needed</span>';
+    }
+  }).catch(function(e) {
+    CC.toast('Error: ' + e.message, false);
+  });
+}
+
+window.refreshAll = function() {
+  var btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Loading...';
+  CC.api('agents?period=month').then(function(d) {
+    if (d) {
+      agentsData = d;
+      renderBonusSummary();
+      renderProficiency();
+      renderVelocity();
+      document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
+    }
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh';
+    CC.toast('Data refreshed', true);
+  }).catch(function(e) {
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh';
+    CC.toast('Error: ' + e.message, false);
+  });
+};
+
+// ---- Init ----
+setMonthLabel();
+loadData();
+
+})();
+</script>
+</body>
+</html>
