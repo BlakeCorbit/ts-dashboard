@@ -223,7 +223,7 @@ async function fetchJiraWAD() {
 
   try {
     const jql = 'status = "Works As Designed" ORDER BY updated DESC';
-    const url = `/search?jql=${encodeURIComponent(jql)}&maxResults=25&fields=key,summary,description,status,updated,components,labels,project`;
+    const url = `/search/jql?jql=${encodeURIComponent(jql)}&maxResults=25&fields=key,summary,description,status,updated,components,labels,project`;
     const data = await jiraRequest(url);
 
     if (!data || !data.issues) return [];

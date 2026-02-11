@@ -1,5 +1,5 @@
 // Shared Jira client for API routes
-// Uses Atlassian Cloud REST API v2
+// Uses Atlassian Cloud REST API v3 (v2 search deprecated as of 2025)
 
 function getJiraAuth() {
   const { JIRA_EMAIL, JIRA_API_TOKEN } = process.env;
@@ -18,7 +18,7 @@ async function jiraRequest(endpoint, options = {}) {
 
   const url = endpoint.startsWith('http')
     ? endpoint
-    : `${creds.baseUrl}/rest/api/2${endpoint}`;
+    : `${creds.baseUrl}/rest/api/3${endpoint}`;
 
   const resp = await fetch(url, {
     method: options.method || 'GET',
