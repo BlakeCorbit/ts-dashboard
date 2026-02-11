@@ -1,13 +1,49 @@
 {
   "recentTickets": [
     {
+      "id": 135391,
+      "subject": "Sam's Auto Specialists - Shop photo",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-11T21:04:31.886Z"
+    },
+    {
+      "id": 135390,
+      "subject": "German Motors / SID 9923 / add blogs",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-11T21:04:31.886Z"
+    },
+    {
+      "id": 135389,
+      "subject": "PT - AV.X - 6.9.4.- iOS - WiFi connection lost for 5-10 seconds when opening the app",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "urgent",
+      "matchedAt": "2026-02-11T21:04:31.887Z"
+    },
+    {
+      "id": 135388,
+      "subject": "Westlake Independent Automotive - Presidents' Day Special",
+      "category": "App Issue",
+      "subcategory": "AV.X - Crash/Freeze/Performance",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-11T21:04:31.887Z"
+    },
+    {
       "id": 135386,
       "subject": "autovitals doesn't match rowriter",
       "category": "Platform Issue",
       "subcategory": "Vehicle Data Issue",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.887Z"
     },
     {
       "id": 135385,
@@ -16,7 +52,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.887Z"
     },
     {
       "id": 135384,
@@ -25,7 +61,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.887Z"
     },
     {
       "id": 135383,
@@ -34,7 +70,7 @@
       "subcategory": "ROs Not Showing - Unknown POS",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135376,
@@ -43,7 +79,7 @@
       "subcategory": "Billing/Cancellation",
       "runbook": "Account Churn Process",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135375,
@@ -52,7 +88,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135373,
@@ -61,7 +97,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135372,
@@ -70,7 +106,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135370,
@@ -79,7 +115,7 @@
       "subcategory": "AV.X - Video No Sound",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135369,
@@ -88,7 +124,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.829Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135368,
@@ -97,7 +133,7 @@
       "subcategory": "ROs Not Showing - Mitchell/AV Sync",
       "runbook": "AV Sync: Troubleshooting & Support",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135367,
@@ -106,7 +142,7 @@
       "subcategory": "Overnight Compare & Sync Alert",
       "runbook": "Binary Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135366,
@@ -115,7 +151,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.888Z"
     },
     {
       "id": 135365,
@@ -124,7 +160,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135364,
@@ -133,7 +169,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135363,
@@ -142,7 +178,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135361,
@@ -151,7 +187,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135360,
@@ -160,7 +196,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135359,
@@ -169,7 +205,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135358,
@@ -178,7 +214,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135351,
@@ -187,7 +223,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135350,
@@ -196,7 +232,7 @@
       "subcategory": "AV.X - Video No Sound",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135348,
@@ -205,7 +241,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135345,
@@ -214,7 +250,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
     },
     {
       "id": 135343,
@@ -223,7 +259,16 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.830Z"
+      "matchedAt": "2026-02-11T21:04:31.889Z"
+    },
+    {
+      "id": 135342,
+      "subject": "TILE NOT CLOSING - NOT SURE IF RELATED TO EARLIER ISSUE?",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135339,
@@ -232,7 +277,7 @@
       "subcategory": "Email Delivery Issues",
       "runbook": "Email Issues and Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135337,
@@ -241,7 +286,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135331,
@@ -250,7 +295,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135330,
@@ -259,7 +304,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135326,
@@ -268,7 +313,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135325,
@@ -277,7 +322,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135323,
@@ -286,7 +331,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135319,
@@ -295,7 +340,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135318,
@@ -304,7 +349,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135317,
@@ -313,7 +358,7 @@
       "subcategory": "ROs Not Showing - Unknown POS",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135316,
@@ -322,7 +367,7 @@
       "subcategory": "ROs Not Showing - Mitchell/AV Sync",
       "runbook": "AV Sync: Troubleshooting & Support",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135314,
@@ -331,7 +376,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.890Z"
     },
     {
       "id": 135313,
@@ -340,7 +385,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     },
     {
       "id": 135312,
@@ -349,7 +394,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     },
     {
       "id": 135308,
@@ -358,7 +403,7 @@
       "subcategory": "AV.X - Video No Sound",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     },
     {
       "id": 135307,
@@ -367,7 +412,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     },
     {
       "id": 135304,
@@ -376,7 +421,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.831Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     },
     {
       "id": 135302,
@@ -385,7 +430,7 @@
       "subcategory": "Email Delivery Issues",
       "runbook": "Email Issues and Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     },
     {
       "id": 135301,
@@ -394,7 +439,7 @@
       "subcategory": "Deleted Notes/Images",
       "runbook": "SOP: Recover Deleted Notes & Images",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     },
     {
       "id": 135298,
@@ -403,64 +448,19 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
-    },
-    {
-      "id": 135295,
-      "subject": "I need an invoice from October 6th of this last year.  Was also hoping to be walked through how to retrieve this information",
-      "category": "Account",
-      "subcategory": "Billing/Cancellation",
-      "runbook": "Account Churn Process",
-      "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
-    },
-    {
-      "id": 135294,
-      "subject": "Overnight Compare and Sync - Napa Tracs - 5183",
-      "category": "POS Integration",
-      "subcategory": "Overnight Compare & Sync Alert",
-      "runbook": "Binary Troubleshooting",
-      "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
-    },
-    {
-      "id": 135293,
-      "subject": "Videos are not producing sound ",
-      "category": "App Issue",
-      "subcategory": "AV.X - Video No Sound",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
-    },
-    {
-      "id": 135292,
-      "subject": "Techs are not receiving/being notified when cars get put on their tablet ",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
-      "priority": "high",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
-    },
-    {
-      "id": 135289,
-      "subject": "Camera issue and vin scanner",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-11T20:29:21.832Z"
+      "matchedAt": "2026-02-11T21:04:31.891Z"
     }
   ],
   "stats": {
-    "total": 159,
-    "matched": 132,
-    "unmatched": 27,
-    "matchRate": 83
+    "total": 164,
+    "matched": 135,
+    "unmatched": 29,
+    "matchRate": 82
   },
   "topCategories": [
     {
       "name": "App Issue",
-      "count": 48
+      "count": 51
     },
     {
       "name": "POS Integration",
@@ -499,5 +499,5 @@
       "count": 1
     }
   ],
-  "generatedAt": "2026-02-11T20:29:21.838Z"
+  "generatedAt": "2026-02-11T21:04:31.897Z"
 }

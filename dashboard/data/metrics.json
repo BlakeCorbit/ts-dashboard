@@ -1,12 +1,12 @@
 {
-  "totalTickets": 347,
-  "resolvedTickets": 322,
-  "openBacklog": 510,
-  "avgPerDay": 49.6,
+  "totalTickets": 352,
+  "resolvedTickets": 323,
+  "openBacklog": 514,
+  "avgPerDay": 50.3,
   "byCategory": [
     {
       "name": "Other",
-      "count": 108
+      "count": 112
     },
     {
       "name": "High Priority",
@@ -14,7 +14,7 @@
     },
     {
       "name": "App/Work Order",
-      "count": 58
+      "count": 59
     },
     {
       "name": "Integration",
@@ -28,7 +28,7 @@
   "byPOS": [
     {
       "name": "Non-POS",
-      "count": 269
+      "count": 274
     },
     {
       "name": "Protractor",
@@ -50,11 +50,11 @@
     },
     {
       "name": "Unknown",
-      "count": 94
+      "count": 97
     },
     {
       "name": "Email",
-      "count": 20
+      "count": 22
     }
   ],
   "byDay": [
@@ -88,8 +88,8 @@
     },
     {
       "day": "2026-02-11",
-      "count": 57
+      "count": 62
     }
   ],
-  "generatedAt": "2026-02-11T20:29:25.681Z"
+  "generatedAt": "2026-02-11T21:04:36.771Z"
 }
