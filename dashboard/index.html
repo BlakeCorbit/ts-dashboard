@@ -166,7 +166,7 @@ function renderIncidents(d){
     box.innerHTML='<div class="all-clear fade-in"><div class="title">All Clear</div><div class="sub">No active problem tickets</div></div>';
     return;
   }
-  var h='<div class="incidents-grid fade-in">';
+  var h='<div class="incidents-grid fade-in" style="grid-template-columns:1fr">';
   d.incidents.forEach(function(i){
     var age=CC.ageH(i.createdAt);
     var ac=age>24?'age-critical':age>4?'age-warning':'age-ok';
@@ -177,13 +177,55 @@ function renderIncidents(d){
     h+='</div>';
     h+='<div class="incident-subject">'+CC.esc(i.subject)+'</div>';
     h+='<div class="incident-meta">';
+    h+='<span><span class="label">Linked:</span> <span class="linked-count">'+(i.linkedCount||0)+' tickets</span></span>';
     if(i.jiraLinks&&i.jiraLinks.length>0){
       i.jiraLinks.forEach(function(j){
         h+='<span><span class="label">Jira:</span> <a href="'+CC.esc(j.url)+'" target="_blank"><strong>'+CC.esc(j.issueKey)+'</strong></a></span>';
       });
     }
     h+='<span><span class="label">Status:</span> <span class="value">'+CC.esc(i.status)+'</span></span>';
-    h+='</div></div>';
+    if(i.createdAt){
+      h+='<span><span class="label">Created:</span> <span class="value">'+CC.relTime(i.createdAt)+'</span></span>';
+    }
+    h+='</div>';
+
+    // Linked tickets expandable section
+    if(i.linkedTickets&&i.linkedTickets.length>0){
+      var pid=i.problemId;
+      var hasJira=i.jiraLinks&&i.jiraLinks.length>0;
+      h+='<div style="margin-top:12px">';
+      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="margin-bottom:8px">Show '+i.linkedTickets.length+' Linked Tickets</button>';
+      h+='<div id="linked-'+pid+'" style="display:none">';
+      i.linkedTickets.forEach(function(t){
+        h+='<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">';
+        // Ticket header row
+        h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-input);cursor:pointer" onclick="toggleTicketDetail('+t.id+')">';
+        h+='<div style="display:flex;align-items:center;gap:12px">';
+        h+='<span style="font-family:var(--font-mono);font-weight:600;color:var(--av-blue)"><a href="'+CC.ZD+t.id+'" target="_blank" onclick="event.stopPropagation()">#'+t.id+'</a></span>';
+        h+='<span style="font-size:0.82rem">'+CC.esc(CC.trunc(t.subject,60))+'</span>';
+        h+='<span style="font-size:0.72rem;color:var(--text-muted)">'+CC.esc(t.status)+'</span>';
+        h+='</div>';
+        h+='<div style="display:flex;gap:6px">';
+        if(hasJira) h+='<button class="btn btn-link btn-sm" onclick="event.stopPropagation();propagateJira('+t.id+','+pid+',this)">Add Jira</button>';
+        h+='<button class="btn btn-sm" onclick="event.stopPropagation();toggleTicketDetail('+t.id+')" style="font-size:0.68rem">Expand</button>';
+        h+='</div></div>';
+        // Expandable detail panel (hidden by default)
+        h+='<div id="detail-'+t.id+'" style="display:none;padding:12px;border-top:1px solid var(--border-subtle)">';
+        h+='<div id="detail-content-'+t.id+'" style="margin-bottom:12px"><div class="loading-shimmer" style="height:60px"></div></div>';
+        // Recommended Communication form
+        h+='<div style="border-top:1px solid var(--border-subtle);padding-top:12px">';
+        h+='<label style="display:block;font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Recommended Communication (Internal Note)</label>';
+        h+='<textarea id="comm-'+t.id+'" style="width:100%;min-height:80px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-main);font-size:0.85rem;resize:vertical" placeholder="Type recommended communication..."></textarea>';
+        h+='<div style="display:flex;gap:8px;margin-top:8px">';
+        h+='<button class="btn btn-approve btn-sm" onclick="sendComment('+t.id+',this)">Send as Internal Note</button>';
+        h+='<span id="comm-status-'+t.id+'" style="font-size:0.72rem;color:var(--text-muted);align-self:center"></span>';
+        h+='</div></div></div>';
+        h+='</div>';
+      });
+      h+='</div></div>';
+    }
+
+    h+='</div>';
   });
   h+='</div>';
   box.innerHTML=h;
@@ -550,6 +592,123 @@ function renderCharts(d){
   h+=CC.hBar('By POS',d.byPOS);
   box.innerHTML=h;
 }
+
+// ---- Toggle Linked Tickets ----
+window.toggleLinked = function(problemId, btn){
+  var el=document.getElementById('linked-'+problemId);
+  if(!el)return;
+  if(el.style.display==='none'){
+    el.style.display='block';
+    btn.textContent=btn.textContent.replace('Show','Hide');
+  } else {
+    el.style.display='none';
+    btn.textContent=btn.textContent.replace('Hide','Show');
+  }
+};
+
+// ---- Toggle Individual Ticket Detail ----
+window.toggleTicketDetail = function(ticketId){
+  var el=document.getElementById('detail-'+ticketId);
+  if(!el)return;
+  if(el.style.display==='none'){
+    el.style.display='block';
+    loadTicketDetail(ticketId);
+  } else {
+    el.style.display='none';
+  }
+};
+
+// ---- Load Ticket Detail (latest comments) ----
+function loadTicketDetail(ticketId){
+  var box=document.getElementById('detail-content-'+ticketId);
+  box.innerHTML='<div class="loading-shimmer" style="height:60px"></div>';
+  CC.api('ticket-detail?id='+ticketId).then(function(d){
+    if(!d||!d.ticket){box.innerHTML='<div style="color:var(--text-muted);font-size:0.82rem">Failed to load</div>';return;}
+    var t=d.ticket;
+    var h='<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px">';
+    h+='<span><strong>Status:</strong> '+CC.esc(t.status)+'</span>';
+    h+='<span><strong>Priority:</strong> '+CC.esc(t.priority||'normal')+'</span>';
+    h+='<span><strong>Type:</strong> '+CC.esc(t.type||'ticket')+'</span>';
+    h+='<span><strong>Updated:</strong> '+CC.relTime(t.updatedAt)+'</span>';
+    h+='</div>';
+    if(d.comments&&d.comments.length>0){
+      h+='<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Recent Comments (newest first)</div>';
+      h+='<div style="max-height:250px;overflow-y:auto">';
+      d.comments.slice(0,8).forEach(function(c){
+        var badge=c.public?'<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(118,195,206,0.15);color:var(--av-blue);margin-left:6px">PUBLIC</span>':'<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(117,194,154,0.15);color:var(--av-green);margin-left:6px">INTERNAL</span>';
+        h+='<div style="border-left:2px solid '+(c.public?'var(--av-blue)':'var(--av-green)')+';padding:6px 10px;margin-bottom:6px;font-size:0.78rem;background:var(--bg-input);border-radius:0 4px 4px 0">';
+        h+='<div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:3px">'+CC.relTime(c.createdAt)+badge+'</div>';
+        h+='<div style="white-space:pre-wrap;color:var(--text-secondary);max-height:100px;overflow-y:auto">'+CC.esc(CC.trunc(c.body,500))+'</div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    } else {
+      h+='<div style="color:var(--text-muted);font-size:0.82rem">No comments</div>';
+    }
+    box.innerHTML=h;
+  }).catch(function(e){
+    box.innerHTML='<div style="color:var(--accent-red);font-size:0.82rem">Error: '+CC.esc(e.message)+'</div>';
+  });
+}
+
+// ---- Send Recommended Communication ----
+window.sendComment = function(ticketId, btn){
+  var textarea=document.getElementById('comm-'+ticketId);
+  var status=document.getElementById('comm-status-'+ticketId);
+  var body=textarea.value.trim();
+  if(!body){CC.toast('Type a message first',false);return;}
+
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span> Sending...';
+  CC.api('comment',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:ticketId, body:'--- Recommended Communication ---\n\n'+body+'\n\n-- TS Dashboard'})
+  }).then(function(d){
+    if(d&&d.success){
+      CC.toast('Internal note added to #'+ticketId, true);
+      btn.classList.remove('loading');
+      btn.textContent='Send as Internal Note';
+      textarea.value='';
+      status.textContent='Sent '+CC.fmtTime(new Date().toISOString());
+      status.style.color='var(--av-green)';
+      loadTicketDetail(ticketId);
+    } else {
+      CC.toast('Failed to send', false);
+      btn.classList.remove('loading');
+      btn.textContent='Send as Internal Note';
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent='Send as Internal Note';
+  });
+};
+
+// ---- Propagate Jira to Linked Ticket ----
+window.propagateJira = function(ticketId, problemId, btn){
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span>';
+  CC.api('propagate-jira',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:ticketId, problemId:problemId})
+  }).then(function(d){
+    if(d&&d.success){
+      var jira=d.jiraLinks&&d.jiraLinks.length?d.jiraLinks[0].issueKey:'';
+      CC.toast('Jira '+jira+' added to #'+ticketId, true);
+      btn.outerHTML='<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Done</span>';
+    } else {
+      CC.toast('Failed to propagate Jira', false);
+      btn.classList.remove('loading');
+      btn.textContent='Add Jira';
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent='Add Jira';
+  });
+};
 
 // ---- Refresh All ----
 window.refreshAll = function(){
