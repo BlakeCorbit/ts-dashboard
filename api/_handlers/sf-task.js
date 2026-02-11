@@ -3,14 +3,17 @@
 // Also triggered by ZD webhook when `sf_task` tag is added.
 //
 // Flow:
-//   1. Get ticket data from ZD (org, requester, last comment)
-//   2. Look up SF Account by org name
+//   1. Get ticket data from ZD (SID, org, requester, last comment)
+//   2. Look up SF Account by SID (unique match), fallback to org name
 //   3. Get Customer Success Advisor from Account
 //   4. Create SF Task (Call In, Check In, High priority, due today)
 //   5. Write SF task link back to ZD ticket as internal note
 
 const { zdRequest } = require('../_zendesk');
 const { sfRequest, isSalesforceConfigured, getInstanceUrl } = require('../_salesforce');
+
+// ZD custom field IDs
+const ZD_SID_FIELD = 360042445632; // SID (Shop ID)
 
 // ---- Fetch ZD ticket details ----
 async function getTicketData(ticketId) {
@@ -49,6 +52,13 @@ async function getTicketData(ticketId) {
     } catch { /* org lookup failed */ }
   }
 
+  // Extract SID from custom fields
+  let sid = null;
+  if (ticket.custom_fields) {
+    const sidField = ticket.custom_fields.find(f => f.id === ZD_SID_FIELD);
+    if (sidField && sidField.value) sid = String(sidField.value);
+  }
+
   // Get last public comment
   let lastComment = '';
   try {
@@ -66,16 +76,30 @@ async function getTicketData(ticketId) {
     assigneeName,
     assigneeEmail,
     orgName,
+    sid,
     lastComment: lastComment.substring(0, 5000), // Trim for SF field limits
     url: `https://bayiq.zendesk.com/agent/tickets/${ticket.id}`,
   };
 }
 
-// ---- Look up SF Account by org name ----
-async function findSfAccount(orgName) {
-  if (!orgName) throw new Error('No organization on this ticket — cannot look up SF Account');
+// ---- Look up SF Account by SID, falling back to org name ----
+async function findSfAccount(sid, orgName) {
+  // Primary: look up by SID (unique, avoids duplicate name issues)
+  if (sid) {
+    const query = `SELECT Id, Name, Customer_Success_Advisor__c FROM Account WHERE SID__c = '${sid}' LIMIT 1`;
+    const result = await sfRequest(`/query?q=${encodeURIComponent(query)}`);
+    if (result && result.records && result.records.length > 0) {
+      return result.records[0];
+    }
+  }
 
-  // SOQL query: find Account by name (exact match first, then fuzzy)
+  // Fallback: look up by org name
+  if (!orgName) {
+    throw new Error(sid
+      ? `No Salesforce Account found with SID ${sid}`
+      : 'No SID or organization on this ticket — cannot look up SF Account');
+  }
+
   const escaped = orgName.replace(/'/g, "\\'");
   const query = `SELECT Id, Name, Customer_Success_Advisor__c FROM Account WHERE Name = '${escaped}' LIMIT 1`;
   const result = await sfRequest(`/query?q=${encodeURIComponent(query)}`);
@@ -84,15 +108,7 @@ async function findSfAccount(orgName) {
     return result.records[0];
   }
 
-  // Try fuzzy match with LIKE
-  const fuzzyQuery = `SELECT Id, Name, Customer_Success_Advisor__c FROM Account WHERE Name LIKE '%${escaped}%' LIMIT 1`;
-  const fuzzyResult = await sfRequest(`/query?q=${encodeURIComponent(fuzzyQuery)}`);
-
-  if (fuzzyResult && fuzzyResult.records && fuzzyResult.records.length > 0) {
-    return fuzzyResult.records[0];
-  }
-
-  throw new Error(`No Salesforce Account found matching "${orgName}"`);
+  throw new Error(`No Salesforce Account found matching SID "${sid || 'n/a'}" or name "${orgName}"`);
 }
 
 // ---- Get advisor user info ----
@@ -220,8 +236,8 @@ module.exports = async function handler(req, res) {
     // 1. Get ticket data from ZD
     const ticket = await getTicketData(ticketId);
 
-    // 2. Look up SF Account
-    const account = await findSfAccount(ticket.orgName);
+    // 2. Look up SF Account by SID (preferred) or org name (fallback)
+    const account = await findSfAccount(ticket.sid, ticket.orgName);
 
     // 3. Get Customer Success Advisor
     const advisorId = account.Customer_Success_Advisor__c;
