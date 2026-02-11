@@ -166,63 +166,57 @@ function renderIncidents(d){
     box.innerHTML='<div class="all-clear fade-in"><div class="title">All Clear</div><div class="sub">No active problem tickets</div></div>';
     return;
   }
-  var h='<div class="incidents-grid fade-in" style="grid-template-columns:1fr">';
+  var h='<div class="incidents-grid fade-in">';
   d.incidents.forEach(function(i){
     var age=CC.ageH(i.createdAt);
     var ac=age>24?'age-critical':age>4?'age-warning':'age-ok';
+    var linked=i.linkedCount||0;
+    var hasJira=i.jiraLinks&&i.jiraLinks.length>0;
+    var pid=i.problemId;
+
     h+='<div class="incident-card '+ac+'">';
     h+='<div class="incident-header">';
-    h+='<span class="incident-id"><a href="'+CC.ZD+i.problemId+'" target="_blank">ZD#'+i.problemId+'</a></span>';
+    h+='<span class="incident-id"><a href="'+CC.ZD+pid+'" target="_blank">ZD#'+pid+'</a></span>';
     h+='<span class="age-pill '+ac+'">'+CC.relTime(i.createdAt)+'</span>';
     h+='</div>';
     h+='<div class="incident-subject">'+CC.esc(i.subject)+'</div>';
     h+='<div class="incident-meta">';
-    h+='<span><span class="label">Linked:</span> <span class="linked-count">'+(i.linkedCount||0)+' tickets</span></span>';
-    if(i.jiraLinks&&i.jiraLinks.length>0){
+    if(hasJira){
       i.jiraLinks.forEach(function(j){
         h+='<span><span class="label">Jira:</span> <a href="'+CC.esc(j.url)+'" target="_blank"><strong>'+CC.esc(j.issueKey)+'</strong></a></span>';
       });
     }
     h+='<span><span class="label">Status:</span> <span class="value">'+CC.esc(i.status)+'</span></span>';
-    if(i.createdAt){
-      h+='<span><span class="label">Created:</span> <span class="value">'+CC.relTime(i.createdAt)+'</span></span>';
-    }
     h+='</div>';
 
-    // Linked tickets expandable section
+    // Linked tickets toggle (compact)
     if(i.linkedTickets&&i.linkedTickets.length>0){
-      var pid=i.problemId;
-      var hasJira=i.jiraLinks&&i.jiraLinks.length>0;
-      h+='<div style="margin-top:12px">';
-      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="margin-bottom:8px">Show '+i.linkedTickets.length+' Linked Tickets</button>';
-      h+='<div id="linked-'+pid+'" style="display:none">';
+      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="margin-top:8px;font-size:0.7rem">'+linked+' Linked</button>';
+      h+='<div id="linked-'+pid+'" style="display:none;margin-top:8px">';
       i.linkedTickets.forEach(function(t){
-        h+='<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">';
-        // Ticket header row
-        h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-input);cursor:pointer" onclick="toggleTicketDetail('+t.id+')">';
-        h+='<div style="display:flex;align-items:center;gap:12px">';
-        h+='<span style="font-family:var(--font-mono);font-weight:600;color:var(--av-blue)"><a href="'+CC.ZD+t.id+'" target="_blank" onclick="event.stopPropagation()">#'+t.id+'</a></span>';
-        h+='<span style="font-size:0.82rem">'+CC.esc(CC.trunc(t.subject,60))+'</span>';
-        h+='<span style="font-size:0.72rem;color:var(--text-muted)">'+CC.esc(t.status)+'</span>';
+        h+='<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);margin-bottom:6px;overflow:hidden">';
+        h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-input);cursor:pointer;gap:8px" onclick="toggleTicketDetail('+t.id+')">';
+        h+='<div style="display:flex;align-items:center;gap:8px;min-width:0">';
+        h+='<a href="'+CC.ZD+t.id+'" target="_blank" onclick="event.stopPropagation()" style="font-family:var(--font-mono);font-weight:600;color:var(--av-blue);font-size:0.75rem;flex-shrink:0">#'+t.id+'</a>';
+        h+='<span style="font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+CC.esc(CC.trunc(t.subject,40))+'</span>';
         h+='</div>';
-        h+='<div style="display:flex;gap:6px">';
-        if(hasJira) h+='<button class="btn btn-link btn-sm" onclick="event.stopPropagation();propagateJira('+t.id+','+pid+',this)">Add Jira</button>';
-        h+='<button class="btn btn-sm" onclick="event.stopPropagation();toggleTicketDetail('+t.id+')" style="font-size:0.68rem">Expand</button>';
+        h+='<div style="display:flex;gap:4px;flex-shrink:0">';
+        if(hasJira) h+='<button class="btn btn-link btn-sm" onclick="event.stopPropagation();propagateJira('+t.id+','+pid+',this)" style="font-size:0.62rem;padding:2px 6px">Jira</button>';
         h+='</div></div>';
-        // Expandable detail panel (hidden by default)
-        h+='<div id="detail-'+t.id+'" style="display:none;padding:12px;border-top:1px solid var(--border-subtle)">';
-        h+='<div id="detail-content-'+t.id+'" style="margin-bottom:12px"><div class="loading-shimmer" style="height:60px"></div></div>';
-        // Recommended Communication form
-        h+='<div style="border-top:1px solid var(--border-subtle);padding-top:12px">';
-        h+='<label style="display:block;font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Recommended Communication (Internal Note)</label>';
-        h+='<textarea id="comm-'+t.id+'" style="width:100%;min-height:80px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-main);font-size:0.85rem;resize:vertical" placeholder="Type recommended communication..."></textarea>';
-        h+='<div style="display:flex;gap:8px;margin-top:8px">';
-        h+='<button class="btn btn-approve btn-sm" onclick="sendComment('+t.id+',this)">Send as Internal Note</button>';
-        h+='<span id="comm-status-'+t.id+'" style="font-size:0.72rem;color:var(--text-muted);align-self:center"></span>';
+        // Expandable detail (hidden)
+        h+='<div id="detail-'+t.id+'" style="display:none;padding:10px;border-top:1px solid var(--border-subtle)">';
+        h+='<div id="detail-content-'+t.id+'" style="margin-bottom:10px"><div class="loading-shimmer" style="height:50px"></div></div>';
+        h+='<div style="border-top:1px solid var(--border-subtle);padding-top:8px">';
+        h+='<textarea id="comm-'+t.id+'" style="width:100%;min-height:60px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-sub);font-size:0.78rem;resize:vertical;box-sizing:border-box" placeholder="Internal note..."></textarea>';
+        h+='<div style="display:flex;gap:6px;margin-top:6px">';
+        h+='<button class="btn btn-approve btn-sm" onclick="sendComment('+t.id+',this)" style="font-size:0.68rem">Send Note</button>';
+        h+='<span id="comm-status-'+t.id+'" style="font-size:0.68rem;color:var(--text-muted);align-self:center"></span>';
         h+='</div></div></div>';
         h+='</div>';
       });
-      h+='</div></div>';
+      h+='</div>';
+    } else if(linked>0){
+      h+='<div style="font-size:0.72rem;color:var(--text-muted);margin-top:8px">'+linked+' linked</div>';
     }
 
     h+='</div>';
@@ -599,10 +593,12 @@ window.toggleLinked = function(problemId, btn){
   if(!el)return;
   if(el.style.display==='none'){
     el.style.display='block';
-    btn.textContent=btn.textContent.replace('Show','Hide');
+    btn.style.background='var(--av-green-dark)';
+    btn.style.color='#fff';
   } else {
     el.style.display='none';
-    btn.textContent=btn.textContent.replace('Hide','Show');
+    btn.style.background='';
+    btn.style.color='';
   }
 };
 
