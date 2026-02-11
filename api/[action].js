@@ -21,7 +21,9 @@ const HANDLERS = {
   'propagate-jira': () => require('./_handlers/propagate-jira'),
   'ticket-detail':  () => require('./_handlers/ticket-detail'),
   tickets:          () => require('./_handlers/tickets'),
-  'triage-queue':   () => require('./_handlers/triage-queue'),
+  'triage-queue':         () => require('./_handlers/triage-queue'),
+  'article-suggestions':  () => require('./_handlers/article-suggestions'),
+  'create-article':       () => require('./_handlers/create-article'),
 };
 
 module.exports = (req, res) => {

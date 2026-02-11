@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Article Generator - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Article Generator</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="loadSuggestions()" id="refresh-btn">Refresh</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Period selector -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+    <span style="font-size:0.82rem;color:var(--text-secondary)">Analyze last:</span>
+    <button class="btn btn-sm" id="btn-7" onclick="setPeriod(7)">7 days</button>
+    <button class="btn btn-sm" id="btn-14" onclick="setPeriod(14)">14 days</button>
+    <button class="btn btn-sm" id="btn-30" onclick="setPeriod(30)" style="background:var(--av-green-dark);color:#fff">30 days</button>
+  </div>
+
+  <!-- Suggested Articles -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Suggested Articles</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text-muted)" id="gap-count"></span>
+      </div>
+    </div>
+    <div id="suggestions-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Recently Created -->
+  <section style="margin-top:32px">
+    <div class="section-header">
+      <div class="section-title">Recently Created</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text-muted)" id="created-count"></span>
+        <button class="btn btn-sm btn-danger" onclick="clearCreated()">Clear History</button>
+      </div>
+    </div>
+    <div id="created-box"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var currentDays = 30;
+var suggestions = [];
+var dismissed = JSON.parse(localStorage.getItem('articleDismissed') || '[]');
+
+function getCreated(){
+  return JSON.parse(localStorage.getItem('articleCreated') || '[]');
+}
+function saveCreated(list){
+  localStorage.setItem('articleCreated', JSON.stringify(list));
+}
+
+// Period selector
+window.setPeriod = function(days){
+  currentDays = days;
+  document.querySelectorAll('[id^="btn-"]').forEach(function(b){
+    b.style.background = '';
+    b.style.color = '';
+  });
+  var active = document.getElementById('btn-' + days);
+  if(active){
+    active.style.background = 'var(--av-green-dark)';
+    active.style.color = '#fff';
+  }
+  loadSuggestions();
+};
+
+// Load suggestions from API
+window.loadSuggestions = function(){
+  var box = document.getElementById('suggestions-box');
+  box.innerHTML = '<div class="loading-shimmer"></div>';
+
+  CC.api('article-suggestions?days=' + currentDays + '&threshold=5').then(function(d){
+    if(!d){
+      box.innerHTML = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Failed to load suggestions</div></div>';
+      return;
+    }
+    suggestions = d.suggestions || [];
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
+    renderSuggestions();
+    updateStatus(d);
+  }).catch(function(e){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Error: ' + CC.esc(e.message) + '</div></div>';
+  });
+};
+
+function renderSuggestions(){
+  var box = document.getElementById('suggestions-box');
+  var countEl = document.getElementById('gap-count');
+
+  // Filter out dismissed patterns
+  var visible = suggestions.filter(function(s){
+    return dismissed.indexOf(s.errorPattern + (s.pos || '')) === -1;
+  });
+
+  var gaps = visible.filter(function(s){ return s.hasGap; });
+  var covered = visible.filter(function(s){ return !s.hasGap; });
+
+  countEl.textContent = gaps.length + ' gap' + (gaps.length !== 1 ? 's' : '') + ' found, ' + covered.length + ' covered';
+
+  if(visible.length === 0){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:50px">' +
+      '<div style="font-size:2.5rem;margin-bottom:12px;color:var(--av-green)">&#10003;</div>' +
+      '<div class="title">No Gaps Detected</div>' +
+      '<div class="sub">All high-frequency ticket patterns have matching Help Center articles</div>' +
+      '</div>';
+    return;
+  }
+
+  var h = '<div class="fade-in">';
+
+  // Gaps first
+  if(gaps.length > 0){
+    h += '<div style="font-size:0.82rem;color:var(--accent-yellow);font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Missing Articles (' + gaps.length + ')</div>';
+    gaps.forEach(function(s, idx){ h += buildCard(s, idx, true); });
+  }
+
+  // Already covered
+  if(covered.length > 0){
+    h += '<div style="font-size:0.82rem;color:var(--text-muted);font-weight:600;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.5px">Already Covered (' + covered.length + ')</div>';
+    covered.forEach(function(s, idx){ h += buildCard(s, gaps.length + idx, false); });
+  }
+
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+function buildCard(s, idx, isGap){
+  var cardClass = isGap ? 'approval-card' : 'approval-card';
+  var borderColor = isGap ? 'var(--accent-yellow)' : 'var(--av-green)';
+  var h = '<div class="' + cardClass + '" id="article-card-' + idx + '" style="border-left:3px solid ' + borderColor + '">';
+
+  // Header
+  h += '<div class="cluster-header">';
+  h += '<div class="cluster-pattern">' + CC.esc(s.pattern) + '</div>';
+  h += '<span class="age-pill ' + (isGap ? 'age-warning' : 'age-ok') + '">' + (isGap ? 'No Article' : 'Covered') + '</span>';
+  h += '</div>';
+
+  // Stats
+  h += '<div class="cluster-stats">';
+  h += '<strong>' + s.ticketCount + '</strong> tickets from <strong>' + s.orgCount + '</strong> shop(s)';
+  if(s.category) h += ' &middot; <span style="color:var(--av-blue)">' + CC.esc(s.category) + '</span>';
+  h += '</div>';
+
+  // Sample ticket chips
+  if(s.sampleTickets && s.sampleTickets.length){
+    h += '<div class="cluster-tickets">';
+    s.sampleTickets.forEach(function(t){
+      h += '<span class="cluster-ticket-chip"><a href="' + CC.ZD + t.id + '" target="_blank" title="' + CC.esc(t.subject) + '">#' + t.id + '</a></span>';
+    });
+    h += '</div>';
+  }
+
+  // Runbook link
+  if(s.runbookUrl){
+    h += '<div style="margin:8px 0;font-size:0.82rem">';
+    h += '<span style="color:var(--text-muted)">Runbook:</span> <a href="' + CC.esc(s.runbookUrl) + '" target="_blank" style="color:var(--av-blue)">Confluence</a>';
+    h += '</div>';
+  }
+
+  // Existing articles (if covered)
+  if(!isGap && s.existingArticles && s.existingArticles.length){
+    h += '<div style="margin:8px 0;font-size:0.82rem">';
+    h += '<span style="color:var(--text-muted)">Matching articles:</span> ';
+    s.existingArticles.forEach(function(a){
+      h += '<a href="' + CC.esc(a.url) + '" target="_blank" style="color:var(--av-green);margin-right:8px">' + CC.esc(a.title) + '</a>';
+    });
+    h += '</div>';
+  }
+
+  if(isGap){
+    // Editable form
+    h += '<div class="approval-form" id="form-' + idx + '">';
+    h += '<label>Article Title</label>';
+    h += '<input type="text" id="title-' + idx + '" value="' + CC.esc(s.suggestedTitle || '') + '">';
+    h += '<label>Article Body (HTML) &mdash; <a href="javascript:void(0)" onclick="togglePreview(' + idx + ')" style="color:var(--av-blue);font-weight:400">Toggle Preview</a></label>';
+    h += '<textarea id="body-' + idx + '" rows="12">' + CC.esc(s.suggestedBody || '') + '</textarea>';
+    h += '<div id="preview-' + idx + '" style="display:none;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-top:8px;font-family:var(--font-sub);line-height:1.6;color:var(--text-primary)"></div>';
+    h += '</div>';
+
+    // Actions
+    h += '<div style="display:flex;gap:8px;margin-top:16px">';
+    h += '<button class="btn btn-approve" onclick="createArticle(' + idx + ',this)" id="create-btn-' + idx + '">Create Draft</button>';
+    h += '<button class="btn btn-muted" onclick="dismissSuggestion(' + idx + ')">Dismiss</button>';
+    h += '</div>';
+  } else {
+    // Dismiss only for covered
+    h += '<div style="display:flex;gap:8px;margin-top:12px">';
+    h += '<button class="btn btn-muted btn-sm" onclick="dismissSuggestion(' + idx + ')">Hide</button>';
+    h += '</div>';
+  }
+
+  // Result area
+  h += '<div id="result-' + idx + '"></div>';
+  h += '</div>';
+  return h;
+}
+
+// Toggle HTML preview
+window.togglePreview = function(idx){
+  var textarea = document.getElementById('body-' + idx);
+  var preview = document.getElementById('preview-' + idx);
+  if(preview.style.display === 'none'){
+    preview.innerHTML = textarea.value;
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+};
+
+// Create article draft
+window.createArticle = function(idx, btn){
+  var gaps = suggestions.filter(function(s){
+    return s.hasGap && dismissed.indexOf(s.errorPattern + (s.pos || '')) === -1;
+  });
+  var s = gaps[idx];
+  if(!s){
+    // Try all visible
+    var visible = suggestions.filter(function(s2){
+      return dismissed.indexOf(s2.errorPattern + (s2.pos || '')) === -1;
+    });
+    s = visible[idx];
+  }
+  if(!s) return;
+
+  var title = document.getElementById('title-' + idx).value.trim();
+  var body = document.getElementById('body-' + idx).value.trim();
+
+  if(!title){
+    CC.toast('Title is required', false);
+    return;
+  }
+  if(!body){
+    CC.toast('Body is required', false);
+    return;
+  }
+
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+  var labels = ['internal', 'troubleshooting', 'auto-generated'];
+  if(s.category) labels.push(s.category.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+  if(s.pos) labels.push(s.pos.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+
+  CC.api('create-article', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ title: title, body: body, labels: labels })
+  }).then(function(d){
+    if(d && d.success){
+      // Success state
+      var card = document.getElementById('article-card-' + idx);
+      card.classList.add('approved');
+      card.style.borderLeftColor = 'var(--av-green)';
+
+      var form = document.getElementById('form-' + idx);
+      form.style.display = 'none';
+      btn.parentNode.style.display = 'none';
+
+      var resultEl = document.getElementById('result-' + idx);
+      resultEl.innerHTML = '<div style="margin-top:16px">' +
+        '<div style="font-size:1rem;font-weight:700;color:var(--av-green);margin-bottom:8px">' +
+        'Draft Created: <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-green)">' + CC.esc(d.title) + '</a>' +
+        '</div>' +
+        '<div style="font-size:0.82rem;color:var(--text-muted)">Article ID: ' + d.articleId + ' &middot; Status: Draft &middot; <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">Open in Help Center</a></div>' +
+        '</div>';
+
+      // Save to created list
+      var created = getCreated();
+      created.unshift({
+        articleId: d.articleId,
+        title: d.title,
+        url: d.url,
+        pattern: s.errorPattern,
+        createdAt: new Date().toISOString(),
+      });
+      saveCreated(created);
+
+      CC.toast('Draft article created', true);
+      renderCreated();
+
+      setTimeout(function(){ loadSuggestions(); }, 5000);
+    } else {
+      CC.toast('Failed to create article', false);
+      btn.classList.remove('loading');
+      btn.innerHTML = 'Create Draft';
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.innerHTML = 'Create Draft';
+  });
+};
+
+// Dismiss suggestion
+window.dismissSuggestion = function(idx){
+  var visible = suggestions.filter(function(s){
+    return dismissed.indexOf(s.errorPattern + (s.pos || '')) === -1;
+  });
+  var s = visible[idx];
+  if(!s) return;
+
+  var key = s.errorPattern + (s.pos || '');
+  dismissed.push(key);
+  localStorage.setItem('articleDismissed', JSON.stringify(dismissed));
+  CC.toast('Dismissed: ' + s.errorPattern, true);
+  renderSuggestions();
+  updateStatus();
+};
+
+// Render recently created articles
+function renderCreated(){
+  var created = getCreated();
+  var box = document.getElementById('created-box');
+  var countEl = document.getElementById('created-count');
+  countEl.textContent = created.length + ' article' + (created.length !== 1 ? 's' : '');
+
+  if(created.length === 0){
+    box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:0.88rem">No articles created yet. Use the suggestions above to generate drafts.</div>';
+    return;
+  }
+
+  var h = '<div class="fade-in" style="display:grid;gap:8px">';
+  created.forEach(function(a){
+    h += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border)">';
+    h += '<div style="flex:1">';
+    h += '<a href="' + CC.esc(a.url) + '" target="_blank" style="color:var(--av-green);font-weight:600">' + CC.esc(a.title) + '</a>';
+    h += '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">' + CC.esc(a.pattern) + ' &middot; ' + CC.relTime(a.createdAt) + ' &middot; ID: ' + a.articleId + '</div>';
+    h += '</div>';
+    h += '<span class="age-pill age-ok" style="font-size:0.72rem">Draft</span>';
+    h += '</div>';
+  });
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// Clear created history
+window.clearCreated = function(){
+  var created = getCreated();
+  if(created.length === 0) return;
+  if(!confirm('Clear history of ' + created.length + ' created articles?')) return;
+  localStorage.setItem('articleCreated', '[]');
+  CC.toast('History cleared', true);
+  renderCreated();
+};
+
+// Status badge
+function updateStatus(data){
+  var el = document.getElementById('status-badge');
+  if(!el) return;
+
+  var gapCount = 0;
+  if(data && typeof data.gapCount === 'number'){
+    gapCount = data.gapCount;
+  } else {
+    gapCount = suggestions.filter(function(s){ return s.hasGap; }).length;
+  }
+
+  if(gapCount === 0){
+    el.innerHTML = '<span class="status-badge status-green"><span class="dot"></span>Fully Covered</span>';
+  } else if(gapCount <= 3){
+    el.innerHTML = '<span class="status-badge status-yellow"><span class="dot"></span>' + gapCount + ' Gap' + (gapCount !== 1 ? 's' : '') + '</span>';
+  } else {
+    el.innerHTML = '<span class="status-badge status-red"><span class="dot"></span>' + gapCount + ' Gaps</span>';
+  }
+}
+
+// ---- Init ----
+loadSuggestions();
+renderCreated();
+
+})();
+</script>
+</body>
+</html>
