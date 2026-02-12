@@ -109,6 +109,8 @@
 <div class="toast" id="toast"></div>
 
 <script src="shared/utils.js"></script>
+<script src="shared/sync.js"></script>
+<script src="shared/keyboard.js"></script>
 <script src="shared/nav.js"></script>
 <script>
 (function(){
@@ -555,6 +557,17 @@ function updateStatus(){
 // ---- Init ----
 loadSuggestions();
 renderCreated();
+
+// Keyboard shortcuts
+CC.keyboard.register('?', 'Show keyboard shortcuts', function() { CC.keyboard.showHelp(); }, 'General');
+CC.keyboard.register('escape', 'Close panels', function() { CC.keyboard.hideHelp(); }, 'General');
+CC.keyboard.register('r', 'Refresh suggestions', function() { loadSuggestions(); }, 'Actions');
+var navLinks = document.querySelectorAll('.nav-link');
+for (var ni = 0; ni < Math.min(navLinks.length, 6); ni++) {
+  (function(idx, link) {
+    CC.keyboard.register(String(idx + 1), link.textContent.trim(), function() { window.location.href = link.href; }, 'Navigation');
+  })(ni, navLinks[ni]);
+}
 
 })();
 </script>

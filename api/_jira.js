@@ -12,7 +12,8 @@ function getJiraAuth() {
   };
 }
 
-async function jiraRequest(endpoint, options = {}) {
+async function jiraRequest(endpoint, options = {}, _retryCount = 0) {
+  const MAX_RETRIES = 3;
   const creds = getJiraAuth();
   if (!creds) throw new Error('Jira credentials not configured');
 
@@ -30,9 +31,13 @@ async function jiraRequest(endpoint, options = {}) {
   });
 
   if (resp.status === 429) {
-    const retry = parseInt(resp.headers.get('retry-after') || '5', 10);
-    await new Promise(r => setTimeout(r, retry * 1000));
-    return jiraRequest(endpoint, options);
+    if (_retryCount >= MAX_RETRIES) {
+      throw new Error(`Jira rate limited after ${MAX_RETRIES} retries on ${endpoint}`);
+    }
+    const retry = Math.min(parseInt(resp.headers.get('retry-after') || '5', 10), 20);
+    const backoff = retry * Math.pow(1.5, _retryCount);
+    await new Promise(r => setTimeout(r, backoff * 1000));
+    return jiraRequest(endpoint, options, _retryCount + 1);
   }
 
   if (!resp.ok) {

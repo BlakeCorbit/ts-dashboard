@@ -12,7 +12,8 @@ function getConfluenceAuth() {
   };
 }
 
-async function confluenceRequest(endpoint, options = {}) {
+async function confluenceRequest(endpoint, options = {}, _retryCount = 0) {
+  const MAX_RETRIES = 3;
   const creds = getConfluenceAuth();
   if (!creds) throw new Error('Confluence credentials not configured');
 
@@ -30,9 +31,13 @@ async function confluenceRequest(endpoint, options = {}) {
   });
 
   if (resp.status === 429) {
-    const retry = parseInt(resp.headers.get('retry-after') || '5', 10);
-    await new Promise(r => setTimeout(r, retry * 1000));
-    return confluenceRequest(endpoint, options);
+    if (_retryCount >= MAX_RETRIES) {
+      throw new Error(`Confluence rate limited after ${MAX_RETRIES} retries on ${endpoint}`);
+    }
+    const retry = Math.min(parseInt(resp.headers.get('retry-after') || '5', 10), 20);
+    const backoff = retry * Math.pow(1.5, _retryCount);
+    await new Promise(r => setTimeout(r, backoff * 1000));
+    return confluenceRequest(endpoint, options, _retryCount + 1);
   }
 
   if (!resp.ok) {

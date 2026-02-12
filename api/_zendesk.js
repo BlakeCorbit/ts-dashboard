@@ -10,7 +10,8 @@ function getAuth() {
   };
 }
 
-async function zdRequest(endpoint, options = {}) {
+async function zdRequest(endpoint, options = {}, _retryCount = 0) {
+  const MAX_RETRIES = 3;
   const { baseUrl, auth } = getAuth();
   const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}/api/v2${endpoint}`;
   const urlObj = new URL(url);
@@ -34,9 +35,13 @@ async function zdRequest(endpoint, options = {}) {
   const response = await fetch(urlObj.toString(), fetchOpts);
 
   if (response.status === 429) {
-    const retryAfter = parseInt(response.headers.get('retry-after') || '10', 10);
-    await new Promise(r => setTimeout(r, retryAfter * 1000));
-    return zdRequest(endpoint, options);
+    if (_retryCount >= MAX_RETRIES) {
+      throw new Error(`Zendesk rate limited after ${MAX_RETRIES} retries on ${endpoint}`);
+    }
+    const retryAfter = Math.min(parseInt(response.headers.get('retry-after') || '5', 10), 20);
+    const backoff = retryAfter * Math.pow(1.5, _retryCount);
+    await new Promise(r => setTimeout(r, backoff * 1000));
+    return zdRequest(endpoint, options, _retryCount + 1);
   }
 
   if (!response.ok) {

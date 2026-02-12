@@ -27,6 +27,7 @@ const HANDLERS = {
   'sf-task':              () => require('./_handlers/sf-task'),
   'pt-suggestions':       () => require('./_handlers/pt-suggestions'),
   'bulk-update':          () => require('./_handlers/bulk-update'),
+  'batch-link':           () => require('./_handlers/batch-link'),
 };
 
 module.exports = (req, res) => {
