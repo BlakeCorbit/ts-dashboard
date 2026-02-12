@@ -36,6 +36,10 @@ function api(path, opts) {
   if (!opts.headers['X-Agent'] && agentName) {
     opts.headers['X-Agent'] = agentName;
   }
+  // Auto-add idempotency key for POST requests
+  if (opts.method === 'POST' && !opts.headers['X-Idempotency-Key']) {
+    opts.headers['X-Idempotency-Key'] = genIdemKey();
+  }
   return fetch(API + path, opts).then(function(r){ return r.ok ? r.json() : r.json().then(function(e){ throw new Error(e.error); }); });
 }
 
@@ -76,6 +80,11 @@ function hBar(title, items){
   } else h+='<div class="no-data">No data</div>';
   h+='</div>';
   return h;
+}
+
+// Generate idempotency key (unique per request)
+function genIdemKey() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 // Expose to window

@@ -19,33 +19,7 @@ const TAG_TO_CAT = {
   high_slack: 'High Priority',
 };
 
-/**
- * Calculate the start date for a given period.
- * @param {'week'|'month'|'quarter'|'year'} period
- * @returns {Date}
- */
-function getPeriodStart(period) {
-  const now = new Date();
-  switch (period) {
-    case 'week': {
-      const dayOfWeek = now.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const monday = new Date(now);
-      monday.setDate(now.getDate() + mondayOffset);
-      monday.setHours(0, 0, 0, 0);
-      return monday;
-    }
-    case 'quarter': {
-      const q = Math.floor(now.getMonth() / 3) * 3;
-      return new Date(now.getFullYear(), q, 1, 0, 0, 0, 0);
-    }
-    case 'year':
-      return new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
-    case 'month':
-    default:
-      return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  }
-}
+const { getPeriodStart } = require('../_time');
 
 /**
  * Compute the median of an array of numbers.
