@@ -1,12 +1,12 @@
 {
-  "totalTickets": 354,
-  "resolvedTickets": 330,
-  "openBacklog": 524,
-  "avgPerDay": 50.6,
+  "totalTickets": 355,
+  "resolvedTickets": 332,
+  "openBacklog": 523,
+  "avgPerDay": 50.7,
   "byCategory": [
     {
       "name": "Other",
-      "count": 129
+      "count": 130
     },
     {
       "name": "High Priority",
@@ -28,7 +28,7 @@
   "byPOS": [
     {
       "name": "Non-POS",
-      "count": 276
+      "count": 277
     },
     {
       "name": "Tekmetric",
@@ -50,7 +50,7 @@
     },
     {
       "name": "Unknown",
-      "count": 109
+      "count": 110
     },
     {
       "name": "Email",
@@ -88,8 +88,8 @@
     },
     {
       "day": "2026-02-12",
-      "count": 54
+      "count": 55
     }
   ],
-  "generatedAt": "2026-02-12T19:37:29.503Z"
+  "generatedAt": "2026-02-12T20:02:01.156Z"
 }
