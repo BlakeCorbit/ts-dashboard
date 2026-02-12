@@ -1,13 +1,85 @@
 {
   "recentTickets": [
     {
+      "id": 135462,
+      "subject": "Fwd: Document shared with you: \"REVIEW DOCUMENT\"",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-12T18:37:09.022Z"
+    },
+    {
+      "id": 135461,
+      "subject": "have new host need it updated not loading",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-12T18:37:09.022Z"
+    },
+    {
+      "id": 135459,
+      "subject": "Not on TPV",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-12T18:37:09.022Z"
+    },
+    {
+      "id": 135458,
+      "subject": "Fwd: C38430 & C38431",
+      "category": "Website",
+      "subcategory": "Website/Page Request",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-12T18:37:09.023Z"
+    },
+    {
+      "id": 135457,
+      "subject": "Technician's Tablets not receiving assigned work orders",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-12T18:37:09.023Z"
+    },
+    {
+      "id": 135456,
+      "subject": "Test",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-12T18:37:09.023Z"
+    },
+    {
+      "id": 135455,
+      "subject": "I have a couple of work orders no pulling in cell phones automatically.",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "normal",
+      "matchedAt": "2026-02-12T18:37:09.023Z"
+    },
+    {
+      "id": 135453,
+      "subject": "Ro's not populating from Traccs, customers coming over as unknown",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - Unknown POS",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "high",
+      "matchedAt": "2026-02-12T18:37:09.023Z"
+    },
+    {
       "id": 135452,
       "subject": "Recording longer then 20 seconds ",
       "category": "App Issue",
       "subcategory": "AV.X - Video No Sound",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.811Z"
+      "matchedAt": "2026-02-12T18:37:09.023Z"
     },
     {
       "id": 135451,
@@ -16,7 +88,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.811Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135450,
@@ -25,7 +97,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.811Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135449,
@@ -34,7 +106,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.811Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135448,
@@ -43,7 +115,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.811Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135447,
@@ -52,7 +124,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.811Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135446,
@@ -61,7 +133,7 @@
       "subcategory": "Billing/Cancellation",
       "runbook": "Account Churn Process",
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135445,
@@ -70,7 +142,7 @@
       "subcategory": "SMS/Text Delivery Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135442,
@@ -79,7 +151,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135441,
@@ -88,7 +160,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135440,
@@ -97,7 +169,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135439,
@@ -106,7 +178,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135438,
@@ -115,7 +187,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135434,
@@ -124,7 +196,7 @@
       "subcategory": "ROs Not Showing - Mitchell/AV Sync",
       "runbook": "AV Sync: Troubleshooting & Support",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.024Z"
     },
     {
       "id": 135433,
@@ -133,7 +205,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135432,
@@ -142,7 +214,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135431,
@@ -151,7 +223,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135429,
@@ -160,7 +232,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135428,
@@ -169,7 +241,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135427,
@@ -178,7 +250,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.812Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135426,
@@ -187,7 +259,7 @@
       "subcategory": "Overnight Compare & Sync Alert",
       "runbook": "Binary Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.813Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135425,
@@ -196,7 +268,7 @@
       "subcategory": "Vehicle Data Issue",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.813Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135424,
@@ -205,7 +277,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.813Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135423,
@@ -214,7 +286,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.813Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135422,
@@ -223,7 +295,7 @@
       "subcategory": "Rewards/BayIQ Issue",
       "runbook": "Common BayIQ Support Tickets",
       "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135421,
@@ -232,7 +304,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135419,
@@ -241,7 +313,7 @@
       "subcategory": "Vehicle Data Issue",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
     },
     {
       "id": 135418,
@@ -250,7 +322,16 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.025Z"
+    },
+    {
+      "id": 135417,
+      "subject": "Sun Valley Auto Repair - homepage logo",
+      "category": "Website",
+      "subcategory": "Website/Page Request",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135409,
@@ -259,7 +340,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135407,
@@ -268,7 +349,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135406,
@@ -277,7 +358,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135405,
@@ -286,7 +367,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135403,
@@ -295,7 +376,7 @@
       "subcategory": "SMS/Text Delivery Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135401,
@@ -304,7 +385,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135400,
@@ -313,7 +394,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135399,
@@ -322,16 +403,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.814Z"
-    },
-    {
-      "id": 135397,
-      "subject": "Big A Auto - Pixel is Done",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.815Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135396,
@@ -340,7 +412,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.815Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135395,
@@ -349,7 +421,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.815Z"
+      "matchedAt": "2026-02-12T18:37:09.026Z"
     },
     {
       "id": 135390,
@@ -358,7 +430,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.815Z"
+      "matchedAt": "2026-02-12T18:37:09.027Z"
     },
     {
       "id": 135389,
@@ -367,7 +439,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "urgent",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
+      "matchedAt": "2026-02-12T18:37:09.027Z"
     },
     {
       "id": 135385,
@@ -376,86 +448,14 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135384,
-      "subject": "TMT Auto Clinic - Website Updates, Call Friday",
-      "category": "Website",
-      "subcategory": "Website/Page Request",
-      "runbook": null,
-      "priority": "low",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135383,
-      "subject": "197533 NOT POPULATING",
-      "category": "POS Integration",
-      "subcategory": "ROs Not Showing - Unknown POS",
-      "runbook": "SOP: Retool - Simple Broken Shop v2",
-      "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135376,
-      "subject": "Customer received appt reminder post-cancellation",
-      "category": "Account",
-      "subcategory": "Billing/Cancellation",
-      "runbook": "Account Churn Process",
-      "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135375,
-      "subject": "I can't seem to submit my repair order. Inspection",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135373,
-      "subject": "Ash Automotive - Call AJ from Shop About SEO",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135370,
-      "subject": "11th gen",
-      "category": "App Issue",
-      "subcategory": "AV.X - Video No Sound",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135369,
-      "subject": "NO UPDATING",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
-    },
-    {
-      "id": 135368,
-      "subject": "AV is not transferring ROs from mitchell",
-      "category": "POS Integration",
-      "subcategory": "ROs Not Showing - Mitchell/AV Sync",
-      "runbook": "AV Sync: Troubleshooting & Support",
-      "priority": "high",
-      "matchedAt": "2026-02-12T17:41:50.817Z"
+      "matchedAt": "2026-02-12T18:37:09.027Z"
     }
   ],
   "stats": {
-    "total": 167,
-    "matched": 138,
-    "unmatched": 29,
-    "matchRate": 83
+    "total": 175,
+    "matched": 144,
+    "unmatched": 31,
+    "matchRate": 82
   },
   "topCategories": [
     {
@@ -464,11 +464,11 @@
     },
     {
       "name": "POS Integration",
-      "count": 28
+      "count": 30
     },
     {
       "name": "Emergency",
-      "count": 27
+      "count": 29
     },
     {
       "name": "Platform Issue",
@@ -476,7 +476,7 @@
     },
     {
       "name": "Website",
-      "count": 6
+      "count": 8
     },
     {
       "name": "Email/SMS",
@@ -499,5 +499,5 @@
       "count": 1
     }
   ],
-  "generatedAt": "2026-02-12T17:41:50.823Z"
+  "generatedAt": "2026-02-12T18:37:09.035Z"
 }
