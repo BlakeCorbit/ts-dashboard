@@ -1,16 +1,16 @@
 {
-  "totalTickets": 317,
-  "resolvedTickets": 289,
-  "openBacklog": 528,
-  "avgPerDay": 45.3,
+  "totalTickets": 323,
+  "resolvedTickets": 292,
+  "openBacklog": 531,
+  "avgPerDay": 46.1,
   "byCategory": [
     {
       "name": "Other",
-      "count": 109
+      "count": 112
     },
     {
       "name": "High Priority",
-      "count": 87
+      "count": 90
     },
     {
       "name": "App/Work Order",
@@ -28,7 +28,7 @@
   "byPOS": [
     {
       "name": "Non-POS",
-      "count": 245
+      "count": 251
     },
     {
       "name": "Tekmetric",
@@ -46,11 +46,11 @@
   "bySource": [
     {
       "name": "TVP",
-      "count": 203
+      "count": 207
     },
     {
       "name": "Unknown",
-      "count": 94
+      "count": 96
     },
     {
       "name": "Email",
@@ -88,8 +88,8 @@
     },
     {
       "day": "2026-02-12",
-      "count": 17
+      "count": 23
     }
   ],
-  "generatedAt": "2026-02-12T14:42:14.945Z"
+  "generatedAt": "2026-02-12T15:33:34.736Z"
 }
