@@ -1,7 +1,7 @@
 // triage-queue.js — GET /api/triage-queue?hours=2
 // Returns recent unsolved tickets enriched with PT match recommendations and suggested replies.
 
-const { zdRequest, getJiraLinks } = require('../_zendesk');
+const { zdRequest, cachedZdRequest, getJiraLinks } = require('../_zendesk');
 const { TicketClusterer } = require('../_clusterer');
 
 // Reply templates (same as create-problem.js)

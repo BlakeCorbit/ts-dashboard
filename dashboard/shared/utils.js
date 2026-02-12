@@ -7,6 +7,17 @@ var JIRA = 'https://autovitals.atlassian.net/browse/';
 
 var useStaticData = location.protocol === 'file:' || (location.hostname === 'localhost' && !location.port);
 
+// Agent name for team coordination (stored in localStorage, prompted once)
+var agentName = localStorage.getItem('ts_agent_name') || '';
+
+function getAgentName() {
+  if (!agentName) {
+    agentName = prompt('Enter your name for team tracking:') || 'Anonymous';
+    localStorage.setItem('ts_agent_name', agentName);
+  }
+  return agentName;
+}
+
 function api(path, opts) {
   if (useStaticData) {
     var map = {
@@ -18,6 +29,12 @@ function api(path, opts) {
     };
     var file = map[path] || 'data/metrics.json';
     return fetch(file + '?_=' + Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
+  // Inject X-Agent header for team coordination
+  opts = opts || {};
+  opts.headers = opts.headers || {};
+  if (!opts.headers['X-Agent'] && agentName) {
+    opts.headers['X-Agent'] = agentName;
   }
   return fetch(API + path, opts).then(function(r){ return r.ok ? r.json() : r.json().then(function(e){ throw new Error(e.error); }); });
 }
@@ -62,6 +79,6 @@ function hBar(title, items){
 }
 
 // Expose to window
-window.CC = { api:api, esc:esc, fmt:fmt, trunc:trunc, relTime:relTime, ageH:ageH, dayLbl:dayLbl, fmtTime:fmtTime, toast:toast, hBar:hBar, ZD:ZD, JIRA:JIRA };
+window.CC = { api:api, esc:esc, fmt:fmt, trunc:trunc, relTime:relTime, ageH:ageH, dayLbl:dayLbl, fmtTime:fmtTime, toast:toast, hBar:hBar, ZD:ZD, JIRA:JIRA, getAgentName:getAgentName, agentName:agentName };
 
 })();

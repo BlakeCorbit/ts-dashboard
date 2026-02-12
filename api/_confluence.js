@@ -1,5 +1,6 @@
 // Shared Confluence client for API routes
 // Uses Atlassian Cloud REST API v1 (same credentials as Jira — same instance)
+const { withCircuitBreaker } = require('./_circuit-breaker');
 
 function getConfluenceAuth() {
   const { JIRA_EMAIL, JIRA_API_TOKEN } = process.env;
@@ -12,7 +13,7 @@ function getConfluenceAuth() {
   };
 }
 
-async function confluenceRequest(endpoint, options = {}, _retryCount = 0) {
+async function _confluenceRequestRaw(endpoint, options = {}, _retryCount = 0) {
   const MAX_RETRIES = 3;
   const creds = getConfluenceAuth();
   if (!creds) throw new Error('Confluence credentials not configured');
@@ -37,7 +38,7 @@ async function confluenceRequest(endpoint, options = {}, _retryCount = 0) {
     const retry = Math.min(parseInt(resp.headers.get('retry-after') || '5', 10), 20);
     const backoff = retry * Math.pow(1.5, _retryCount);
     await new Promise(r => setTimeout(r, backoff * 1000));
-    return confluenceRequest(endpoint, options, _retryCount + 1);
+    return _confluenceRequestRaw(endpoint, options, _retryCount + 1);
   }
 
   if (!resp.ok) {
@@ -48,6 +49,8 @@ async function confluenceRequest(endpoint, options = {}, _retryCount = 0) {
   if (resp.status === 204) return null;
   return resp.json();
 }
+
+const confluenceRequest = withCircuitBreaker('confluence', _confluenceRequestRaw);
 
 function isConfluenceConfigured() {
   return !!(process.env.JIRA_EMAIL && process.env.JIRA_API_TOKEN);

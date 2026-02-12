@@ -1,5 +1,6 @@
 // Shared Jira client for API routes
 // Uses Atlassian Cloud REST API v3 (v2 search deprecated as of 2025)
+const { withCircuitBreaker } = require('./_circuit-breaker');
 
 function getJiraAuth() {
   const { JIRA_EMAIL, JIRA_API_TOKEN } = process.env;
@@ -12,7 +13,7 @@ function getJiraAuth() {
   };
 }
 
-async function jiraRequest(endpoint, options = {}, _retryCount = 0) {
+async function _jiraRequestRaw(endpoint, options = {}, _retryCount = 0) {
   const MAX_RETRIES = 3;
   const creds = getJiraAuth();
   if (!creds) throw new Error('Jira credentials not configured');
@@ -37,7 +38,7 @@ async function jiraRequest(endpoint, options = {}, _retryCount = 0) {
     const retry = Math.min(parseInt(resp.headers.get('retry-after') || '5', 10), 20);
     const backoff = retry * Math.pow(1.5, _retryCount);
     await new Promise(r => setTimeout(r, backoff * 1000));
-    return jiraRequest(endpoint, options, _retryCount + 1);
+    return _jiraRequestRaw(endpoint, options, _retryCount + 1);
   }
 
   if (!resp.ok) {
@@ -48,6 +49,8 @@ async function jiraRequest(endpoint, options = {}, _retryCount = 0) {
   if (resp.status === 204) return null;
   return resp.json();
 }
+
+const jiraRequest = withCircuitBreaker('jira', _jiraRequestRaw);
 
 function isJiraConfigured() {
   return !!(process.env.JIRA_EMAIL && process.env.JIRA_API_TOKEN);

@@ -28,9 +28,18 @@ const HANDLERS = {
   'pt-suggestions':       () => require('./_handlers/pt-suggestions'),
   'bulk-update':          () => require('./_handlers/bulk-update'),
   'batch-link':           () => require('./_handlers/batch-link'),
+  presence:               () => require('./_handlers/presence'),
+  activity:               () => require('./_handlers/activity'),
 };
 
 module.exports = (req, res) => {
+  // Centralized CORS — handlers no longer need to set these
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Agent, X-Idempotency-Key');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   const { action } = req.query;
 
   const loader = HANDLERS[action];

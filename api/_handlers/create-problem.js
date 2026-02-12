@@ -3,6 +3,7 @@
 // propagates Jira context, returns reply template.
 
 const { zdRequest, getJiraLinks, getAuth } = require('../_zendesk');
+const { isKVConfigured, kvListPush } = require('../_kv');
 
 // Reply templates by error pattern
 const REPLY_TEMPLATES = {
@@ -109,6 +110,18 @@ module.exports = async function handler(req, res) {
     const posPrefix = pos ? pos.charAt(0).toUpperCase() + pos.slice(1) + ' ' : '';
     let template = REPLY_TEMPLATES[errorPattern] || DEFAULT_TEMPLATE;
     template = template.replace('{pos}', posPrefix).replace('{problemId}', problemId).replace('{pattern}', errorPattern || 'the reported issue');
+
+    // Audit trail
+    if (isKVConfigured()) {
+      kvListPush('audit:log', {
+        action: 'problem-created',
+        agent: req.headers['x-agent'] || 'unknown',
+        problemId,
+        linkedCount,
+        subject,
+        at: new Date().toISOString(),
+      }, 500).catch(() => {});
+    }
 
     res.json({
       success: true,

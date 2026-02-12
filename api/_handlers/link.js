@@ -1,4 +1,5 @@
 const { zdRequest, getJiraLinks } = require('../_zendesk');
+const { isKVConfigured, kvListPush } = require('../_kv');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,6 +42,16 @@ module.exports = async function handler(req, res) {
           }).catch(() => {})
         )
       );
+    }
+
+    // Audit trail
+    if (isKVConfigured()) {
+      kvListPush('audit:log', {
+        action: 'ticket-linked',
+        agent: req.headers['x-agent'] || 'unknown',
+        ticketId, problemId,
+        at: new Date().toISOString(),
+      }, 500).catch(() => {});
     }
 
     res.json({ success: true, ticketId, problemId, jiraLinks });
