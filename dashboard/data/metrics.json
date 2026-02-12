@@ -1,7 +1,7 @@
 {
   "totalTickets": 363,
-  "resolvedTickets": 337,
-  "openBacklog": 526,
+  "resolvedTickets": 340,
+  "openBacklog": 523,
   "avgPerDay": 51.9,
   "byCategory": [
     {
@@ -91,5 +91,5 @@
       "count": 63
     }
   ],
-  "generatedAt": "2026-02-12T21:55:30.112Z"
+  "generatedAt": "2026-02-12T22:22:41.044Z"
 }
