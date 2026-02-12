@@ -92,6 +92,23 @@ module.exports = async function handler(req, res) {
     // 4. Generate reply template
     const template = buildReply(errorPattern, problemId, pos);
 
+    // 4b. Auto-send reply to all linked tickets if requested
+    const { sendReply } = req.body;
+    if (sendReply && ids.length > 0) {
+      const replyBatches = [];
+      for (let i = 0; i < ids.length; i += 5) {
+        replyBatches.push(ids.slice(i, i + 5));
+      }
+      for (const batch of replyBatches) {
+        await Promise.allSettled(batch.map(ticketId =>
+          zdRequest('/tickets/' + ticketId + '.json', {
+            method: 'PUT',
+            body: { ticket: { comment: { body: template, public: false } } },
+          }).catch(() => {})
+        ));
+      }
+    }
+
     // Audit trail
     if (isKVConfigured()) {
       kvListPush('audit:log', {
