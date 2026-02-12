@@ -1,13 +1,31 @@
 {
   "recentTickets": [
     {
+      "id": 135468,
+      "subject": "18344 invoice",
+      "category": "Account",
+      "subcategory": "Billing/Cancellation",
+      "runbook": "Account Churn Process",
+      "priority": "normal",
+      "matchedAt": "2026-02-12T19:37:25.533Z"
+    },
+    {
+      "id": 135467,
+      "subject": "Issue with AI",
+      "category": "Platform Issue",
+      "subcategory": "Image/Notes Editor Not Loading",
+      "runbook": null,
+      "priority": "high",
+      "matchedAt": "2026-02-12T19:37:25.533Z"
+    },
+    {
       "id": 135462,
       "subject": "Fwd: Document shared with you: \"REVIEW DOCUMENT\"",
       "category": "App Issue",
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.022Z"
+      "matchedAt": "2026-02-12T19:37:25.533Z"
     },
     {
       "id": 135461,
@@ -16,7 +34,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.022Z"
+      "matchedAt": "2026-02-12T19:37:25.533Z"
     },
     {
       "id": 135459,
@@ -25,16 +43,16 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.022Z"
+      "matchedAt": "2026-02-12T19:37:25.534Z"
     },
     {
       "id": 135458,
-      "subject": "Fwd: C38430 & C38431",
+      "subject": "Chad Kennedy Auto Pro - C38430 & C38431",
       "category": "Website",
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.023Z"
+      "matchedAt": "2026-02-12T19:37:25.534Z"
     },
     {
       "id": 135457,
@@ -43,16 +61,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.023Z"
-    },
-    {
-      "id": 135456,
-      "subject": "Test",
-      "category": "Platform Issue",
-      "subcategory": "Inspection Issues",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.023Z"
+      "matchedAt": "2026-02-12T19:37:25.534Z"
     },
     {
       "id": 135455,
@@ -61,7 +70,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.023Z"
+      "matchedAt": "2026-02-12T19:37:25.534Z"
     },
     {
       "id": 135453,
@@ -70,7 +79,7 @@
       "subcategory": "ROs Not Showing - Unknown POS",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.023Z"
+      "matchedAt": "2026-02-12T19:37:25.534Z"
     },
     {
       "id": 135452,
@@ -79,7 +88,7 @@
       "subcategory": "AV.X - Video No Sound",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.023Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135451,
@@ -88,7 +97,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135450,
@@ -97,7 +106,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135449,
@@ -106,7 +115,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135448,
@@ -115,7 +124,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135447,
@@ -124,16 +133,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
-    },
-    {
-      "id": 135446,
-      "subject": "Checkpoint Automotive - Copyright Inquiry from the Law Firm of Higbee & Associates - ON9KN3",
-      "category": "Account",
-      "subcategory": "Billing/Cancellation",
-      "runbook": "Account Churn Process",
-      "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135445,
@@ -142,7 +142,7 @@
       "subcategory": "SMS/Text Delivery Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135442,
@@ -151,7 +151,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135441,
@@ -160,7 +160,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135440,
@@ -169,7 +169,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135439,
@@ -178,16 +178,7 @@
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
-    },
-    {
-      "id": 135438,
-      "subject": "Ash Automotive SID 14511 - Shop believes they were removed from google search results ",
-      "category": "Platform Issue",
-      "subcategory": "Inspection Issues",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135434,
@@ -196,16 +187,7 @@
       "subcategory": "ROs Not Showing - Mitchell/AV Sync",
       "runbook": "AV Sync: Troubleshooting & Support",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.024Z"
-    },
-    {
-      "id": 135433,
-      "subject": "Big A Auto / SID 12786 / update specials page",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.535Z"
     },
     {
       "id": 135432,
@@ -214,7 +196,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135431,
@@ -223,7 +205,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135429,
@@ -232,7 +214,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135428,
@@ -241,7 +223,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135427,
@@ -250,7 +232,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135426,
@@ -259,16 +241,7 @@
       "subcategory": "Overnight Compare & Sync Alert",
       "runbook": "Binary Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
-    },
-    {
-      "id": 135425,
-      "subject": "Ash Automotive Search",
-      "category": "Platform Issue",
-      "subcategory": "Vehicle Data Issue",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135424,
@@ -277,7 +250,7 @@
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135423,
@@ -286,16 +259,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
-    },
-    {
-      "id": 135422,
-      "subject": "Scott's Ivy Exxon / SID 12800 / update About Us copy",
-      "category": "BayIQ",
-      "subcategory": "Rewards/BayIQ Issue",
-      "runbook": "Common BayIQ Support Tickets",
-      "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135421,
@@ -304,7 +268,7 @@
       "subcategory": "ROs Not Showing - NAPA TRACS",
       "runbook": "Binary Troubleshooting",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135419,
@@ -313,7 +277,7 @@
       "subcategory": "Vehicle Data Issue",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135418,
@@ -322,16 +286,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.025Z"
-    },
-    {
-      "id": 135417,
-      "subject": "Sun Valley Auto Repair - homepage logo",
-      "category": "Website",
-      "subcategory": "Website/Page Request",
-      "runbook": null,
-      "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135409,
@@ -340,7 +295,7 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135407,
@@ -349,7 +304,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135406,
@@ -358,16 +313,16 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135405,
-      "subject": "Checkpoint Automotive - copywrite claim",
+      "subject": "Checkpoint Automotive - Page Updates",
       "category": "App Issue",
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135403,
@@ -376,7 +331,7 @@
       "subcategory": "SMS/Text Delivery Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135401,
@@ -385,7 +340,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135400,
@@ -394,7 +349,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135399,
@@ -403,7 +358,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.536Z"
     },
     {
       "id": 135396,
@@ -412,7 +367,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.537Z"
     },
     {
       "id": 135395,
@@ -421,7 +376,7 @@
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-12T18:37:09.026Z"
+      "matchedAt": "2026-02-12T19:37:25.537Z"
     },
     {
       "id": 135390,
@@ -430,7 +385,7 @@
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-12T18:37:09.027Z"
+      "matchedAt": "2026-02-12T19:37:25.537Z"
     },
     {
       "id": 135389,
@@ -439,7 +394,7 @@
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "urgent",
-      "matchedAt": "2026-02-12T18:37:09.027Z"
+      "matchedAt": "2026-02-12T19:37:25.537Z"
     },
     {
       "id": 135385,
@@ -448,19 +403,64 @@
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-12T18:37:09.027Z"
+      "matchedAt": "2026-02-12T19:37:25.537Z"
+    },
+    {
+      "id": 135384,
+      "subject": "TMT Auto Clinic - Website Updates, Call Friday",
+      "category": "Website",
+      "subcategory": "Website/Page Request",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-12T19:37:25.537Z"
+    },
+    {
+      "id": 135383,
+      "subject": "197533 NOT POPULATING",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - Unknown POS",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "high",
+      "matchedAt": "2026-02-12T19:37:25.537Z"
+    },
+    {
+      "id": 135376,
+      "subject": "Customer received appt reminder post-cancellation",
+      "category": "Account",
+      "subcategory": "Billing/Cancellation",
+      "runbook": "Account Churn Process",
+      "priority": "normal",
+      "matchedAt": "2026-02-12T19:37:25.537Z"
+    },
+    {
+      "id": 135375,
+      "subject": "I can't seem to submit my repair order. Inspection",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-12T19:37:25.537Z"
+    },
+    {
+      "id": 135373,
+      "subject": "Ash Automotive - Call AJ from Shop About SEO",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-12T19:37:25.537Z"
     }
   ],
   "stats": {
-    "total": 175,
-    "matched": 144,
-    "unmatched": 31,
-    "matchRate": 82
+    "total": 167,
+    "matched": 138,
+    "unmatched": 29,
+    "matchRate": 83
   },
   "topCategories": [
     {
       "name": "App Issue",
-      "count": 42
+      "count": 41
     },
     {
       "name": "POS Integration",
@@ -468,15 +468,15 @@
     },
     {
       "name": "Emergency",
-      "count": 29
+      "count": 28
     },
     {
       "name": "Platform Issue",
-      "count": 18
+      "count": 16
     },
     {
       "name": "Website",
-      "count": 8
+      "count": 7
     },
     {
       "name": "Email/SMS",
@@ -491,13 +491,13 @@
       "count": 4
     },
     {
-      "name": "BayIQ",
-      "count": 2
+      "name": "Data Recovery",
+      "count": 1
     },
     {
-      "name": "Data Recovery",
+      "name": "BayIQ",
       "count": 1
     }
   ],
-  "generatedAt": "2026-02-12T18:37:09.035Z"
+  "generatedAt": "2026-02-12T19:37:25.544Z"
 }
