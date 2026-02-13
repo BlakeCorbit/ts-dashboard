@@ -2,26 +2,10 @@
 // Creates a Problem ticket in Zendesk, links all provided tickets as incidents,
 // propagates Jira context, returns reply template.
 
-const { zdRequest, getJiraLinks } = require('../_zendesk');
+const { zdRequest, getJiraLinks, getAuth } = require('../_zendesk');
+const { isKVConfigured, kvListPush } = require('../_kv');
 
-// Reply templates by error pattern
-const REPLY_TEMPLATES = {
-  'ROs not showing': 'We are aware of an issue affecting {pos}repair order syncing and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you as we have more information. Thank you for your patience.',
-  'Data not syncing': 'We are aware of an issue affecting {pos}data syncing and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you as we have more information.',
-  'TVP issues': 'We are aware of a platform issue and are actively working on resolution. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you shortly.',
-  'Email delivery': 'We are aware of an email delivery issue and are working with our provider to resolve it. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'SMS delivery': 'We are aware of a text messaging issue and are working with our provider to resolve it. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Login/access': 'We are aware of login/access issues and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Inspection issues': 'We are aware of an issue with inspections/photos and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Media upload': 'We are aware of a media upload issue and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Camera/photo issues': 'We are aware of a camera/photo issue on the mobile app and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Audio/video issues': 'We are aware of an audio/video issue and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'App freezing/crashing': 'We are aware of app stability issues and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Notification issues': 'We are aware of a notification delivery issue and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Performance/errors': 'We are aware of performance issues and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-};
-
-const DEFAULT_TEMPLATE = 'We are aware of an issue ({pattern}) and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you as we have more information.';
+const { buildReply } = require('../_templates');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -31,7 +15,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   try {
-    const { subject, description, tags, ticketIds, errorPattern, pos } = req.body;
+    const { subject, description, tags, ticketIds, errorPattern, pos, jiraIssueId, jiraIssueKey } = req.body;
 
     if (!subject) return res.status(400).json({ error: 'subject is required' });
 
@@ -51,17 +35,29 @@ module.exports = async function handler(req, res) {
 
     const problemId = createData.ticket.id;
 
-    // 2. Link all provided tickets as incidents
+    // 2. Propagate Jira link to the new Problem Ticket (if provided)
+    if (jiraIssueId && jiraIssueKey) {
+      try {
+        const { baseUrl, auth } = getAuth();
+        await fetch(`${baseUrl}/api/services/jira/links`, {
+          method: 'POST',
+          headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticket_id: String(problemId), issue_id: String(jiraIssueId), issue_key: jiraIssueKey }),
+        });
+      } catch { /* Jira link is non-critical */ }
+    }
+
+    // 3. Link all provided tickets as incidents
     let linkedCount = 0;
     const ids = ticketIds || [];
 
-    // Fetch Jira links for the new Problem (may not have any yet)
+    // Fetch Jira links for the new Problem
     const jiraLinks = await getJiraLinks(problemId);
     const jiraInfo = jiraLinks.length > 0
       ? jiraLinks.map(j => j.issueKey + ': ' + j.url).join('\n')
       : '(pending Jira link)';
 
-    // Link tickets in batches of 5 to avoid rate limits
+    // Link tickets in batches of 5
     for (let i = 0; i < ids.length; i += 5) {
       const batch = ids.slice(i, i + 5);
       await Promise.all(batch.map(async (ticketId) => {
@@ -93,10 +89,37 @@ module.exports = async function handler(req, res) {
       }));
     }
 
-    // 3. Generate reply template
-    const posPrefix = pos ? pos.charAt(0).toUpperCase() + pos.slice(1) + ' ' : '';
-    let template = REPLY_TEMPLATES[errorPattern] || DEFAULT_TEMPLATE;
-    template = template.replace('{pos}', posPrefix).replace('{problemId}', problemId).replace('{pattern}', errorPattern || 'the reported issue');
+    // 4. Generate reply template
+    const template = buildReply(errorPattern, problemId, pos);
+
+    // 4b. Auto-send reply to all linked tickets if requested
+    const { sendReply } = req.body;
+    if (sendReply && ids.length > 0) {
+      const replyBatches = [];
+      for (let i = 0; i < ids.length; i += 5) {
+        replyBatches.push(ids.slice(i, i + 5));
+      }
+      for (const batch of replyBatches) {
+        await Promise.allSettled(batch.map(ticketId =>
+          zdRequest('/tickets/' + ticketId + '.json', {
+            method: 'PUT',
+            body: { ticket: { comment: { body: template, public: false } } },
+          }).catch(() => {})
+        ));
+      }
+    }
+
+    // Audit trail
+    if (isKVConfigured()) {
+      kvListPush('audit:log', {
+        action: 'problem-created',
+        agent: req.headers['x-agent'] || 'unknown',
+        problemId,
+        linkedCount,
+        subject,
+        at: new Date().toISOString(),
+      }, 500).catch(() => {});
+    }
 
     res.json({
       success: true,

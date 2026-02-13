@@ -1,26 +1,9 @@
 // triage-queue.js — GET /api/triage-queue?hours=2
 // Returns recent unsolved tickets enriched with PT match recommendations and suggested replies.
 
-const { zdRequest, getJiraLinks } = require('../_zendesk');
+const { zdRequest, cachedZdRequest, getJiraLinks } = require('../_zendesk');
 const { TicketClusterer } = require('../_clusterer');
-
-// Reply templates (same as create-problem.js)
-const REPLY_TEMPLATES = {
-  'ROs not showing': 'We are aware of an issue affecting {pos}repair order syncing and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you as we have more information. Thank you for your patience.',
-  'Data not syncing': 'We are aware of an issue affecting {pos}data syncing and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you as we have more information.',
-  'TVP issues': 'We are aware of a platform issue and are actively working on resolution. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you shortly.',
-  'Email delivery': 'We are aware of an email delivery issue and are working with our provider to resolve it. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'SMS delivery': 'We are aware of a text messaging issue and are working with our provider to resolve it. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Login/access': 'We are aware of login/access issues and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Inspection issues': 'We are aware of an issue with inspections/photos and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Media upload': 'We are aware of a media upload issue and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Camera/photo issues': 'We are aware of a camera/photo issue on the mobile app and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Audio/video issues': 'We are aware of an audio/video issue and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'App freezing/crashing': 'We are aware of app stability issues and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Notification issues': 'We are aware of a notification delivery issue and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-  'Performance/errors': 'We are aware of performance issues and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}).',
-};
-const DEFAULT_TEMPLATE = 'We are aware of an issue ({pattern}) and are actively investigating. Your ticket has been linked to our investigation (ZD#{problemId}). We will update you as we have more information.';
+const { buildReply } = require('../_templates');
 
 const STOPWORDS = new Set(['the','a','an','is','are','was','were','not','no','and','or','to','in','on','of','for','with','has','have','had','my','our','your','this','that','it','i','we','they','from','but','at','be','by','do','does','did','can','will','would','should','could','been','being','get','got','just','also','its','than','into','about','up','out','if','all','so','what','when','how','who','which']);
 
@@ -182,12 +165,7 @@ module.exports = async function handler(req, res) {
       if (best && confidence !== 'low' && confidence !== 'none') {
         const pt = best.pt;
         const posName = ticket.pos || pt.pos || '';
-        const posPrefix = posName ? posName.charAt(0).toUpperCase() + posName.slice(1) + ' ' : '';
-        const template = REPLY_TEMPLATES[ticket.errorPattern] || REPLY_TEMPLATES[pt.errorPattern] || DEFAULT_TEMPLATE;
-        suggestedReply = template
-          .replace('{pos}', posPrefix)
-          .replace('{problemId}', String(pt.problemId))
-          .replace('{pattern}', ticket.errorPattern !== 'other' ? ticket.errorPattern : 'the reported issue');
+        suggestedReply = buildReply(ticket.errorPattern || pt.errorPattern, pt.problemId, posName);
       }
 
       return {

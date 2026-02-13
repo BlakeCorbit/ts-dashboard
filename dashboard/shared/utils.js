@@ -7,6 +7,17 @@ var JIRA = 'https://autovitals.atlassian.net/browse/';
 
 var useStaticData = location.protocol === 'file:' || (location.hostname === 'localhost' && !location.port);
 
+// Agent name for team coordination (stored in localStorage, prompted once)
+var agentName = localStorage.getItem('ts_agent_name') || '';
+
+function getAgentName() {
+  if (!agentName) {
+    agentName = prompt('Enter your name for team tracking:') || 'Anonymous';
+    localStorage.setItem('ts_agent_name', agentName);
+  }
+  return agentName;
+}
+
 function api(path, opts) {
   if (useStaticData) {
     var map = {
@@ -19,6 +30,16 @@ function api(path, opts) {
     };
     var file = map[path] || 'data/metrics.json';
     return fetch(file + '?_=' + Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
+  // Inject X-Agent header for team coordination
+  opts = opts || {};
+  opts.headers = opts.headers || {};
+  if (!opts.headers['X-Agent'] && agentName) {
+    opts.headers['X-Agent'] = agentName;
+  }
+  // Auto-add idempotency key for POST requests
+  if (opts.method === 'POST' && !opts.headers['X-Idempotency-Key']) {
+    opts.headers['X-Idempotency-Key'] = genIdemKey();
   }
   return fetch(API + path, opts).then(function(r){ return r.ok ? r.json() : r.json().then(function(e){ throw new Error(e.error); }); });
 }
@@ -62,7 +83,12 @@ function hBar(title, items){
   return h;
 }
 
+// Generate idempotency key (unique per request)
+function genIdemKey() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
 // Expose to window
-window.CC = { api:api, esc:esc, fmt:fmt, trunc:trunc, relTime:relTime, ageH:ageH, dayLbl:dayLbl, fmtTime:fmtTime, toast:toast, hBar:hBar, ZD:ZD, JIRA:JIRA };
+window.CC = { api:api, esc:esc, fmt:fmt, trunc:trunc, relTime:relTime, ageH:ageH, dayLbl:dayLbl, fmtTime:fmtTime, toast:toast, hBar:hBar, ZD:ZD, JIRA:JIRA, getAgentName:getAgentName, agentName:agentName };
 
 })();

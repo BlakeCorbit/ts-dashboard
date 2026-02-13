@@ -1,499 +1,499 @@
 {
   "recentTickets": [
     {
-      "id": 135299,
-      "subject": "We have a vehicle that is showing incorrect information",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.434Z"
-    },
-    {
-      "id": 135298,
-      "subject": "NOT LOADING CARS QUICKLY",
-      "category": "POS Integration",
-      "subcategory": "RO-Related Issue (Generic)",
-      "runbook": "SOP: Retool - Simple Broken Shop v2",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.435Z"
-    },
-    {
-      "id": 135297,
-      "subject": "pixel",
+      "id": 135486,
+      "subject": "DG Motorsport Website Overhaul",
       "category": "Website",
       "subcategory": "Website/Page Request",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-10T17:44:01.435Z"
+      "matchedAt": "2026-02-13T02:34:49.622Z"
     },
     {
-      "id": 135295,
-      "subject": "I need an invoice from October 6th of this last year.  Was also hoping to be walked through how to retrieve this information",
+      "id": 135485,
+      "subject": "not seeing all the details on the client side of inspection report ",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135484,
+      "subject": "Facebook and Instagram",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135481,
+      "subject": "3108328 Not Receiving Points",
+      "category": "Platform Issue",
+      "subcategory": "Vehicle Data Issue",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135480,
+      "subject": "Job in TekMetric but not has disappeared in AutoVitals",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135479,
+      "subject": "Sent messages, Editing",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135477,
+      "subject": "We use tracs and today we started seeing some issues",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135476,
+      "subject": "Service Reminder issue- not working as expected behavior",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135475,
+      "subject": "I need RO 739 Re opened and listed as \"in the shop\"",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.622Z"
+    },
+    {
+      "id": 135474,
+      "subject": "Exclusively imports SID 14759 - please update home page",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.623Z"
+    },
+    {
+      "id": 135473,
+      "subject": "Overnight Compare and Sync - NapaEnterprise - 2163",
+      "category": "POS Integration",
+      "subcategory": "Overnight Compare & Sync Alert",
+      "runbook": "Binary Troubleshooting",
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.623Z"
+    },
+    {
+      "id": 135472,
+      "subject": "Inspection history",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.623Z"
+    },
+    {
+      "id": 135471,
+      "subject": "Tech cannot see other tech notes",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.623Z"
+    },
+    {
+      "id": 135470,
+      "subject": "Miramar / SID 7968 / website updates",
+      "category": "App Issue",
+      "subcategory": "AV.X - Camera/Photo/Upload",
+      "runbook": "Known AV.X Bugs and Issues",
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.623Z"
+    },
+    {
+      "id": 135468,
+      "subject": "18344 invoice",
       "category": "Account",
       "subcategory": "Billing/Cancellation",
       "runbook": "Account Churn Process",
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.435Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135294,
-      "subject": "Overnight Compare and Sync - Napa Tracs - 5183",
-      "category": "POS Integration",
-      "subcategory": "Overnight Compare & Sync Alert",
-      "runbook": "Binary Troubleshooting",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.435Z"
-    },
-    {
-      "id": 135293,
-      "subject": "Videos are not producing sound ",
-      "category": "App Issue",
-      "subcategory": "AV.X - Video No Sound",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.435Z"
-    },
-    {
-      "id": 135292,
-      "subject": "Techs are not receiving/being notified when cars get put on their tablet ",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
+      "id": 135467,
+      "subject": "Issue with AI",
+      "category": "Platform Issue",
+      "subcategory": "Image/Notes Editor Not Loading",
+      "runbook": null,
       "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.435Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135290,
-      "subject": "(Emergency) The Shop Tire and Service Center [13339]: R.O. Writer (version 2+) parser did not run since 2/10/2026 5:09:48 AM",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.435Z"
-    },
-    {
-      "id": 135289,
-      "subject": "Camera issue and vin scanner",
+      "id": 135462,
+      "subject": "Fwd: Document shared with you: \"REVIEW DOCUMENT\"",
       "category": "App Issue",
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.439Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135287,
-      "subject": "New Voicemail from Mahomet Car Connection (217) 586-1942 to Main Auto Receptionist (Ext. 801) on Tue Feb 10, 2026 07:52",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.439Z"
-    },
-    {
-      "id": 135285,
-      "subject": "(Emergency) Lighthouse Automotive North [12822]: NAPA TRACS Ent (version 2.x-7.x) parser did not run since 2/10/2026 5:35:28 AM",
+      "id": 135461,
+      "subject": "have new host need it updated not loading",
       "category": "Emergency",
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135283,
-      "subject": "ro #57206",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
-    },
-    {
-      "id": 135281,
-      "subject": "Text appointment reminders from AutoVitals",
+      "id": 135459,
+      "subject": "Not on TPV",
       "category": "Uncategorized",
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135279,
-      "subject": "POS Recommendations",
-      "category": "Email/SMS",
-      "subcategory": "SMS/Text Delivery Issues",
-      "runbook": null,
+      "id": 135457,
+      "subject": "Technician's Tablets not receiving assigned work orders",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.623Z"
+    },
+    {
+      "id": 135455,
+      "subject": "I have a couple of work orders no pulling in cell phones automatically.",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135277,
-      "subject": "ro 82954",
+      "id": 135453,
+      "subject": "Ro's not populating from Traccs, customers coming over as unknown",
       "category": "POS Integration",
       "subcategory": "ROs Not Showing - Unknown POS",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135275,
-      "subject": "IMAGE/NOTES EDITOR NOT LOADING PICTURES ",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
-    },
-    {
-      "id": 135270,
-      "subject": "(Emergency) Integrity Automotive - Main Street [13091]: NAPA TRACS Ent (version 2.x-7.x) parser did not run since 2/9/2026 1:54:44 PM",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
-    },
-    {
-      "id": 135259,
-      "subject": "Autovital keeps glitching out and loggiASAP. And other",
-      "category": "App Issue",
-      "subcategory": "AV.X - Crash/Freeze/Performance",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.440Z"
-    },
-    {
-      "id": 135258,
-      "subject": "Integration link not working for shop",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
-    },
-    {
-      "id": 135255,
-      "subject": "RO 66524 ",
-      "category": "POS Integration",
-      "subcategory": "RO-Related Issue (Generic)",
-      "runbook": "SOP: Retool - Simple Broken Shop v2",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
-    },
-    {
-      "id": 135254,
-      "subject": "i need to add a user",
-      "category": "Login/Access",
-      "subcategory": "Add New User",
-      "runbook": "Common Phone Support Requests",
+      "id": 135451,
+      "subject": "Fleet number",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135253,
-      "subject": "I used to be able to see notes that the other technicians",
-      "category": "Emergency",
-      "subcategory": "Shop-Reported Emergency",
-      "runbook": "TS Emergency SOP v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
-    },
-    {
-      "id": 135252,
-      "subject": "Will not go into \"Customer View\"",
-      "category": "Platform Issue",
-      "subcategory": "Inspection Issues",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
-    },
-    {
-      "id": 135251,
-      "subject": "Technician tile is not lit",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
-    },
-    {
-      "id": 135250,
-      "subject": "New Voicemail from CHAD O (720) 987-4763 to Main Auto Receptionist (Ext. 801) on Mon Feb 9, 2026 12:49",
-      "category": "Platform Issue",
-      "subcategory": "Vehicle Data Issue",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
-    },
-    {
-      "id": 135248,
-      "subject": "Pictures won't load",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
-    },
-    {
-      "id": 135247,
-      "subject": "RO29202 IS NOT SHOWING UP ON TECHNICIANS TABLET ",
+      "id": 135450,
+      "subject": "[Multishop] RO on wrong location's TVP.",
       "category": "POS Integration",
       "subcategory": "RO-Related Issue (Generic)",
       "runbook": "SOP: Retool - Simple Broken Shop v2",
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.441Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135246,
-      "subject": "Everytime a tech submits an inspection report all of the techs tablet set off the alarm.",
+      "id": 135449,
+      "subject": "I am unable to send inspection reports via text message. Email only. I also do not have the ability to text communicate back and forth either",
       "category": "Platform Issue",
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.623Z"
     },
     {
-      "id": 135245,
-      "subject": "Veichle changing to something else",
-      "category": "Platform Issue",
-      "subcategory": "Vehicle Data Issue",
+      "id": 135448,
+      "subject": "RO'S FROM TRACS",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - NAPA TRACS",
+      "runbook": "Binary Troubleshooting",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135447,
+      "subject": "ProTech Autocare - Request website performance review",
+      "category": "Website",
+      "subcategory": "Website/Page Request",
       "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "priority": "low",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135242,
-      "subject": "Videos taken have no sound",
-      "category": "App Issue",
-      "subcategory": "AV.X - Video No Sound",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135236,
-      "subject": "All photos on all different devices blurry after update",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135233,
-      "subject": "NEW CUSTOMER NOT GETTING TEXTS ABOUT APPOINT",
+      "id": 135445,
+      "subject": "Messages not working",
       "category": "Email/SMS",
-      "subcategory": "SMS Reminders Not Sending",
+      "subcategory": "SMS/Text Delivery Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135232,
-      "subject": "Rooney's Tire & Auto SID 14796 - issues with website appt request and newsletter missing",
+      "id": 135442,
+      "subject": "jobs not coming over",
       "category": "Platform Issue",
       "subcategory": "Inspection Issues",
       "runbook": null,
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135231,
-      "subject": "Quality Control Count",
-      "category": "Platform Issue",
-      "subcategory": "Inspection Issues",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135230,
-      "subject": "AV not sending reminder texts",
-      "category": "Email/SMS",
-      "subcategory": "SMS Reminders Not Sending",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135229,
-      "subject": "(Emergency) Reno Vulcanizing Auto Care and Tires - SPARKS [9068]: R.O. Writer (version 2+) parser did not run since 2/7/2026 12:19:37 PM",
+      "id": 135441,
+      "subject": "AutoMetrics - Booking tool on website issue",
       "category": "Emergency",
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135227,
-      "subject": "Overnight Compare and Sync - sql ROWriter - 13593",
+      "id": 135440,
+      "subject": "New Voicemail from MEINEKE CAR CAR (309) 688-8602 to Main Auto Receptionist (Ext. 801) on Thu Feb 12, 2026 08:00",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135439,
+      "subject": "Customer Inspections",
+      "category": "Platform Issue",
+      "subcategory": "Inspection Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135434,
+      "subject": "14959_Shawnee Station Automotive: Data transfer delay from Mitchell1 / Shopkey",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - Mitchell/AV Sync",
+      "runbook": "AV Sync: Troubleshooting & Support",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135432,
+      "subject": "W.O. NOT GOING OVER",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135431,
+      "subject": "Overnight Compare and Sync - NAPA TRACS Ent (Partner API) - 14417",
       "category": "POS Integration",
       "subcategory": "Overnight Compare & Sync Alert",
       "runbook": "Binary Troubleshooting",
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135226,
-      "subject": "time clock",
-      "category": "Platform Issue",
-      "subcategory": "TeE-Times / Time Clock",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135221,
-      "subject": "Camera Issues",
-      "category": "App Issue",
-      "subcategory": "AV.X - Camera/Photo/Upload",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135219,
-      "subject": "I HAVE LOST MY PASSWORD FOR SYSTEM SETTINGS ",
-      "category": "Login/Access",
-      "subcategory": "Password Reset",
-      "runbook": "Common Phone Support Requests",
-      "priority": "low",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135207,
-      "subject": "TEST FIELDS 001 REACT NATIVE",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "low",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135203,
-      "subject": "RO's not showing in AV",
+      "id": 135428,
+      "subject": "Tech will not recieve customer concerns that are added after jobs are approved, ",
       "category": "Emergency",
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135193,
-      "subject": "Logged me out",
-      "category": "Platform Issue",
-      "subcategory": "Inspection Issues",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "id": 135427,
+      "subject": "New RO's won't update on my phone",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135187,
-      "subject": "RO number does not display in vehicle chat on mobile device unless YMM is clicked",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135186,
-      "subject": "Service History for Richard Carranza missing",
+      "id": 135426,
+      "subject": "Overnight Compare and Sync - NAPA TRACS Ent (Partner API) - 7873",
       "category": "POS Integration",
-      "subcategory": "ROs Not Showing - Tekmetric",
-      "runbook": "SOP: Retool - Simple Broken Shop v2",
-      "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "subcategory": "Overnight Compare & Sync Alert",
+      "runbook": "Binary Troubleshooting",
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135185,
-      "subject": "ro not going to the system",
+      "id": 135424,
+      "subject": "technicians are not receiving work orders",
+      "category": "POS Integration",
+      "subcategory": "RO-Related Issue (Generic)",
+      "runbook": "SOP: Retool - Simple Broken Shop v2",
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135423,
+      "subject": "LABOR LINES NOT SHOWING UP ON 61438",
       "category": "Emergency",
       "subcategory": "Shop-Reported Emergency",
       "runbook": "TS Emergency SOP v2",
       "priority": "high",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135184,
-      "subject": "Tablet replacement",
+      "id": 135421,
+      "subject": "ROs not loading in the morning until 8:20-8:30",
+      "category": "POS Integration",
+      "subcategory": "ROs Not Showing - NAPA TRACS",
+      "runbook": "Binary Troubleshooting",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135419,
+      "subject": "Not scanning the VIN number off the vehicle On the",
+      "category": "Platform Issue",
+      "subcategory": "Vehicle Data Issue",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135418,
+      "subject": "Tickets not loading",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135409,
+      "subject": "Garrigan's Auto Repair Shop - Appointment Scheduler Issue",
+      "category": "Website",
+      "subcategory": "Website/Page Request",
+      "runbook": null,
+      "priority": "low",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135407,
+      "subject": "Reinstate TVP access",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135406,
+      "subject": "ADD unit numbers in CRM messaging ",
       "category": "Uncategorized",
       "subcategory": "No matching rule",
       "runbook": null,
       "priority": "low",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
     },
     {
-      "id": 135183,
-      "subject": "tech tablets are lagging/no working",
-      "category": "App Issue",
-      "subcategory": "AV.X - Crash/Freeze/Performance",
-      "runbook": "Known AV.X Bugs and Issues",
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135181,
-      "subject": "Integration ",
-      "category": "Uncategorized",
-      "subcategory": "No matching rule",
-      "runbook": null,
-      "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
-    },
-    {
-      "id": 135179,
-      "subject": "ro50385",
+      "id": 135405,
+      "subject": "Checkpoint Automotive - Page Updates",
       "category": "App Issue",
       "subcategory": "AV.X - Camera/Photo/Upload",
       "runbook": "Known AV.X Bugs and Issues",
       "priority": "normal",
-      "matchedAt": "2026-02-10T17:44:01.442Z"
+      "matchedAt": "2026-02-13T02:34:49.624Z"
+    },
+    {
+      "id": 135403,
+      "subject": "Midas San Diego's 2 shops are requesting to port their phone numbers to BayIQ. ",
+      "category": "Email/SMS",
+      "subcategory": "SMS/Text Delivery Issues",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.625Z"
+    },
+    {
+      "id": 135401,
+      "subject": "TICKET LOST",
+      "category": "Emergency",
+      "subcategory": "Shop-Reported Emergency",
+      "runbook": "TS Emergency SOP v2",
+      "priority": "high",
+      "matchedAt": "2026-02-13T02:34:49.625Z"
+    },
+    {
+      "id": 135399,
+      "subject": "Looking for an identification number to connect my Hunter aligner to AV",
+      "category": "Uncategorized",
+      "subcategory": "No matching rule",
+      "runbook": null,
+      "priority": "normal",
+      "matchedAt": "2026-02-13T02:34:49.625Z"
     }
   ],
   "stats": {
-    "total": 155,
-    "matched": 131,
-    "unmatched": 24,
-    "matchRate": 85
+    "total": 151,
+    "matched": 125,
+    "unmatched": 26,
+    "matchRate": 83
   },
   "topCategories": [
     {
       "name": "App Issue",
-      "count": 45
+      "count": 29
     },
     {
       "name": "POS Integration",
+      "count": 28
+    },
+    {
+      "name": "Emergency",
       "count": 27
     },
     {
       "name": "Platform Issue",
-      "count": 24
-    },
-    {
-      "name": "Emergency",
       "count": 21
     },
     {
-      "name": "Login/Access",
+      "name": "Website",
       "count": 6
     },
     {
-      "name": "Account",
-      "count": 3
-    },
-    {
       "name": "Email/SMS",
-      "count": 3
+      "count": 5
     },
     {
-      "name": "Website",
-      "count": 1
+      "name": "Account",
+      "count": 4
     },
     {
-      "name": "BayIQ",
+      "name": "Login/Access",
+      "count": 4
+    },
+    {
+      "name": "Data Recovery",
       "count": 1
     }
   ],
-  "generatedAt": "2026-02-10T17:44:01.450Z"
+  "generatedAt": "2026-02-13T02:34:49.631Z"
 }

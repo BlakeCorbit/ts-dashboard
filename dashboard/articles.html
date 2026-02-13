@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Article Generator - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+<style>
+.body-toggle {
+  display: inline-flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 8px;
+}
+.body-toggle-btn {
+  padding: 2px 10px; font-size: 0.68rem; font-weight: 600; font-family: var(--font-main);
+  border: none; cursor: pointer; transition: all 150ms;
+}
+.body-toggle-btn.active { background: var(--av-green-dark); color: #fff; }
+.body-toggle-btn:not(.active) { background: var(--bg-card); color: var(--text-secondary); }
+.body-toggle-btn:not(.active):hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.dest-btns { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Article Generator</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="loadSuggestions()" id="refresh-btn">Refresh</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Period selector -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+    <span style="font-size:0.82rem;color:var(--text-secondary)">Analyze last:</span>
+    <button class="btn btn-sm" id="btn-7" onclick="setPeriod(7)">7 days</button>
+    <button class="btn btn-sm" id="btn-14" onclick="setPeriod(14)">14 days</button>
+    <button class="btn btn-sm" id="btn-30" onclick="setPeriod(30)" style="background:var(--av-green-dark);color:#fff">30 days</button>
+  </div>
+
+  <!-- How to use banner -->
+  <div id="how-to-use" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px">
+    <span style="font-size:1.2rem;flex-shrink:0">&#128161;</span>
+    <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5">
+      <strong style="color:var(--text-primary)">Two destinations:</strong>
+      <strong style="color:var(--av-blue)">Internal &rarr; Confluence</strong> (agent runbooks under Common Troubleshooting) and
+      <strong style="color:var(--av-green)">Customer &rarr; ZD Help Center</strong> (public-facing articles, created as drafts).
+      Toggle the body version before creating. Agents can flag tickets with the tag <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--av-green)">needs_article</code>.
+    </div>
+    <button onclick="this.parentNode.style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:0;flex-shrink:0">&times;</button>
+  </div>
+
+  <!-- Source 1: Agent-Flagged Tickets -->
+  <section>
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--accent-yellow)">&#9873;</span> Agent-Flagged Tickets
+      </div>
+      <span style="font-size:0.78rem;color:var(--text-muted)" id="flagged-count"></span>
+    </div>
+    <div id="flagged-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Source 2: Jira Works As Designed -->
+  <section style="margin-top:28px">
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--av-blue)">&#9881;</span> Jira: Works As Designed
+      </div>
+      <span style="font-size:0.78rem;color:var(--text-muted)" id="jira-count"></span>
+    </div>
+    <div id="jira-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Source 3: Auto-Detected Patterns -->
+  <section style="margin-top:28px">
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--av-green)">&#9776;</span> Auto-Detected Patterns
+      </div>
+      <span style="font-size:0.78rem;color:var(--text-muted)" id="pattern-count"></span>
+    </div>
+    <div id="patterns-box"><div class="loading-shimmer"></div></div>
+  </section>
+
+  <!-- Recently Created -->
+  <section style="margin-top:32px">
+    <div class="section-header">
+      <div class="section-title">Recently Created</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text-muted)" id="created-count"></span>
+        <button class="btn btn-sm btn-danger" onclick="clearCreated()">Clear History</button>
+      </div>
+    </div>
+    <div id="created-box"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/sync.js"></script>
+<script src="shared/keyboard.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var currentDays = 30;
+var data = null;
+var dismissed = JSON.parse(localStorage.getItem('articleDismissed') || '[]');
+
+// Track which body version is active per card
+var bodyMode = {}; // id -> 'internal' | 'external'
+
+function getCreated(){
+  return JSON.parse(localStorage.getItem('articleCreated') || '[]');
+}
+function saveCreated(list){
+  localStorage.setItem('articleCreated', JSON.stringify(list));
+}
+
+function isDismissed(s){
+  var key = (s.source || '') + ':' + (s.errorPattern || '') + (s.jiraKey || '');
+  return dismissed.indexOf(key) !== -1;
+}
+function dismissKey(s){
+  return (s.source || '') + ':' + (s.errorPattern || '') + (s.jiraKey || '');
+}
+
+// Period selector
+window.setPeriod = function(days){
+  currentDays = days;
+  document.querySelectorAll('[id^="btn-"]').forEach(function(b){
+    b.style.background = '';
+    b.style.color = '';
+  });
+  var active = document.getElementById('btn-' + days);
+  if(active){
+    active.style.background = 'var(--av-green-dark)';
+    active.style.color = '#fff';
+  }
+  loadSuggestions();
+};
+
+// Load suggestions from API
+window.loadSuggestions = function(){
+  document.getElementById('flagged-box').innerHTML = '<div class="loading-shimmer"></div>';
+  document.getElementById('jira-box').innerHTML = '<div class="loading-shimmer"></div>';
+  document.getElementById('patterns-box').innerHTML = '<div class="loading-shimmer"></div>';
+
+  CC.api('article-suggestions?days=' + currentDays + '&threshold=5').then(function(d){
+    if(!d){
+      var err = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Failed to load suggestions</div></div>';
+      document.getElementById('flagged-box').innerHTML = err;
+      document.getElementById('jira-box').innerHTML = err;
+      document.getElementById('patterns-box').innerHTML = err;
+      return;
+    }
+    data = d;
+    bodyMode = {};
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
+    renderFlagged();
+    renderJira();
+    renderPatterns();
+    updateStatus();
+  }).catch(function(e){
+    var err = '<div class="all-clear fade-in" style="padding:40px"><div class="title">Error: ' + CC.esc(e.message) + '</div></div>';
+    document.getElementById('flagged-box').innerHTML = err;
+    document.getElementById('jira-box').innerHTML = err;
+    document.getElementById('patterns-box').innerHTML = err;
+  });
+};
+
+// ---- Render Source 1: Agent-Flagged ----
+function renderFlagged(){
+  var box = document.getElementById('flagged-box');
+  var countEl = document.getElementById('flagged-count');
+  var items = (data.flagged || []).filter(function(s){ return !isDismissed(s); });
+
+  countEl.textContent = items.length + ' flagged ticket' + (items.length !== 1 ? 's' : '');
+
+  if(items.length === 0){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px">' +
+      '<div style="font-size:0.88rem;color:var(--text-muted)">No tickets tagged <code style="background:var(--bg-input);padding:2px 6px;border-radius:3px;color:var(--av-green)">needs_article</code>. Agents can add this tag to any Zendesk ticket to suggest an article.</div></div>';
+    return;
+  }
+
+  var h = '<div class="fade-in">';
+  items.forEach(function(s, idx){
+    h += buildCard(s, 'f-' + idx, true, 'var(--accent-yellow)');
+  });
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- Render Source 2: Jira WAD ----
+function renderJira(){
+  var box = document.getElementById('jira-box');
+  var countEl = document.getElementById('jira-count');
+
+  if(data && !data.jiraConfigured){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px"><div style="font-size:0.88rem;color:var(--text-muted)">Jira integration not configured. Set JIRA_EMAIL and JIRA_API_TOKEN environment variables to enable.</div></div>';
+    countEl.textContent = 'not configured';
+    return;
+  }
+
+  var items = (data.jiraWAD || []).filter(function(s){ return !isDismissed(s); });
+  countEl.textContent = items.length + ' issue' + (items.length !== 1 ? 's' : '');
+
+  if(items.length === 0){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px"><div style="font-size:0.88rem;color:var(--text-muted)">No Jira issues with "Works As Designed" status found.</div></div>';
+    return;
+  }
+
+  var h = '<div class="fade-in">';
+  items.forEach(function(s, idx){
+    h += buildCard(s, 'j-' + idx, true, 'var(--av-blue)');
+  });
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- Render Source 3: Patterns ----
+function renderPatterns(){
+  var box = document.getElementById('patterns-box');
+  var countEl = document.getElementById('pattern-count');
+  var items = (data.patterns || []).filter(function(s){ return !isDismissed(s); });
+
+  var gaps = items.filter(function(s){ return s.hasGap; });
+  var covered = items.filter(function(s){ return !s.hasGap; });
+
+  countEl.textContent = gaps.length + ' gap' + (gaps.length !== 1 ? 's' : '') + ', ' + covered.length + ' covered';
+
+  if(items.length === 0){
+    box.innerHTML = '<div class="all-clear fade-in" style="padding:30px">' +
+      '<div style="font-size:2rem;margin-bottom:8px;color:var(--av-green)">&#10003;</div>' +
+      '<div style="font-size:0.88rem;color:var(--text-muted)">All frequent patterns have matching Help Center articles. POS integration issues are excluded (shop-specific).</div></div>';
+    return;
+  }
+
+  var h = '<div class="fade-in">';
+
+  if(gaps.length > 0){
+    h += '<div style="font-size:0.82rem;color:var(--accent-yellow);font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Missing Articles (' + gaps.length + ')</div>';
+    gaps.forEach(function(s, idx){ h += buildCard(s, 'p-' + idx, true, 'var(--accent-yellow)'); });
+  }
+
+  if(covered.length > 0){
+    h += '<div style="font-size:0.82rem;color:var(--text-muted);font-weight:600;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.5px">Already Covered (' + covered.length + ')</div>';
+    covered.forEach(function(s, idx){ h += buildCard(s, 'pc-' + idx, false, 'var(--av-green)'); });
+  }
+
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- Generic card builder ----
+function buildCard(s, id, isGap, borderColor){
+  var h = '<div class="approval-card" id="card-' + id + '" style="border-left:3px solid ' + borderColor + '">';
+
+  // Header row
+  h += '<div class="cluster-header">';
+  h += '<div class="cluster-pattern">' + CC.esc(s.pattern) + '</div>';
+  h += '<div style="display:flex;gap:6px;align-items:center">';
+
+  // Source badge
+  if(s.source === 'flagged') h += '<span class="age-pill" style="background:rgba(255,193,7,0.15);color:var(--accent-yellow);font-size:0.7rem">FLAGGED</span>';
+  else if(s.source === 'jira-wad') h += '<span class="age-pill" style="background:rgba(59,130,246,0.15);color:var(--av-blue);font-size:0.7rem">JIRA WAD</span>';
+  else h += '<span class="age-pill ' + (isGap ? 'age-warning' : 'age-ok') + '" style="font-size:0.7rem">' + (isGap ? 'No Article' : 'Covered') + '</span>';
+
+  h += '</div></div>';
+
+  // Stats line
+  h += '<div class="cluster-stats">';
+  if(s.source === 'jira-wad'){
+    h += '<a href="' + CC.esc(s.jiraUrl) + '" target="_blank" style="color:var(--av-blue)">' + CC.esc(s.jiraKey) + '</a>';
+    if(s.updatedAt) h += ' &middot; Updated ' + CC.relTime(s.updatedAt);
+  } else {
+    if(s.ticketCount) h += '<strong>' + s.ticketCount + '</strong> ticket' + (s.ticketCount !== 1 ? 's' : '');
+    if(s.orgCount) h += ' from <strong>' + s.orgCount + '</strong> shop(s)';
+  }
+  if(s.category) h += ' &middot; <span style="color:var(--av-blue)">' + CC.esc(s.category) + '</span>';
+  h += '</div>';
+
+  // Sample ticket chips
+  if(s.sampleTickets && s.sampleTickets.length){
+    h += '<div class="cluster-tickets">';
+    s.sampleTickets.forEach(function(t){
+      h += '<span class="cluster-ticket-chip"><a href="' + CC.ZD + t.id + '" target="_blank" title="' + CC.esc(t.subject) + '">#' + t.id + '</a></span>';
+    });
+    h += '</div>';
+  }
+
+  // Runbook link
+  if(s.runbookUrl){
+    h += '<div style="margin:8px 0;font-size:0.82rem">';
+    h += '<span style="color:var(--text-muted)">Runbook:</span> <a href="' + CC.esc(s.runbookUrl) + '" target="_blank" style="color:var(--av-blue)">Confluence</a>';
+    h += '</div>';
+  }
+
+  // Existing articles (if covered)
+  if(!isGap && s.existingArticles && s.existingArticles.length){
+    h += '<div style="margin:8px 0;font-size:0.82rem">';
+    h += '<span style="color:var(--text-muted)">Matching articles:</span> ';
+    s.existingArticles.forEach(function(a){
+      h += '<a href="' + CC.esc(a.url) + '" target="_blank" style="color:var(--av-green);margin-right:8px">' + CC.esc(a.title) + '</a>';
+    });
+    h += '</div>';
+  }
+
+  if(isGap){
+    // Initialize body mode for this card
+    bodyMode[id] = 'internal';
+
+    // Editable form
+    h += '<div class="approval-form" id="form-' + id + '">';
+    h += '<label>Article Title</label>';
+    h += '<input type="text" id="title-' + id + '" value="' + CC.esc(s.suggestedTitle || '') + '">';
+
+    // Body label with toggle + preview link
+    h += '<label style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">';
+    h += 'Article Body (HTML)';
+    h += '<div class="body-toggle">';
+    h += '<button class="body-toggle-btn active" id="tog-int-' + id + '" onclick="switchBody(\'' + id + '\',\'internal\')">Internal</button>';
+    h += '<button class="body-toggle-btn" id="tog-ext-' + id + '" onclick="switchBody(\'' + id + '\',\'external\')">Customer</button>';
+    h += '</div>';
+    h += '<a href="javascript:void(0)" onclick="togglePreview(\'' + id + '\')" style="color:var(--av-blue);font-weight:400;margin-left:auto">Toggle Preview</a>';
+    h += '</label>';
+    h += '<textarea id="body-' + id + '" rows="10">' + CC.esc(s.suggestedBodyInternal || s.suggestedBody || '') + '</textarea>';
+    h += '<div id="preview-' + id + '" style="display:none;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-top:8px;font-family:var(--font-sub);line-height:1.6;color:var(--text-primary)"></div>';
+    h += '</div>';
+
+    // Dual destination buttons
+    h += '<div class="dest-btns" id="btns-' + id + '">';
+    h += '<button class="btn btn-link" onclick="createArticle(\'' + id + '\',\'confluence\',this)">Internal &rarr; Confluence</button>';
+    h += '<button class="btn btn-approve" onclick="createArticle(\'' + id + '\',\'zendesk\',this)">Customer Article &rarr; ZD</button>';
+    h += '<button class="btn btn-muted" onclick="dismissSuggestion(\'' + id + '\')">Dismiss</button>';
+    h += '</div>';
+  } else {
+    h += '<div style="display:flex;gap:8px;margin-top:12px">';
+    h += '<button class="btn btn-muted btn-sm" onclick="dismissSuggestion(\'' + id + '\')">Hide</button>';
+    h += '</div>';
+  }
+
+  h += '<div id="result-' + id + '"></div>';
+  h += '</div>';
+  return h;
+}
+
+// Get suggestion object by card id
+function getSuggestion(id){
+  if(!data) return null;
+  var prefix = id.split('-')[0];
+  var idx = parseInt(id.split('-')[1], 10);
+
+  var list;
+  if(prefix === 'f') list = (data.flagged || []).filter(function(s){ return !isDismissed(s); });
+  else if(prefix === 'j') list = (data.jiraWAD || []).filter(function(s){ return !isDismissed(s); });
+  else if(prefix === 'p') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && s.hasGap; });
+  else if(prefix === 'pc') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && !s.hasGap; });
+  else return null;
+
+  return list[idx] || null;
+}
+
+// Switch body version (internal/external)
+window.switchBody = function(id, mode){
+  var s = getSuggestion(id);
+  if(!s) return;
+
+  bodyMode[id] = mode;
+  var textarea = document.getElementById('body-' + id);
+  var preview = document.getElementById('preview-' + id);
+
+  if(mode === 'external'){
+    textarea.value = s.suggestedBodyExternal || '';
+    document.getElementById('tog-int-' + id).classList.remove('active');
+    document.getElementById('tog-ext-' + id).classList.add('active');
+  } else {
+    textarea.value = s.suggestedBodyInternal || s.suggestedBody || '';
+    document.getElementById('tog-int-' + id).classList.add('active');
+    document.getElementById('tog-ext-' + id).classList.remove('active');
+  }
+
+  // Update preview if visible
+  if(preview.style.display !== 'none'){
+    preview.innerHTML = textarea.value;
+  }
+};
+
+// Toggle HTML preview
+window.togglePreview = function(id){
+  var textarea = document.getElementById('body-' + id);
+  var preview = document.getElementById('preview-' + id);
+  if(preview.style.display === 'none'){
+    preview.innerHTML = textarea.value;
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+};
+
+// Create article — dual destination
+window.createArticle = function(id, destination, btn){
+  var s = getSuggestion(id);
+  if(!s) return;
+
+  var title = document.getElementById('title-' + id).value.trim();
+  var body = document.getElementById('body-' + id).value.trim();
+
+  if(!title){ CC.toast('Title is required', false); return; }
+  if(!body){ CC.toast('Body is required', false); return; }
+
+  btn.classList.add('loading');
+  var origText = btn.textContent;
+  btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+  var labels = ['troubleshooting', 'auto-generated'];
+  if(s.source === 'flagged') labels.push('agent-flagged');
+  if(s.source === 'jira-wad') labels.push('works-as-designed');
+  if(s.category) labels.push(s.category.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+  if(destination === 'confluence') labels.push('internal');
+
+  CC.api('create-article', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ title: title, body: body, labels: labels, destination: destination })
+  }).then(function(d){
+    if(d && d.success){
+      // Show success but keep card functional for the other destination
+      var resultEl = document.getElementById('result-' + id);
+      var destLabel = d.destination === 'confluence' ? 'Confluence Page' : 'ZD Help Center Draft';
+      var idField = d.destination === 'confluence' ? 'Page ID: ' + d.pageId : 'Article ID: ' + d.articleId;
+
+      // Append result (don't replace — user might create in both destinations)
+      var existing = resultEl.innerHTML || '';
+      resultEl.innerHTML = existing +
+        '<div style="margin-top:12px;padding:12px;background:rgba(117,194,154,0.06);border:1px solid rgba(117,194,154,0.2);border-radius:var(--radius)">' +
+        '<div style="font-size:0.88rem;font-weight:700;color:var(--av-green);margin-bottom:4px">' +
+        destLabel + ': <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-green)">' + CC.esc(d.title) + '</a></div>' +
+        '<div style="font-size:0.78rem;color:var(--text-muted)">' + idField + ' &middot; <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">Open</a></div></div>';
+
+      // Disable the button that was just used
+      btn.disabled = true;
+      btn.classList.remove('loading');
+      btn.textContent = 'Created';
+      btn.style.opacity = '0.5';
+
+      var created = getCreated();
+      created.unshift({
+        articleId: d.articleId || d.pageId,
+        title: d.title,
+        url: d.url,
+        pattern: s.errorPattern || s.pattern,
+        source: s.source,
+        destination: d.destination,
+        createdAt: new Date().toISOString(),
+      });
+      saveCreated(created);
+
+      CC.toast(destLabel + ' created', true);
+      renderCreated();
+    } else {
+      CC.toast('Failed to create article', false);
+      btn.classList.remove('loading');
+      btn.textContent = origText;
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent = origText;
+  });
+};
+
+// Dismiss suggestion
+window.dismissSuggestion = function(id){
+  var s = getSuggestion(id);
+  if(!s) return;
+
+  var key = dismissKey(s);
+  dismissed.push(key);
+  localStorage.setItem('articleDismissed', JSON.stringify(dismissed));
+  CC.toast('Dismissed: ' + (s.errorPattern || s.pattern), true);
+
+  renderFlagged();
+  renderJira();
+  renderPatterns();
+  updateStatus();
+};
+
+// Render recently created articles
+function renderCreated(){
+  var created = getCreated();
+  var box = document.getElementById('created-box');
+  var countEl = document.getElementById('created-count');
+  countEl.textContent = created.length + ' article' + (created.length !== 1 ? 's' : '');
+
+  if(created.length === 0){
+    box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:0.88rem">No articles created yet. Use the suggestions above to generate drafts.</div>';
+    return;
+  }
+
+  var h = '<div class="fade-in" style="display:grid;gap:8px">';
+  created.forEach(function(a){
+    var sourceLabel = a.source === 'flagged' ? 'Flagged' : a.source === 'jira-wad' ? 'Jira WAD' : 'Pattern';
+    var destLabel = a.destination === 'confluence' ? 'Confluence' : 'ZD';
+    var destColor = a.destination === 'confluence' ? 'var(--av-blue)' : 'var(--av-green)';
+    h += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border)">';
+    h += '<div style="flex:1">';
+    h += '<a href="' + CC.esc(a.url) + '" target="_blank" style="color:var(--av-green);font-weight:600">' + CC.esc(a.title) + '</a>';
+    h += '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">' + CC.esc(a.pattern) + ' &middot; ' + sourceLabel + ' &middot; ' + CC.relTime(a.createdAt) + ' &middot; ID: ' + a.articleId + '</div>';
+    h += '</div>';
+    h += '<span class="age-pill" style="background:rgba(118,195,206,0.12);color:' + destColor + ';font-size:0.72rem">' + destLabel + '</span>';
+    h += '</div>';
+  });
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// Clear created history
+window.clearCreated = function(){
+  var created = getCreated();
+  if(created.length === 0) return;
+  if(!confirm('Clear history of ' + created.length + ' created articles?')) return;
+  localStorage.setItem('articleCreated', '[]');
+  CC.toast('History cleared', true);
+  renderCreated();
+};
+
+// Status badge
+function updateStatus(){
+  var el = document.getElementById('status-badge');
+  if(!el || !data) return;
+
+  var gapCount = data.totalGaps || 0;
+
+  if(gapCount === 0){
+    el.innerHTML = '<span class="status-badge status-green"><span class="dot"></span>Fully Covered</span>';
+  } else if(gapCount <= 3){
+    el.innerHTML = '<span class="status-badge status-yellow"><span class="dot"></span>' + gapCount + ' Gap' + (gapCount !== 1 ? 's' : '') + '</span>';
+  } else {
+    el.innerHTML = '<span class="status-badge status-red"><span class="dot"></span>' + gapCount + ' Gaps</span>';
+  }
+}
+
+// ---- Init ----
+loadSuggestions();
+renderCreated();
+
+// Keyboard shortcuts
+CC.keyboard.register('?', 'Show keyboard shortcuts', function() { CC.keyboard.showHelp(); }, 'General');
+CC.keyboard.register('escape', 'Close panels', function() { CC.keyboard.hideHelp(); }, 'General');
+CC.keyboard.register('r', 'Refresh suggestions', function() { loadSuggestions(); }, 'Actions');
+var navLinks = document.querySelectorAll('.nav-link');
+for (var ni = 0; ni < Math.min(navLinks.length, 6); ni++) {
+  (function(idx, link) {
+    CC.keyboard.register(String(idx + 1), link.textContent.trim(), function() { window.location.href = link.href; }, 'Navigation');
+  })(ni, navLinks[ni]);
+}
+
+})();
+</script>
+</body>
+</html>

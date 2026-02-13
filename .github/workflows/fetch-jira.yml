@@ -1,0 +1,66 @@
+name: Fetch Jira Works-as-Designed
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Jira
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          AUTH="${JIRA_EMAIL}:${JIRA_API_TOKEN}"
+          BASE="https://autovitals.atlassian.net/rest/api/2"
+          mkdir -p results
+
+          echo "=== Fetching resolutions ==="
+          curl -sf -u "${AUTH}" "${BASE}/resolution" > results/resolutions.json
+          cat results/resolutions.json | python3 -m json.tool
+
+          echo "=== Fetching statuses ==="
+          curl -sf -u "${AUTH}" "${BASE}/status" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          for s in data:
+              print(f\"{s['id']}: {s['name']} ({s.get('statusCategory',{}).get('name','')})\")" > results/statuses.txt
+          cat results/statuses.txt
+
+          echo "=== Searching for Works as Designed (resolution) ==="
+          JQL='resolution = "Works as Designed" ORDER BY updated DESC'
+          curl -sf -u "${AUTH}" "${BASE}/search?jql=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${JQL}'))")&maxResults=5&fields=key,summary,resolution,status,updated,labels,description" > results/wad_resolution.json 2>/dev/null || echo '{"issues":[]}' > results/wad_resolution.json
+
+          echo "=== Searching WAD by label ==="
+          JQL2='labels = "works-as-designed" OR labels = "wad" OR labels = "by-design" ORDER BY updated DESC'
+          curl -sf -u "${AUTH}" "${BASE}/search?jql=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${JQL2}'))")&maxResults=5&fields=key,summary,resolution,status,updated,labels,description" > results/wad_labels.json 2>/dev/null || echo '{"issues":[]}' > results/wad_labels.json
+
+          echo "=== Trying text search ==="
+          JQL3='text ~ "works as designed" ORDER BY updated DESC'
+          curl -sf -u "${AUTH}" "${BASE}/search?jql=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${JQL3}'))")&maxResults=5&fields=key,summary,resolution,status,updated,labels,description" > results/wad_text.json 2>/dev/null || echo '{"issues":[]}' > results/wad_text.json
+
+          echo "=== Trying all resolved with common WAD resolutions ==="
+          JQL4='resolution in ("Won'"'"'t Do", "Cannot Reproduce", "Duplicate", "Works as Designed") AND project = AV ORDER BY updated DESC'
+          curl -sf -u "${AUTH}" "${BASE}/search?jql=$(python3 -c "import urllib.parse; print(urllib.parse.quote(\"\"\"${JQL4}\"\"\"))")&maxResults=10&fields=key,summary,resolution,status,updated,labels" > results/wad_common.json 2>/dev/null || echo '{"issues":[]}' > results/wad_common.json
+
+          echo "=== Summary ==="
+          python3 << 'PYEOF'
+          import json
+          for name, f in [('Resolution match', 'results/wad_resolution.json'), ('Label match', 'results/wad_labels.json'), ('Text match', 'results/wad_text.json'), ('Common resolutions', 'results/wad_common.json')]:
+              data = json.load(open(f))
+              issues = data.get('issues', [])
+              total = data.get('total', 0)
+              print(f"\n{name}: {total} total, showing {len(issues)}")
+              for i in issues:
+                  fields = i.get('fields', {})
+                  res = fields.get('resolution', {})
+                  print(f"  {i['key']}: {fields.get('summary','')} [Resolution: {res.get('name','') if res else 'None'}]")
+          PYEOF
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: jira-data
+          path: results/
+          retention-days: 1

@@ -3,10 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Problem Tickets - AutoVitals Tech Support Command Center</title>
+<title>PT Identifier - AutoVitals Tech Support Command Center</title>
 <link rel="icon" href="assets/av-icon-green.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared/styles.css">
+<style>
+.suggestion-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--accent-yellow);
+  border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow);
+}
+.suggestion-card.created { border-left-color: var(--av-green); opacity: 0.6; }
+.jira-key {
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.95rem; color: var(--av-blue);
+}
+.ticket-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.ticket-chip {
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600;
+  padding: 3px 8px; border-radius: 4px; background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+}
+.ticket-chip a { color: var(--av-blue); text-decoration: none; }
+.ticket-chip a:hover { text-decoration: underline; }
+.ticket-chip.has-pt { border-color: var(--av-green); background: rgba(117,194,154,0.08); }
+.ticket-chip.no-pt { border-color: var(--accent-yellow); background: rgba(240,192,80,0.08); }
+.suggestion-meta {
+  display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.suggestion-meta strong { color: var(--text-secondary); }
+.suggestion-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.scan-info {
+  font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);
+}
+</style>
 </head>
 <body>
 
@@ -16,379 +45,211 @@
     <div class="header-divider"></div>
     <div>
       <div class="header-title">Tech Support Command Center</div>
-      <div class="header-subtitle" id="header-sub">Problem Tickets</div>
+      <div class="header-subtitle" id="header-sub">PT Identifier</div>
     </div>
   </div>
   <div class="header-right">
     <div id="status-badge"></div>
-    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
+    <button class="btn btn-primary" onclick="loadSuggestions()" id="refresh-btn">Scan</button>
     <div class="last-updated" id="last-updated">--</div>
   </div>
 </header>
 
 <div class="dashboard">
-  <!-- Active Problem Tickets -->
-  <section class="incidents-section">
-    <div class="section-header">
-      <div class="section-title">Active Problem Tickets</div>
-      <button class="btn btn-sm" onclick="loadIncidents()">Refresh</button>
-    </div>
-    <div id="incidents-box"><div class="loading-shimmer"></div></div>
-  </section>
-
-  <!-- Detected Potential Problems -->
   <section>
     <div class="section-header">
-      <div class="section-title">Detected Potential Problems</div>
-      <button class="btn btn-sm" onclick="loadDetected()">Refresh</button>
+      <div class="section-title">Suggested Problem Tickets</div>
+      <div class="scan-info" id="scan-info">--</div>
     </div>
-    <div id="detected-box"><div class="loading-shimmer" style="height:200px"></div></div>
+    <div id="suggestions-box"><div class="loading-shimmer" style="height:200px"></div></div>
   </section>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script src="shared/utils.js"></script>
+<script src="shared/sync.js"></script>
+<script src="shared/keyboard.js"></script>
 <script src="shared/nav.js"></script>
 <script>
 (function(){
 'use strict';
 
-var incidentsData = null;
-var detectedData = null;
-// Track which clusters have been queued (by index in current session)
-var queuedIndices = {};
+var suggestionsData = null;
+var dismissedKeys = {};
+try { dismissedKeys = JSON.parse(localStorage.getItem('pt_dismissed') || '{}'); } catch(e) {}
 
-// ---- Incidents ----
-window.loadIncidents = function(){
-  CC.api('incidents').then(function(d){
-    if(!d)return;
-    incidentsData=d;
-    renderIncidents(d);
-    renderStatus(d);
-  }).catch(function(e){ CC.toast('Incidents: '+e.message, false); });
-};
+// ---- Load suggestions ----
+window.loadSuggestions = function(){
+  var btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Scanning...';
 
-function renderStatus(d){
-  var el=document.getElementById('status-badge');
-  var n=(d&&d.incidents)?d.incidents.length:0;
-  var cls,txt;
-  if(n===0){cls='status-green';txt='All Clear';}
-  else if(n>=5){cls='status-red';txt=n+' Problems';}
-  else{cls='status-yellow';txt=n+' Problem'+(n>1?'s':'');}
-  el.innerHTML='<span class="status-badge '+cls+'"><span class="dot"></span>'+txt+'</span>';
-}
+  CC.api('pt-suggestions?days=14').then(function(d){
+    if(!d) return;
+    suggestionsData = d;
+    renderSuggestions(d);
+    document.getElementById('last-updated').textContent = 'Scanned ' + CC.fmtTime(d.generatedAt);
+    document.getElementById('scan-info').textContent = d.scannedTickets + ' tickets scanned | ' + (d.jiraLinkedTickets || 0) + ' with Jira (' + d.days + ' days)';
 
-function renderIncidents(d){
-  var box=document.getElementById('incidents-box');
-  if(!d||!d.incidents||d.incidents.length===0){
-    box.innerHTML='<div class="all-clear fade-in"><div class="title">All Clear</div><div class="sub">No active problem tickets</div></div>';
-    return;
-  }
-  var h='<div class="incidents-grid fade-in" style="grid-template-columns:1fr">';
-  d.incidents.forEach(function(i){
-    var age=CC.ageH(i.createdAt);
-    var ac=age>24?'age-critical':age>4?'age-warning':'age-ok';
-    h+='<div class="incident-card '+ac+'">';
-    h+='<div class="incident-header">';
-    h+='<span class="incident-id"><a href="'+CC.ZD+i.problemId+'" target="_blank">ZD#'+i.problemId+'</a></span>';
-    h+='<span class="age-pill '+ac+'">'+CC.relTime(i.createdAt)+'</span>';
-    h+='</div>';
-    h+='<div class="incident-subject">'+CC.esc(i.subject)+'</div>';
-    h+='<div class="incident-meta">';
-    h+='<span><span class="label">Linked:</span> <span class="linked-count">'+(i.linkedCount||0)+' tickets</span></span>';
-    if(i.jiraLinks&&i.jiraLinks.length>0){
-      i.jiraLinks.forEach(function(j){
-        h+='<span><span class="label">Jira:</span> <a href="'+CC.esc(j.url)+'" target="_blank"><strong>'+CC.esc(j.issueKey)+'</strong></a></span>';
-      });
-    }
-    h+='<span><span class="label">Status:</span> <span class="value">'+CC.esc(i.status)+'</span></span>';
-    if(i.createdAt){
-      h+='<span><span class="label">Created:</span> <span class="value">'+CC.relTime(i.createdAt)+'</span></span>';
-    }
-    h+='</div>';
-
-    // Linked tickets expandable section
-    if(i.linkedTickets&&i.linkedTickets.length>0){
-      var pid=i.problemId;
-      var hasJira=i.jiraLinks&&i.jiraLinks.length>0;
-      h+='<div style="margin-top:12px">';
-      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="margin-bottom:8px">Show '+i.linkedTickets.length+' Linked Tickets</button>';
-      h+='<div id="linked-'+pid+'" style="display:none">';
-      i.linkedTickets.forEach(function(t){
-        h+='<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">';
-        // Ticket header row
-        h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-input);cursor:pointer" onclick="toggleTicketDetail('+t.id+')">';
-        h+='<div style="display:flex;align-items:center;gap:12px">';
-        h+='<span style="font-family:var(--font-mono);font-weight:600;color:var(--av-blue)"><a href="'+CC.ZD+t.id+'" target="_blank" onclick="event.stopPropagation()">#'+t.id+'</a></span>';
-        h+='<span style="font-size:0.82rem">'+CC.esc(CC.trunc(t.subject,60))+'</span>';
-        h+='<span style="font-size:0.72rem;color:var(--text-muted)">'+CC.esc(t.status)+'</span>';
-        h+='</div>';
-        h+='<div style="display:flex;gap:6px">';
-        if(hasJira) h+='<button class="btn btn-link btn-sm" onclick="event.stopPropagation();propagateJira('+t.id+','+pid+',this)">Add Jira</button>';
-        h+='<button class="btn btn-sm" onclick="event.stopPropagation();toggleTicketDetail('+t.id+')" style="font-size:0.68rem">Expand</button>';
-        h+='</div></div>';
-        // Expandable detail panel (hidden by default)
-        h+='<div id="detail-'+t.id+'" style="display:none;padding:12px;border-top:1px solid var(--border-subtle)">';
-        h+='<div id="detail-content-'+t.id+'" style="margin-bottom:12px"><div class="loading-shimmer" style="height:60px"></div></div>';
-        // Recommended Communication form
-        h+='<div style="border-top:1px solid var(--border-subtle);padding-top:12px">';
-        h+='<label style="display:block;font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Recommended Communication (Internal Note)</label>';
-        h+='<textarea id="comm-'+t.id+'" style="width:100%;min-height:80px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-main);font-size:0.85rem;resize:vertical" placeholder="Type recommended communication..."></textarea>';
-        h+='<div style="display:flex;gap:8px;margin-top:8px">';
-        h+='<button class="btn btn-approve btn-sm" onclick="sendComment('+t.id+',this)">Send as Internal Note</button>';
-        h+='<span id="comm-status-'+t.id+'" style="font-size:0.72rem;color:var(--text-muted);align-self:center"></span>';
-        h+='</div></div></div>';
-        h+='</div>';
-      });
-      h+='</div></div>';
+    var count = (d.suggestions || []).filter(function(s){ return !dismissedKeys[s.issueKey]; }).length;
+    var el = document.getElementById('status-badge');
+    if(count === 0){
+      el.innerHTML = '<span class="status-badge status-green"><span class="dot"></span>No Suggestions</span>';
+    } else {
+      el.innerHTML = '<span class="status-badge status-yellow"><span class="dot"></span>' + count + ' Suggestion' + (count > 1 ? 's' : '') + '</span>';
     }
 
-    h+='</div>';
+    btn.classList.remove('loading');
+    btn.textContent = 'Scan';
+  }).catch(function(e){
+    CC.toast('Error: ' + e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent = 'Scan';
   });
-  h+='</div>';
-  box.innerHTML=h;
-}
-
-// ---- Detected Potential Problems ----
-window.loadDetected = function(){
-  CC.api('detect').then(function(d){
-    if(!d)return;
-    detectedData=d;
-    renderDetected(d);
-  }).catch(function(e){ CC.toast('Detection: '+e.message, false); });
 };
 
-function renderDetected(d){
-  var box=document.getElementById('detected-box');
-  var clusters=(d&&d.clusters)?d.clusters:(d&&d.detected)?d.detected:[];
-  if(!clusters.length){
-    box.innerHTML='<div class="all-clear fade-in"><div class="title">No Patterns Detected</div><div class="sub">No recurring ticket clusters found in the recent window</div></div>';
+// ---- Render ----
+function renderSuggestions(d){
+  var box = document.getElementById('suggestions-box');
+  var items = (d.suggestions || []).filter(function(s){ return !dismissedKeys[s.issueKey]; });
+
+  if(!items.length){
+    box.innerHTML = '<div class="all-clear fade-in"><div class="title">No Suggestions</div>' +
+      '<div class="sub">All Jira-linked tickets are properly grouped or have fewer than 2 matches</div></div>';
     return;
   }
 
-  // Check which ones are already in the approval queue
-  var queue = JSON.parse(localStorage.getItem('approvalQueue') || '[]');
-  var queuedPatterns = {};
-  queue.forEach(function(item){ if(item.pattern) queuedPatterns[item.pattern] = true; });
+  var h = '<div style="display:grid;grid-template-columns:1fr;gap:14px" class="fade-in">';
 
-  var h='<div style="display:grid;grid-template-columns:1fr;gap:12px" class="fade-in">';
-  clusters.forEach(function(c, idx){
-    var pattern = c.pattern || c.name || 'Unknown Pattern';
-    var ticketIds = c.ticketIds || c.tickets || [];
-    var ticketCount = c.ticketCount || ticketIds.length || 0;
-    var orgCount = c.orgCount || c.uniqueOrgs || 0;
-    var timeSpan = c.timeSpan || c.window || '';
-    var isQueued = queuedPatterns[pattern] || queuedIndices[idx];
+  items.forEach(function(s, idx){
+    h += '<div class="suggestion-card" id="sug-' + CC.esc(s.issueKey) + '">';
 
-    h+='<div class="cluster-card">';
-    h+='<div class="cluster-header">';
-    h+='<div class="cluster-pattern">'+CC.esc(pattern)+'</div>';
-    h+='</div>';
-    h+='<div class="cluster-stats">';
-    h+='<strong>'+ticketCount+'</strong> tickets';
-    if(orgCount) h+=' across <strong>'+orgCount+'</strong> orgs';
-    if(timeSpan) h+=' &middot; '+CC.esc(timeSpan);
-    h+='</div>';
+    // Header: Jira key + ticket count
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+    h += '<div>';
+    h += '<a href="' + CC.esc(s.jiraUrl) + '" target="_blank" class="jira-key">' + CC.esc(s.issueKey) + '</a>';
+    h += '</div>';
+    h += '<div style="text-align:right">';
+    h += '<div style="font-family:var(--font-mono);font-size:1.2rem;font-weight:800;color:var(--accent-yellow);line-height:1">' + s.totalTickets + '</div>';
+    h += '<div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">tickets</div>';
+    h += '</div>';
+    h += '</div>';
 
-    // Ticket ID chips
-    if(ticketIds.length){
-      h+='<div class="cluster-tickets">';
-      ticketIds.forEach(function(tid){
-        h+='<span class="cluster-ticket-chip"><a href="'+CC.ZD+tid+'" target="_blank">#'+tid+'</a></span>';
-      });
-      h+='</div>';
-    }
+    // Meta
+    h += '<div class="suggestion-meta">';
+    h += '<span><strong>' + s.unlinkedCount + '</strong> unlinked (no PT)</span>';
+    h += '<span><strong>' + (s.totalTickets - s.unlinkedCount) + '</strong> already linked</span>';
+    h += '</div>';
 
-    // Description if available
-    if(c.suggestedDescription || c.description){
-      h+='<div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">'+CC.esc(CC.trunc(c.suggestedDescription||c.description, 200))+'</div>';
-    }
+    // Ticket chips
+    h += '<div class="ticket-chips">';
+    s.tickets.forEach(function(t){
+      var cls = t.problemId ? 'has-pt' : 'no-pt';
+      var title = t.problemId ? 'Linked to PT#' + t.problemId : 'No Problem Ticket';
+      h += '<span class="ticket-chip ' + cls + '" title="' + title + '">';
+      h += '<a href="' + CC.ZD + t.id + '" target="_blank">#' + t.id + '</a>';
+      h += ' <span style="font-size:0.62rem;color:var(--text-muted)">' + CC.esc(t.status) + '</span>';
+      h += '</span>';
+    });
+    h += '</div>';
 
-    h+='<div class="cluster-actions">';
-    if(isQueued){
-      h+='<button class="btn btn-sm" disabled>Queued</button>';
-    } else {
-      h+='<button class="btn btn-approve btn-sm" onclick="sendToApproval('+idx+',this)">Send to Approval</button>';
-    }
-    h+='</div>';
-    h+='</div>';
+    // Actions
+    h += '<div class="suggestion-actions">';
+    h += '<button class="btn btn-approve" id="create-btn-' + idx + '" onclick="createPT(' + idx + ',this)">Create Problem Ticket</button>';
+    h += '<button class="btn btn-muted btn-sm" onclick="dismissSuggestion(\'' + CC.esc(s.issueKey) + '\')">Dismiss</button>';
+    h += '<span id="create-status-' + idx + '" style="font-size:0.75rem;color:var(--text-muted)"></span>';
+    h += '</div>';
+
+    h += '</div>';
   });
-  h+='</div>';
-  box.innerHTML=h;
+
+  h += '</div>';
+  box.innerHTML = h;
 }
 
-window.sendToApproval = function(idx, btn){
-  var clusters=(detectedData&&detectedData.clusters)?detectedData.clusters:(detectedData&&detectedData.detected)?detectedData.detected:[];
-  var c = clusters[idx];
-  if(!c) return;
+// ---- Create Problem Ticket ----
+window.createPT = function(idx, btn){
+  var items = (suggestionsData.suggestions || []).filter(function(s){ return !dismissedKeys[s.issueKey]; });
+  var s = items[idx];
+  if(!s) return;
 
-  var queue = JSON.parse(localStorage.getItem('approvalQueue') || '[]');
-  var item = {
-    pattern: c.pattern || c.name || 'Unknown Pattern',
-    ticketIds: c.ticketIds || c.tickets || [],
-    ticketCount: c.ticketCount || (c.ticketIds||c.tickets||[]).length || 0,
-    orgCount: c.orgCount || c.uniqueOrgs || 0,
-    timeSpan: c.timeSpan || c.window || '',
-    suggestedSubject: c.suggestedSubject || c.pattern || c.name || '',
-    suggestedDescription: c.suggestedDescription || c.description || '',
-    addedAt: new Date().toISOString()
-  };
-  queue.push(item);
-  localStorage.setItem('approvalQueue', JSON.stringify(queue));
-
-  queuedIndices[idx] = true;
-  btn.textContent = 'Queued';
-  btn.disabled = true;
-  btn.classList.remove('btn-approve');
-
-  CC.toast('Sent to approval queue', true);
-
-  if(typeof updateApprovalBadge === 'function') updateApprovalBadge();
-};
-
-// ---- Toggle Linked Tickets ----
-window.toggleLinked = function(problemId, btn){
-  var el=document.getElementById('linked-'+problemId);
-  if(!el)return;
-  if(el.style.display==='none'){
-    el.style.display='block';
-    btn.textContent=btn.textContent.replace('Show','Hide');
-  } else {
-    el.style.display='none';
-    btn.textContent=btn.textContent.replace('Hide','Show');
-  }
-};
-
-// ---- Toggle Individual Ticket Detail ----
-window.toggleTicketDetail = function(ticketId){
-  var el=document.getElementById('detail-'+ticketId);
-  if(!el)return;
-  if(el.style.display==='none'){
-    el.style.display='block';
-    loadTicketDetail(ticketId);
-  } else {
-    el.style.display='none';
-  }
-};
-
-// ---- Load Ticket Detail (latest comments) ----
-function loadTicketDetail(ticketId){
-  var box=document.getElementById('detail-content-'+ticketId);
-  box.innerHTML='<div class="loading-shimmer" style="height:60px"></div>';
-  CC.api('ticket-detail?id='+ticketId).then(function(d){
-    if(!d||!d.ticket){box.innerHTML='<div style="color:var(--text-muted);font-size:0.82rem">Failed to load</div>';return;}
-    var t=d.ticket;
-    var h='<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px">';
-    h+='<span><strong>Status:</strong> '+CC.esc(t.status)+'</span>';
-    h+='<span><strong>Priority:</strong> '+CC.esc(t.priority||'normal')+'</span>';
-    h+='<span><strong>Type:</strong> '+CC.esc(t.type||'ticket')+'</span>';
-    h+='<span><strong>Updated:</strong> '+CC.relTime(t.updatedAt)+'</span>';
-    h+='</div>';
-    // Recent comments
-    if(d.comments&&d.comments.length>0){
-      h+='<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Recent Comments (newest first)</div>';
-      h+='<div style="max-height:250px;overflow-y:auto">';
-      d.comments.slice(0,8).forEach(function(c){
-        var badge=c.public?'<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(118,195,206,0.15);color:var(--av-blue);margin-left:6px">PUBLIC</span>':'<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(117,194,154,0.15);color:var(--av-green);margin-left:6px">INTERNAL</span>';
-        h+='<div style="border-left:2px solid '+(c.public?'var(--av-blue)':'var(--av-green)')+';padding:6px 10px;margin-bottom:6px;font-size:0.78rem;background:var(--bg-input);border-radius:0 4px 4px 0">';
-        h+='<div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:3px">'+CC.relTime(c.createdAt)+badge+'</div>';
-        h+='<div style="white-space:pre-wrap;color:var(--text-secondary);max-height:100px;overflow-y:auto">'+CC.esc(CC.trunc(c.body,500))+'</div>';
-        h+='</div>';
-      });
-      h+='</div>';
-    } else {
-      h+='<div style="color:var(--text-muted);font-size:0.82rem">No comments</div>';
-    }
-    box.innerHTML=h;
-  }).catch(function(e){
-    box.innerHTML='<div style="color:var(--accent-red);font-size:0.82rem">Error: '+CC.esc(e.message)+'</div>';
-  });
-}
-
-// ---- Send Recommended Communication ----
-window.sendComment = function(ticketId, btn){
-  var textarea=document.getElementById('comm-'+ticketId);
-  var status=document.getElementById('comm-status-'+ticketId);
-  var body=textarea.value.trim();
-  if(!body){CC.toast('Type a message first',false);return;}
-
+  var status = document.getElementById('create-status-' + idx);
   btn.classList.add('loading');
-  btn.innerHTML='<span class="spinner"></span> Sending...';
-  CC.api('comment',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ticketId:ticketId, body:'--- Recommended Communication ---\n\n'+body+'\n\n-- TS Dashboard'})
+  btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+  // Collect unlinked ticket IDs
+  var unlinkedIds = s.tickets.filter(function(t){ return !t.problemId; }).map(function(t){ return t.id; });
+
+  // Use first ticket's subject as the PT description (matches "PT - <description>" convention)
+  var firstSubject = s.tickets[0] ? s.tickets[0].subject : s.issueKey;
+  var ptSubject = 'PT - ' + firstSubject;
+
+  CC.api('create-problem', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subject: ptSubject,
+      description: 'Auto-created Problem Ticket.\n\nJira: ' + s.jiraUrl + ' (' + s.issueKey + ')\nTickets: ' + unlinkedIds.join(', '),
+      tags: ['auto-pt', 'jira-linked'],
+      ticketIds: unlinkedIds,
+      jiraIssueId: s.issueId,
+      jiraIssueKey: s.issueKey,
+    })
   }).then(function(d){
-    if(d&&d.success){
-      CC.toast('Internal note added to #'+ticketId, true);
+    if(d && d.success){
+      var card = document.getElementById('sug-' + s.issueKey);
+      if(card) card.classList.add('created');
       btn.classList.remove('loading');
-      btn.textContent='Send as Internal Note';
-      textarea.value='';
-      status.textContent='Sent '+CC.fmtTime(new Date().toISOString());
-      status.style.color='var(--av-green)';
-      // Refresh the detail to show the new comment
-      loadTicketDetail(ticketId);
+      btn.disabled = true;
+      btn.textContent = 'Created';
+      btn.classList.remove('btn-approve');
+
+      status.innerHTML = '<a href="' + CC.esc(d.zdUrl) + '" target="_blank" style="color:var(--av-green);font-weight:600">ZD#' + d.problemId + '</a> — ' + d.linkedCount + ' tickets linked';
+
+      CC.toast('Problem Ticket #' + d.problemId + ' created with ' + d.linkedCount + ' linked tickets', true);
     } else {
-      CC.toast('Failed to send', false);
-      btn.classList.remove('loading');
-      btn.textContent='Send as Internal Note';
+      throw new Error('Unexpected response');
     }
   }).catch(function(e){
-    CC.toast(e.message, false);
+    CC.toast('Error: ' + e.message, false);
     btn.classList.remove('loading');
-    btn.textContent='Send as Internal Note';
+    btn.textContent = 'Create Problem Ticket';
+    status.textContent = 'Failed: ' + e.message;
+    status.style.color = 'var(--accent-red)';
   });
 };
 
-// ---- Propagate Jira to Linked Ticket ----
-window.propagateJira = function(ticketId, problemId, btn){
-  btn.classList.add('loading');
-  btn.innerHTML='<span class="spinner"></span>';
-  CC.api('propagate-jira',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ticketId:ticketId, problemId:problemId})
-  }).then(function(d){
-    if(d&&d.success){
-      var jira=d.jiraLinks&&d.jiraLinks.length?d.jiraLinks[0].issueKey:'';
-      CC.toast('Jira '+jira+' added to #'+ticketId, true);
-      btn.outerHTML='<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Done</span>';
-    } else {
-      CC.toast('Failed to propagate Jira', false);
-      btn.classList.remove('loading');
-      btn.textContent='Add Jira';
-    }
-  }).catch(function(e){
-    CC.toast(e.message, false);
-    btn.classList.remove('loading');
-    btn.textContent='Add Jira';
-  });
-};
+// ---- Dismiss ----
+window.dismissSuggestion = function(issueKey){
+  dismissedKeys[issueKey] = true;
+  localStorage.setItem('pt_dismissed', JSON.stringify(dismissedKeys));
+  var card = document.getElementById('sug-' + issueKey);
+  if(card) card.remove();
 
-// ---- Refresh All ----
-window.refreshAll = function(){
-  var btn=document.getElementById('refresh-btn');
-  btn.classList.add('loading');
-  btn.innerHTML='<span class="spinner"></span> Refreshing...';
-  Promise.all([
-    CC.api('incidents').then(function(d){ if(d){incidentsData=d;renderIncidents(d);renderStatus(d);} }),
-    CC.api('detect').then(function(d){ if(d){detectedData=d;renderDetected(d);} }),
-  ]).then(function(){
-    btn.classList.remove('loading');
-    btn.textContent='Refresh All';
-    document.getElementById('last-updated').textContent='Updated '+CC.fmtTime(new Date().toISOString());
-    CC.toast('All data refreshed', true);
-  }).catch(function(){
-    btn.classList.remove('loading');
-    btn.textContent='Refresh All';
-  });
+  // Check if any left
+  var remaining = document.querySelectorAll('.suggestion-card:not(.created)');
+  if(remaining.length === 0){
+    document.getElementById('suggestions-box').innerHTML =
+      '<div class="all-clear fade-in"><div class="title">No Suggestions</div>' +
+      '<div class="sub">All suggestions dismissed or created</div></div>';
+  }
+  CC.toast('Dismissed ' + issueKey, true);
 };
 
 // ---- Init ----
-loadIncidents();
-loadDetected();
-setInterval(function(){ loadIncidents(); loadDetected(); }, 5*60*1000);
+loadSuggestions();
+
+// Keyboard shortcuts
+CC.keyboard.register('?', 'Show keyboard shortcuts', function() { CC.keyboard.showHelp(); }, 'General');
+CC.keyboard.register('escape', 'Close panels', function() { CC.keyboard.hideHelp(); }, 'General');
+CC.keyboard.register('r', 'Refresh suggestions', function() { loadSuggestions(); }, 'Actions');
+var navLinks = document.querySelectorAll('.nav-link');
+for (var ni = 0; ni < Math.min(navLinks.length, 6); ni++) {
+  (function(idx, link) {
+    CC.keyboard.register(String(idx + 1), link.textContent.trim(), function() { window.location.href = link.href; }, 'Navigation');
+  })(ni, navLinks[ni]);
+}
 
 })();
 </script>

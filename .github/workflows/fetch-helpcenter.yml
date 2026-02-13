@@ -1,0 +1,81 @@
+name: Fetch Help Center Data
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Zendesk Help Center
+        env:
+          ZENDESK_SUBDOMAIN: ${{ secrets.ZENDESK_SUBDOMAIN }}
+          ZENDESK_EMAIL: ${{ secrets.ZENDESK_EMAIL }}
+          ZENDESK_API_TOKEN: ${{ secrets.ZENDESK_API_TOKEN }}
+        run: |
+          BASE="https://${ZENDESK_SUBDOMAIN}.zendesk.com/api/v2/help_center"
+          AUTH="${ZENDESK_EMAIL}/token:${ZENDESK_API_TOKEN}"
+          mkdir -p results
+
+          echo "=== Fetching categories ==="
+          curl -sf -u "${AUTH}" "${BASE}/categories.json" > results/categories.json
+
+          echo "=== Fetching sections ==="
+          curl -sf -u "${AUTH}" "${BASE}/sections.json?per_page=100" > results/sections.json
+
+          echo "=== Fetching articles (page 1) ==="
+          curl -sf -u "${AUTH}" "${BASE}/articles.json?per_page=100&page=1" > results/articles_p1.json
+
+          echo "=== Fetching articles (page 2) ==="
+          curl -sf -u "${AUTH}" "${BASE}/articles.json?per_page=100&page=2" > results/articles_p2.json || echo '{"articles":[]}' > results/articles_p2.json
+
+          echo "=== Fetching articles (page 3) ==="
+          curl -sf -u "${AUTH}" "${BASE}/articles.json?per_page=100&page=3" > results/articles_p3.json || echo '{"articles":[]}' > results/articles_p3.json
+
+          echo "=== Building summary ==="
+          python3 << 'PYEOF'
+          import json, os
+
+          cats = json.load(open('results/categories.json')).get('categories', [])
+          secs = json.load(open('results/sections.json')).get('sections', [])
+
+          arts = []
+          for f in ['results/articles_p1.json', 'results/articles_p2.json', 'results/articles_p3.json']:
+              if os.path.exists(f):
+                  data = json.load(open(f))
+                  for a in data.get('articles', []):
+                      arts.append({
+                          'id': a['id'],
+                          'title': a['title'],
+                          'section_id': a.get('section_id'),
+                          'draft': a.get('draft'),
+                          'created_at': a.get('created_at'),
+                          'updated_at': a.get('updated_at'),
+                          'label_names': a.get('label_names', []),
+                          'vote_sum': a.get('vote_sum', 0),
+                          'vote_count': a.get('vote_count', 0)
+                      })
+
+          json.dump(arts, open('results/articles_all.json', 'w'), indent=2)
+
+          print(f'Categories: {len(cats)}')
+          print(f'Sections: {len(secs)}')
+          print(f'Articles: {len(arts)}')
+          print()
+          for c in cats:
+              print(f"Category: {c['name']} (id={c['id']})")
+              cat_secs = [s for s in secs if s.get('category_id') == c['id']]
+              for s in cat_secs:
+                  sec_arts = [a for a in arts if a.get('section_id') == s['id']]
+                  print(f"  Section: {s['name']} ({len(sec_arts)} articles)")
+                  for a in sec_arts:
+                      draft = ' [DRAFT]' if a.get('draft') else ''
+                      print(f"    - {a['title']}{draft}")
+          PYEOF
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: helpcenter-data
+          path: results/
+          retention-days: 1

@@ -1,6 +1,20 @@
 {
   "incidents": [
     {
+      "problemId": 135389,
+      "subject": "PT - AV.X - 6.9.4.- iOS - WiFi connection lost for 5-10 seconds when opening the app",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-18729",
+          "url": "https://autovitals.atlassian.net/browse/AV-18729"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-02-11T20:33:29Z"
+    },
+    {
       "problemId": 135108,
       "subject": "PT - AV.X 6.9.4.1 - Media not uploading from device into AV.X at any length",
       "pattern": "Media Upload Issue",
@@ -214,5 +228,5 @@
       "createdAt": "2024-07-27T15:21:45Z"
     }
   ],
-  "generatedAt": "2026-02-10T17:44:13.425Z"
+  "generatedAt": "2026-02-13T02:35:04.311Z"
 }

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bonus Tracker - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+<style>
+.bonus-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.bonus-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.bonus-card .payout-hero {
+  text-align: center; padding: 16px 0 12px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.bonus-card .payout-hero .pct {
+  font-family: var(--font-mono); font-size: 2.8rem; font-weight: 800; line-height: 1;
+}
+.bonus-card .payout-hero .lbl {
+  font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-top: 4px;
+}
+.component-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid var(--border-subtle);
+}
+.component-row:last-child { border-bottom: none; }
+.component-row .comp-left { display: flex; align-items: center; gap: 8px; }
+.component-row .comp-name { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.component-row .comp-weight {
+  font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;
+  background: rgba(118,195,206,0.12); color: var(--av-blue);
+}
+.component-row .comp-right { text-align: right; }
+.component-row .comp-score {
+  font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700;
+}
+.component-row .comp-tier {
+  font-size: 0.62rem; color: var(--text-muted); font-family: var(--font-mono);
+}
+.comp-bar { height: 6px; background: var(--bg-input); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.comp-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+/* How-to banner */
+.how-to-banner {
+  background: linear-gradient(135deg, rgba(118,195,206,0.08), rgba(117,194,154,0.05));
+  border: 1px solid rgba(118,195,206,0.2); border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 20px; font-size: 0.82rem; color: var(--text-secondary);
+  line-height: 1.6;
+}
+.how-to-banner strong { color: var(--text-primary); }
+
+@media(max-width:1100px) {
+  .bonus-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Agent Bonus Tracker</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="month-label" style="font-size:0.82rem;font-weight:600;color:var(--text-secondary)"></div>
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+
+  <!-- How-to banner -->
+  <div class="how-to-banner" id="how-to">
+    <strong>Bonus Structure:</strong> Monthly bonus is calculated from 2 components &mdash;
+    <strong>CSAT</strong> (50% weight, target 90%+) and
+    <strong>Ticket Velocity</strong> (50% weight, target 80/100 pts).
+    Each component maps to a payout tier (50% &rarr; 125%). The combined payout is the weighted average.
+    <span style="float:right;cursor:pointer;color:var(--text-muted)" onclick="this.parentElement.style.display='none'" title="Dismiss">&times;</span>
+  </div>
+
+  <!-- Bonus Summary -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Bonus Summary</div>
+    </div>
+    <div class="bonus-grid" id="bonus-grid">
+      <div class="loading-shimmer" style="height:260px"></div>
+      <div class="loading-shimmer" style="height:260px"></div>
+      <div class="loading-shimmer" style="height:260px"></div>
+    </div>
+  </section>
+
+  <!-- Detailed Velocity Breakdown -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Velocity Breakdown</div>
+    </div>
+    <div class="agents-grid" id="velocity-grid">
+      <div class="loading-shimmer" style="height:250px"></div>
+      <div class="loading-shimmer" style="height:250px"></div>
+      <div class="loading-shimmer" style="height:250px"></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/sync.js"></script>
+<script src="shared/keyboard.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var AGENT_NAMES = ['Blake Corbit', 'Brien Nunn', 'Jacob Ryder'];
+var agentsData = null;
+
+// ---- Tier functions (match agents.js backend) ----
+function csatTierPct(pct) {
+  if (pct === null || pct === undefined) return 50;
+  if (pct >= 95) return 125;
+  if (pct >= 90) return 100;
+  if (pct >= 80) return 75;
+  if (pct >= 70) return 60;
+  return 50;
+}
+
+function velocityTierPct(score) {
+  if (score === null || score === undefined) return 50;
+  if (score >= 90) return 125;
+  if (score >= 80) return 100;
+  if (score >= 70) return 75;
+  if (score >= 60) return 60;
+  return 50;
+}
+
+function tierColor(tierPct) {
+  if (tierPct >= 125) return 'var(--av-green)';
+  if (tierPct >= 100) return 'var(--av-blue)';
+  if (tierPct >= 75) return 'var(--accent-yellow)';
+  if (tierPct >= 60) return 'var(--accent-orange)';
+  return 'var(--accent-red)';
+}
+
+function tierLabel(tierPct) {
+  return tierPct + '%';
+}
+
+// ---- Calculate combined bonus payout (50/50 CSAT + Velocity) ----
+function calcBonus(csatPct, velScore) {
+  var cTier = csatTierPct(csatPct);
+  var vTier = velocityTierPct(velScore);
+  var combined = Math.round((cTier * 0.50) + (vTier * 0.50));
+  return { combined: combined, csat: cTier, velocity: vTier };
+}
+
+// ---- Month label ----
+function setMonthLabel() {
+  var d = new Date();
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('month-label').textContent = months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// ---- Component bar HTML ----
+function compBar(pct, color) {
+  return '<div class="comp-bar"><div class="comp-bar-fill" style="width:' + Math.min(pct, 100) + '%;background:' + color + '"></div></div>';
+}
+
+// ---- Render bonus summary cards ----
+function renderBonusSummary() {
+  if (!agentsData) return;
+  var agents = (agentsData.agents || []).filter(function(a) { return AGENT_NAMES.indexOf(a.name) !== -1; });
+  var box = document.getElementById('bonus-grid');
+
+  if (!agents.length) {
+    box.innerHTML = '<div class="no-data" style="grid-column:1/-1">No agent data available</div>';
+    return;
+  }
+
+  var h = '';
+  agents.forEach(function(a) {
+    var csat = a.csat || {};
+    var vel = (a.currentPeriod || {}).velocity || {};
+    var bonus = calcBonus(csat.pct, vel.total);
+
+    var heroColor = tierColor(bonus.combined);
+    var heroVal = bonus.combined + '%';
+
+    h += '<div class="bonus-card fade-in">';
+    h += '<div class="agent-name" style="margin-bottom:0;font-size:0.95rem">' + CC.esc(a.name) + '</div>';
+
+    // Hero payout
+    h += '<div class="payout-hero">';
+    h += '<div class="pct" style="color:' + heroColor + '">' + heroVal + '</div>';
+    h += '<div class="lbl">Combined Payout</div>';
+    h += '</div>';
+
+    // CSAT component
+    var csatVal = csat.pct !== null && csat.pct !== undefined ? csat.pct + '%' : '--';
+    var csatTier = csatTierPct(csat.pct);
+    var csatClr = tierColor(csatTier);
+    h += '<div class="component-row">';
+    h += '<div class="comp-left"><span class="comp-name">CSAT</span><span class="comp-weight">50%</span></div>';
+    h += '<div class="comp-right">';
+    h += '<div class="comp-score" style="color:' + csatClr + '">' + csatVal + ' &rarr; ' + tierLabel(csatTier) + '</div>';
+    h += '<div class="comp-tier">' + CC.fmt(csat.good || 0) + ' good / ' + CC.fmt(csat.total || 0) + ' rated</div>';
+    h += '</div>';
+    h += '</div>';
+    h += compBar(csat.pct || 0, csatClr);
+
+    // Velocity component
+    var velVal = vel.total !== null && vel.total !== undefined ? vel.total + '/100' : '--';
+    var velTier = velocityTierPct(vel.total);
+    var velClr = tierColor(velTier);
+    h += '<div class="component-row">';
+    h += '<div class="comp-left"><span class="comp-name">Velocity</span><span class="comp-weight">50%</span></div>';
+    h += '<div class="comp-right">';
+    h += '<div class="comp-score" style="color:' + velClr + '">' + velVal + ' &rarr; ' + tierLabel(velTier) + '</div>';
+    h += '<div class="comp-tier">Target: 80/100</div>';
+    h += '</div>';
+    h += '</div>';
+    h += compBar(vel.total || 0, velClr);
+
+    h += '</div>';
+  });
+
+  box.innerHTML = h;
+}
+
+// ---- Velocity breakdown ----
+function renderVelocity() {
+  if (!agentsData) return;
+  var agents = (agentsData.agents || []).filter(function(a) { return AGENT_NAMES.indexOf(a.name) !== -1 && a.userId; });
+  var box = document.getElementById('velocity-grid');
+
+  var h = '';
+  agents.forEach(function(a) {
+    var vel = (a.currentPeriod || {}).velocity || {};
+    var det = vel.details || {};
+    var total = vel.total != null ? vel.total : 0;
+    var vc = tierColor(velocityTierPct(total));
+
+    h += '<div class="agent-card fade-in">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">';
+    h += '<div class="agent-name" style="margin-bottom:0">' + CC.esc(a.name) + '</div>';
+    h += '<div style="text-align:center">';
+    h += '<div style="font-family:var(--font-mono);font-size:1.6rem;font-weight:800;color:' + vc + ';line-height:1">' + total + '<span style="font-size:0.85rem;font-weight:600;color:var(--text-muted)">/100</span></div>';
+    h += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:' + vc + ';margin-top:2px">' + (vel.tier || '--') + ' Payout</div>';
+    h += '</div></div>';
+
+    h += velBar('Volume', vel.volumeScore || 0, 25, det.teamAvgAssigned ? 'Team avg: ' + det.teamAvgAssigned : '');
+    h += velBar('Solve Rate', vel.solveScore || 0, 25, det.solveRate != null ? det.solveRate.toFixed(1) + '%' : '');
+    h += velBar('First Reply', vel.firstReplyScore || 0, 25, det.medianFirstReplyHours != null ? det.medianFirstReplyHours.toFixed(2) + ' hrs median' : '');
+    h += velBar('Resolution', vel.resolutionScore || 0, 25, det.medianResolutionHours != null ? det.medianResolutionHours.toFixed(1) + ' hrs median' : '');
+
+    h += '</div>';
+  });
+
+  box.innerHTML = h;
+}
+
+function velBar(label, score, max, rawLabel) {
+  var pct = max > 0 ? Math.min((score / max) * 100, 100) : 0;
+  var color = tierColor(velocityTierPct((score / max) * 100));
+  var h = '<div style="margin-bottom:8px">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">';
+  h += '<span style="font-size:0.72rem;color:var(--text-secondary)">' + CC.esc(label) + '</span>';
+  h += '<span style="font-size:0.72rem;font-family:var(--font-mono);font-weight:700;color:' + color + '">' + score + '/' + max + '</span>';
+  h += '</div>';
+  h += '<div style="height:8px;background:var(--bg-input);border-radius:4px;overflow:hidden">';
+  h += '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;transition:width 0.6s ease"></div>';
+  h += '</div>';
+  if (rawLabel) {
+    h += '<div style="font-size:0.62rem;color:var(--text-muted);margin-top:1px;font-family:var(--font-mono)">' + CC.esc(rawLabel) + '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+// ---- Load data ----
+function loadData() {
+  CC.api('agents?period=month').then(function(d) {
+    if (!d) return;
+    agentsData = d;
+    renderBonusSummary();
+    renderVelocity();
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
+    document.getElementById('status-badge').innerHTML = '<span class="status-badge status-green"><span class="dot"></span>Live</span>';
+  }).catch(function(e) {
+    CC.toast('Error: ' + e.message, false);
+  });
+}
+
+window.refreshAll = function() {
+  var btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Loading...';
+  CC.api('agents?period=month').then(function(d) {
+    if (d) {
+      agentsData = d;
+      renderBonusSummary();
+      renderVelocity();
+      document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
+    }
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh';
+    CC.toast('Data refreshed', true);
+  }).catch(function(e) {
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh';
+    CC.toast('Error: ' + e.message, false);
+  });
+};
+
+// ---- Init ----
+setMonthLabel();
+loadData();
+
+// Keyboard shortcuts
+CC.keyboard.register('?', 'Show keyboard shortcuts', function() { CC.keyboard.showHelp(); }, 'General');
+CC.keyboard.register('escape', 'Close panels', function() { CC.keyboard.hideHelp(); }, 'General');
+CC.keyboard.register('r', 'Refresh data', function() { refreshAll(); }, 'Actions');
+var navLinks = document.querySelectorAll('.nav-link');
+for (var ni = 0; ni < Math.min(navLinks.length, 6); ni++) {
+  (function(idx, link) {
+    CC.keyboard.register(String(idx + 1), link.textContent.trim(), function() { window.location.href = link.href; }, 'Navigation');
+  })(ni, navLinks[ni]);
+}
+
+})();
+</script>
+</body>
+</html>

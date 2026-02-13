@@ -20,6 +20,7 @@
     </div>
   </div>
   <div class="header-right">
+    <div id="team-status" style="display:flex;gap:6px;font-size:0.68rem"></div>
     <div id="status-badge"></div>
     <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh All</button>
     <div class="last-updated" id="last-updated">--</div>
@@ -36,6 +37,20 @@
     <div id="incidents-box"><div class="loading-shimmer"></div></div>
   </section>
 
+  <!-- Inline Approval Queue -->
+  <section id="inline-approval-section" style="display:none">
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        Pending Approval
+        <span id="approval-count-badge" class="nav-badge" style="display:none">0</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm" onclick="toggleApprovalCollapse()">Toggle</button>
+      </div>
+    </div>
+    <div id="inline-approval-box"></div>
+  </section>
+
   <!-- Live Triage Queue -->
   <section>
     <div class="section-header">
@@ -45,6 +60,7 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <span id="triage-poll-status" style="font-size:0.68rem;color:var(--text-muted);font-family:var(--font-mono)">--</span>
+        <button class="btn btn-sm" id="triage-config-btn" onclick="toggleTriageConfig()" title="Auto-approve settings" style="font-size:0.72rem;padding:3px 8px">&#9881;</button>
         <button class="btn btn-sm" onclick="loadTriageQueue()">Refresh</button>
       </div>
     </div>
@@ -54,6 +70,18 @@
       <button class="triage-filter" data-filter="unmatched" onclick="setTriageFilter('unmatched',this)">No Match</button>
     </div>
     <div id="triage-queue-box"><div class="loading-shimmer" style="height:300px"></div></div>
+  </section>
+
+  <!-- Activity Feed -->
+  <section id="activity-section" style="display:none">
+    <div class="section-header">
+      <div class="section-title" style="display:flex;align-items:center;gap:8px">
+        Team Activity
+        <span id="activity-count" style="font-size:0.68rem;color:var(--text-muted);font-family:var(--font-mono)"></span>
+      </div>
+      <button class="btn btn-sm" onclick="loadActivity()">Refresh</button>
+    </div>
+    <div id="activity-box"></div>
   </section>
 
   <!-- Stats -->
@@ -81,6 +109,8 @@
 <div class="toast" id="toast"></div>
 
 <script src="shared/utils.js"></script>
+<script src="shared/sync.js"></script>
+<script src="shared/keyboard.js"></script>
 <script src="shared/nav.js"></script>
 <script>
 (function(){
@@ -104,6 +134,35 @@ var seenTicketIds = loadState('triage_seenIds', {});
 var dismissedIds = loadState('triage_dismissedIds', {});
 var handledIds = loadState('triage_handledIds', {});
 var triageFeedback = loadState('triage_feedback', { patterns: {} });
+
+// Batch selection state
+var selectedIds = {};
+
+// Triage config (auto-approve, etc.)
+var triageConfig = loadState('triage_config', {
+  autoApproveThreshold: 0,
+  autoApproveWithReply: true,
+});
+
+// SLA thresholds (hours)
+var SLA_HOURS = { urgent: 1, high: 4, normal: 8, low: 24 };
+
+function getSLA(priority, createdAt) {
+  var limit = SLA_HOURS[(priority || 'normal').toLowerCase()] || 8;
+  var elapsed = (Date.now() - new Date(createdAt).getTime()) / 3600000;
+  var remaining = limit - elapsed;
+  var pct = (elapsed / limit) * 100;
+  var label;
+  if (remaining <= 0) label = 'BREACH';
+  else if (remaining < 1) label = Math.round(remaining * 60) + 'm';
+  else label = Math.floor(remaining) + 'h ' + Math.round((remaining % 1) * 60) + 'm';
+  return {
+    remaining: remaining,
+    breached: remaining <= 0,
+    cls: remaining <= 0 ? 'sla-breach' : pct >= 75 ? 'sla-warn' : 'sla-ok',
+    label: label,
+  };
+}
 
 // Prune entries older than 30 days on load
 (function pruneOldFeedback() {
@@ -170,20 +229,84 @@ function renderIncidents(d){
   d.incidents.forEach(function(i){
     var age=CC.ageH(i.createdAt);
     var ac=age>24?'age-critical':age>4?'age-warning':'age-ok';
+    var linked=i.linkedCount||0;
+    var hasJira=i.jiraLinks&&i.jiraLinks.length>0;
+    var pid=i.problemId;
+
     h+='<div class="incident-card '+ac+'">';
     h+='<div class="incident-header">';
-    h+='<span class="incident-id"><a href="'+CC.ZD+i.problemId+'" target="_blank">ZD#'+i.problemId+'</a></span>';
+    h+='<span class="incident-id"><a href="'+CC.ZD+pid+'" target="_blank">ZD#'+pid+'</a></span>';
     h+='<span class="age-pill '+ac+'">'+CC.relTime(i.createdAt)+'</span>';
     h+='</div>';
     h+='<div class="incident-subject">'+CC.esc(i.subject)+'</div>';
     h+='<div class="incident-meta">';
-    if(i.jiraLinks&&i.jiraLinks.length>0){
+    if(hasJira){
       i.jiraLinks.forEach(function(j){
         h+='<span><span class="label">Jira:</span> <a href="'+CC.esc(j.url)+'" target="_blank"><strong>'+CC.esc(j.issueKey)+'</strong></a></span>';
       });
     }
     h+='<span><span class="label">Status:</span> <span class="value">'+CC.esc(i.status)+'</span></span>';
-    h+='</div></div>';
+    h+='</div>';
+
+    // Action buttons row
+    if(i.linkedTickets&&i.linkedTickets.length>0){
+      var lastUp=getLastUpdate(pid);
+      h+='<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">';
+      h+='<button class="btn btn-sm" onclick="toggleLinked('+pid+',this)" style="font-size:0.7rem">'+linked+' Linked</button>';
+      h+='<button class="btn btn-sm" onclick="toggleUpdatePanel('+pid+')" style="font-size:0.7rem;background:var(--bg-input);border:1px solid var(--border)">Send Update</button>';
+      h+='<span id="last-update-'+pid+'" style="font-size:0.62rem;color:var(--text-muted);font-family:var(--font-mono)">'+(lastUp?CC.relTime(lastUp):'no updates')+'</span>';
+      h+='</div>';
+
+      // Send Update panel (hidden)
+      h+='<div id="update-panel-'+pid+'" style="display:none;margin-top:10px;padding:12px;background:rgba(118,195,206,0.04);border:1px solid var(--border);border-radius:var(--radius)">';
+      h+='<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Bulk Update for ZD#'+pid+'</div>';
+      h+='<textarea id="update-msg-'+pid+'" style="width:100%;min-height:70px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-sub);font-size:0.8rem;resize:vertical;box-sizing:border-box" placeholder="Type update message..."></textarea>';
+      h+='<div style="margin-top:8px;margin-bottom:8px">';
+      h+='<label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;color:var(--text-secondary);cursor:pointer;margin-bottom:4px">';
+      h+='<input type="checkbox" checked onchange="toggleAllChecks('+pid+',this.checked)" style="accent-color:var(--av-green)"> All '+i.linkedTickets.length+' tickets';
+      h+='</label>';
+      h+='<div id="update-checks-'+pid+'" style="display:flex;flex-direction:column;gap:2px;margin-left:4px">';
+      i.linkedTickets.forEach(function(t){
+        h+='<label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--text-secondary);cursor:pointer">';
+        h+='<input type="checkbox" checked class="update-check-'+pid+'" value="'+t.id+'" onchange="updateSendCount('+pid+')" style="accent-color:var(--av-green)">';
+        h+='#'+t.id+' <span style="color:var(--text-muted)">'+CC.esc(CC.trunc(t.subject,35))+'</span>';
+        h+='</label>';
+      });
+      h+='</div></div>';
+      h+='<div style="display:flex;gap:8px;align-items:center">';
+      h+='<button class="btn btn-approve btn-sm" id="send-update-btn-'+pid+'" onclick="sendBulkUpdate('+pid+',this)">Send Update to '+i.linkedTickets.length+' tickets</button>';
+      h+='<button class="btn btn-muted btn-sm" onclick="toggleUpdatePanel('+pid+')">Cancel</button>';
+      h+='<span id="update-status-'+pid+'" style="font-size:0.68rem;color:var(--text-muted)"></span>';
+      h+='</div></div>';
+
+      // Linked tickets list (hidden)
+      h+='<div id="linked-'+pid+'" style="display:none;margin-top:8px">';
+      i.linkedTickets.forEach(function(t){
+        h+='<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);margin-bottom:6px;overflow:hidden">';
+        h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-input);cursor:pointer;gap:8px" onclick="toggleTicketDetail('+t.id+')">';
+        h+='<div style="display:flex;align-items:center;gap:8px;min-width:0">';
+        h+='<a href="'+CC.ZD+t.id+'" target="_blank" onclick="event.stopPropagation()" style="font-family:var(--font-mono);font-weight:600;color:var(--av-blue);font-size:0.75rem;flex-shrink:0">#'+t.id+'</a>';
+        h+='<span style="font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+CC.esc(CC.trunc(t.subject,40))+'</span>';
+        h+='</div>';
+        h+='<div style="display:flex;gap:4px;flex-shrink:0">';
+        if(hasJira) h+='<button class="btn btn-link btn-sm" onclick="event.stopPropagation();propagateJira('+t.id+','+pid+',this)" style="font-size:0.62rem;padding:2px 6px">Jira</button>';
+        h+='</div></div>';
+        h+='<div id="detail-'+t.id+'" style="display:none;padding:10px;border-top:1px solid var(--border-subtle)">';
+        h+='<div id="detail-content-'+t.id+'" style="margin-bottom:10px"><div class="loading-shimmer" style="height:50px"></div></div>';
+        h+='<div style="border-top:1px solid var(--border-subtle);padding-top:8px">';
+        h+='<textarea id="comm-'+t.id+'" style="width:100%;min-height:60px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-sub);font-size:0.78rem;resize:vertical;box-sizing:border-box" placeholder="Internal note..."></textarea>';
+        h+='<div style="display:flex;gap:6px;margin-top:6px">';
+        h+='<button class="btn btn-approve btn-sm" onclick="sendComment('+t.id+',this)" style="font-size:0.68rem">Send Note</button>';
+        h+='<span id="comm-status-'+t.id+'" style="font-size:0.68rem;color:var(--text-muted);align-self:center"></span>';
+        h+='</div></div></div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    } else if(linked>0){
+      h+='<div style="font-size:0.72rem;color:var(--text-muted);margin-top:8px">'+linked+' linked</div>';
+    }
+
+    h+='</div>';
   });
   h+='</div>';
   box.innerHTML=h;
@@ -274,22 +397,56 @@ function renderTriageQueue(d){
     filtered = filtered.filter(function(item) { return item.match === null; });
   }
 
+  // Auto-approve high confidence matches
+  var autoCount = 0;
+  if (triageConfig.autoApproveThreshold > 0) {
+    filtered = filtered.filter(function(item) {
+      if (item.match && item.match.score >= triageConfig.autoApproveThreshold) {
+        autoApproveItem(item);
+        autoCount++;
+        return false; // remove from display
+      }
+      return true;
+    });
+    if (autoCount > 0) CC.toast('Auto-approved ' + autoCount + ' ticket' + (autoCount > 1 ? 's' : ''), true);
+  }
+
+  // Clear batch selection for items no longer in queue
+  var validIds = {};
+  filtered.forEach(function(item) { validIds[item.ticketId] = true; });
+  for (var sid in selectedIds) { if (!validIds[sid]) delete selectedIds[sid]; }
+
   if(!filtered.length){
     box.innerHTML = '<div class="all-clear fade-in"><div class="title">Queue Clear</div>' +
       '<div class="sub">No unlinked tickets in the last 2 hours</div></div>';
     return;
   }
 
-  // Sort: high confidence first, then medium, then unmatched, then by age
+  // Sort: high confidence first, then medium, then unmatched, then by SLA urgency
   var confOrder = {high: 0, medium: 1, low: 2};
   filtered.sort(function(a, b){
     var ca = a.match ? (confOrder[a.match.confidence] != null ? confOrder[a.match.confidence] : 3) : 3;
     var cb = b.match ? (confOrder[b.match.confidence] != null ? confOrder[b.match.confidence] : 3) : 3;
     if(ca !== cb) return ca - cb;
-    return new Date(b.createdAt) - new Date(a.createdAt);
+    // Within same confidence, sort by SLA urgency
+    var sa = getSLA(a.priority, a.createdAt).remaining;
+    var sb = getSLA(b.priority, b.createdAt).remaining;
+    return sa - sb;
   });
 
-  var h = '<div class="triage-queue-grid fade-in">';
+  // Batch action bar
+  var selCount = Object.keys(selectedIds).length;
+  var h = '';
+  if (selCount > 0) {
+    h += '<div class="batch-bar" id="batch-bar">';
+    h += '<span class="count">' + selCount + ' selected</span>';
+    h += '<button class="btn btn-approve btn-sm" onclick="batchApproveSelected()">Approve All</button>';
+    h += '<button class="btn btn-muted btn-sm" onclick="batchDismissSelected()">Dismiss All</button>';
+    h += '<button class="btn btn-sm" onclick="clearSelection()">Clear</button>';
+    h += '</div>';
+  }
+
+  h += '<div class="triage-queue-grid fade-in">';
 
   filtered.forEach(function(item){
     var borderColor = item.match
@@ -298,17 +455,23 @@ function renderTriageQueue(d){
         : 'var(--border)')
       : 'var(--border)';
     var pri = (item.priority || 'normal').toLowerCase();
+    var sla = getSLA(item.priority, item.createdAt);
+    var isSelected = !!selectedIds[item.ticketId];
 
-    h += '<div class="triage-queue-card" id="tq-' + item.ticketId + '" style="border-left:4px solid ' + borderColor + '">';
+    h += '<div class="triage-queue-card' + (isSelected ? ' kb-focused' : '') + '" id="tq-' + item.ticketId + '" style="border-left:4px solid ' + borderColor + '">';
 
-    // Row 1: Ticket info + dismiss
+    // Row 1: Checkbox + Ticket info + SLA + dismiss
     h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
-    h += '<div>';
+    h += '<div style="display:flex;align-items:center;gap:8px">';
+    if (item.match) {
+      h += '<input type="checkbox" class="batch-check" data-tid="' + item.ticketId + '"' + (isSelected ? ' checked' : '') + ' onclick="toggleSelect(' + item.ticketId + ',this.checked)" title="Select for batch action">';
+    }
     h += '<a href="' + CC.ZD + item.ticketId + '" target="_blank" style="font-family:var(--font-mono);font-weight:700;color:var(--av-blue)">#' + item.ticketId + '</a>';
     h += ' <span class="priority-badge p-' + pri + '" style="margin-left:4px">' + CC.esc(pri) + '</span>';
+    h += ' <span class="sla-badge ' + sla.cls + '">' + sla.label + '</span>';
     h += ' <span class="age-pill ' + (CC.ageH(item.createdAt) > 1 ? 'age-warning' : 'age-ok') + '">' + CC.relTime(item.createdAt) + '</span>';
     h += '</div>';
-    h += '<button class="btn btn-muted btn-sm" onclick="dismissTriageItem(' + item.ticketId + ')" title="Hide">Dismiss</button>';
+    h += '<button class="btn btn-muted btn-sm" onclick="dismissTriageItem(' + item.ticketId + ')" title="[D] Dismiss">Dismiss</button>';
     h += '</div>';
 
     // Subject
@@ -434,6 +597,8 @@ window.approveAndLink = function(ticketId, problemId, btn){
         '<span style="color:var(--av-green);font-weight:700;font-size:0.85rem">Linked #' + ticketId + ' to ZD#' + problemId + (replyBody ? ' + note posted' : '') + '</span></div>';
     }
     CC.toast('Linked #' + ticketId + ' to Problem #' + problemId, true);
+    CC.sync.emit('triage-handled', { ticketId: ticketId, problemId: problemId });
+    logActivity('triage-approve', ticketId, problemId);
   }).catch(function(e){
     CC.toast('Error: ' + e.message, false);
     btn.classList.remove('loading');
@@ -469,6 +634,157 @@ window.dismissTriageItem = function(ticketId){
 
   var card = document.getElementById('tq-' + ticketId);
   if(card) card.remove();
+  CC.sync.emit('triage-dismissed', { ticketId: ticketId });
+  logActivity('triage-dismiss', ticketId);
+};
+
+// ---- Auto-Approve (fires silently for high confidence) ----
+function autoApproveItem(item) {
+  if (!item.match) return;
+  var ticketId = item.ticketId;
+  var problemId = item.match.problemId;
+  var replyBody = (triageConfig.autoApproveWithReply && item.suggestedReply) ? item.suggestedReply : '';
+
+  handledIds[ticketId] = { auto: true, at: new Date().toISOString() };
+  saveState('triage_handledIds', handledIds);
+
+  // Link
+  CC.api('link', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ ticketId: ticketId, problemId: problemId })
+  }).then(function(d) {
+    if (!d || !d.success) return;
+    // Post reply if configured
+    if (replyBody) {
+      CC.api('comment', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ticketId: ticketId, body: replyBody })
+      }).catch(function() {});
+    }
+    recordFeedback('approve', item.errorPattern, problemId);
+    CC.sync.emit('triage-handled', { ticketId: ticketId, problemId: problemId, auto: true });
+    logActivity('auto-approve', ticketId, problemId);
+  }).catch(function() {});
+}
+
+// ---- Batch Selection ----
+window.toggleSelect = function(ticketId, checked) {
+  if (checked) selectedIds[ticketId] = true;
+  else delete selectedIds[ticketId];
+  updateBatchBar();
+};
+
+window.clearSelection = function() {
+  selectedIds = {};
+  document.querySelectorAll('.batch-check').forEach(function(cb) { cb.checked = false; });
+  updateBatchBar();
+};
+
+function updateBatchBar() {
+  var count = Object.keys(selectedIds).length;
+  var bar = document.getElementById('batch-bar');
+  if (count === 0 && bar) bar.remove();
+  else if (count > 0 && bar) {
+    bar.querySelector('.count').textContent = count + ' selected';
+  } else if (count > 0 && !bar) {
+    // Re-render triage queue to show bar
+    if (triageQueueData) renderTriageQueue(triageQueueData);
+  }
+}
+
+window.batchApproveSelected = function() {
+  var ids = Object.keys(selectedIds).map(Number);
+  if (!ids.length) return;
+  var queue = (triageQueueData && triageQueueData.queue) ? triageQueueData.queue : [];
+  var items = [];
+  ids.forEach(function(tid) {
+    var item = queue.find(function(q) { return q.ticketId === tid; });
+    if (item && item.match) {
+      var replyEl = document.getElementById('reply-' + tid);
+      items.push({ ticketId: tid, problemId: item.match.problemId, replyBody: replyEl ? replyEl.value.trim() : '' });
+    }
+  });
+  if (!items.length) { CC.toast('No matched items in selection', false); return; }
+
+  CC.toast('Batch linking ' + items.length + ' tickets...', true);
+
+  // Use batch-link API for single-call processing
+  CC.api('batch-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: items }),
+  }).then(function(d) {
+    if (d && d.success) {
+      d.results.forEach(function(r) {
+        if (r.success) {
+          handledIds[r.ticketId] = true;
+          CC.sync.emit('triage-handled', { ticketId: r.ticketId, problemId: r.problemId });
+          var card = document.getElementById('tq-' + r.ticketId);
+          if (card) { card.style.opacity = '0.4'; card.style.borderLeftColor = 'var(--av-green)'; }
+        }
+      });
+      saveState('triage_handledIds', handledIds);
+      selectedIds = {};
+      var msg = 'Batch complete: ' + d.succeeded + ' linked';
+      if (d.failed > 0) msg += ', ' + d.failed + ' failed';
+      CC.toast(msg, true);
+      logActivity('batch-approve', null, null, d.succeeded + ' tickets linked');
+      setTimeout(function() { if (triageQueueData) renderTriageQueue(triageQueueData); }, 1500);
+    }
+  }).catch(function(e) {
+    CC.toast('Batch error: ' + e.message, false);
+  });
+};
+
+window.batchDismissSelected = function() {
+  var ids = Object.keys(selectedIds).map(Number);
+  ids.forEach(function(tid) { dismissTriageItem(tid); });
+  selectedIds = {};
+};
+
+// ---- Triage Config (auto-approve settings) ----
+window.toggleTriageConfig = function() {
+  var existing = document.getElementById('triage-config-popover');
+  if (existing) { existing.remove(); return; }
+
+  var btn = document.getElementById('triage-config-btn');
+  var pop = document.createElement('div');
+  pop.id = 'triage-config-popover';
+  pop.className = 'config-popover';
+
+  var thresholds = [0, 80, 90];
+  var labels = ['OFF', '80+', '90+'];
+  var h = '<label>Auto-approve threshold</label>';
+  h += '<div class="config-btn-group">';
+  thresholds.forEach(function(t, i) {
+    h += '<button onclick="setAutoApprove(' + t + ')" class="' + (triageConfig.autoApproveThreshold === t ? 'active' : '') + '">' + labels[i] + '</button>';
+  });
+  h += '</div>';
+  h += '<div style="font-size:0.65rem;color:var(--text-muted);margin-top:8px">Tickets above threshold are auto-linked on load</div>';
+  pop.innerHTML = h;
+
+  btn.parentNode.style.position = 'relative';
+  btn.parentNode.appendChild(pop);
+
+  // Close on outside click
+  setTimeout(function() {
+    document.addEventListener('click', function closeConfig(e) {
+      if (!pop.contains(e.target) && e.target !== btn) {
+        pop.remove();
+        document.removeEventListener('click', closeConfig);
+      }
+    });
+  }, 10);
+};
+
+window.setAutoApprove = function(threshold) {
+  triageConfig.autoApproveThreshold = threshold;
+  saveState('triage_config', triageConfig);
+  var pop = document.getElementById('triage-config-popover');
+  if (pop) pop.remove();
+  CC.toast('Auto-approve: ' + (threshold === 0 ? 'OFF' : threshold + '+'), true);
 };
 
 // ---- Manual link (reused from old triage) ----
@@ -551,6 +867,207 @@ function renderCharts(d){
   box.innerHTML=h;
 }
 
+// ---- Get Last Update time from localStorage ----
+function getLastUpdate(pid){
+  try { return localStorage.getItem('pt_lastUpdate_'+pid) || ''; }
+  catch(e){ return ''; }
+}
+
+// ---- Toggle Send Update Panel ----
+window.toggleUpdatePanel = function(pid){
+  var el=document.getElementById('update-panel-'+pid);
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
+};
+
+// ---- Toggle All Checkboxes ----
+window.toggleAllChecks = function(pid, checked){
+  var boxes=document.querySelectorAll('.update-check-'+pid);
+  boxes.forEach(function(b){ b.checked=checked; });
+  updateSendCount(pid);
+};
+
+// ---- Update Send Button Count ----
+window.updateSendCount = function(pid){
+  var boxes=document.querySelectorAll('.update-check-'+pid+':checked');
+  var btn=document.getElementById('send-update-btn-'+pid);
+  if(btn) btn.textContent='Send Update to '+boxes.length+' ticket'+(boxes.length!==1?'s':'');
+};
+
+// ---- Send Bulk Update ----
+window.sendBulkUpdate = function(pid, btn){
+  var msgEl=document.getElementById('update-msg-'+pid);
+  var statusEl=document.getElementById('update-status-'+pid);
+  var message=(msgEl?msgEl.value:'').trim();
+  if(!message){ CC.toast('Type a message first',false); return; }
+
+  var boxes=document.querySelectorAll('.update-check-'+pid+':checked');
+  var ticketIds=[];
+  boxes.forEach(function(b){ ticketIds.push(parseInt(b.value,10)); });
+  if(!ticketIds.length){ CC.toast('Select at least one ticket',false); return; }
+
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span> Sending...';
+  statusEl.textContent='';
+
+  CC.api('bulk-update',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ problemId:pid, ticketIds:ticketIds, message:message })
+  }).then(function(d){
+    if(d&&d.success){
+      // Save last update time
+      var now=new Date().toISOString();
+      try{ localStorage.setItem('pt_lastUpdate_'+pid, now); }catch(e){}
+
+      // Update timer display
+      var timerEl=document.getElementById('last-update-'+pid);
+      if(timerEl) timerEl.textContent='just now';
+
+      // Collapse panel
+      var panel=document.getElementById('update-panel-'+pid);
+      if(panel) panel.style.display='none';
+
+      // Clear textarea
+      if(msgEl) msgEl.value='';
+
+      btn.classList.remove('loading');
+      btn.textContent='Send Update to '+ticketIds.length+' ticket'+(ticketIds.length!==1?'s':'');
+
+      var msg='Update sent to '+d.updatedCount+' ticket'+(d.updatedCount!==1?'s':'')+' on ZD#'+pid;
+      if(d.failedCount>0) msg+=' ('+d.failedCount+' failed)';
+      CC.toast(msg, true);
+    } else {
+      throw new Error('Unexpected response');
+    }
+  }).catch(function(e){
+    CC.toast('Error: '+e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent='Send Update';
+    statusEl.textContent='Failed: '+e.message;
+    statusEl.style.color='var(--accent-red)';
+  });
+};
+
+// ---- Toggle Linked Tickets ----
+window.toggleLinked = function(problemId, btn){
+  var el=document.getElementById('linked-'+problemId);
+  if(!el)return;
+  if(el.style.display==='none'){
+    el.style.display='block';
+    btn.style.background='var(--av-green-dark)';
+    btn.style.color='#fff';
+  } else {
+    el.style.display='none';
+    btn.style.background='';
+    btn.style.color='';
+  }
+};
+
+// ---- Toggle Individual Ticket Detail ----
+window.toggleTicketDetail = function(ticketId){
+  var el=document.getElementById('detail-'+ticketId);
+  if(!el)return;
+  if(el.style.display==='none'){
+    el.style.display='block';
+    loadTicketDetail(ticketId);
+  } else {
+    el.style.display='none';
+  }
+};
+
+// ---- Load Ticket Detail (latest comments) ----
+function loadTicketDetail(ticketId){
+  var box=document.getElementById('detail-content-'+ticketId);
+  box.innerHTML='<div class="loading-shimmer" style="height:60px"></div>';
+  CC.api('ticket-detail?id='+ticketId).then(function(d){
+    if(!d||!d.ticket){box.innerHTML='<div style="color:var(--text-muted);font-size:0.82rem">Failed to load</div>';return;}
+    var t=d.ticket;
+    var h='<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px">';
+    h+='<span><strong>Status:</strong> '+CC.esc(t.status)+'</span>';
+    h+='<span><strong>Priority:</strong> '+CC.esc(t.priority||'normal')+'</span>';
+    h+='<span><strong>Type:</strong> '+CC.esc(t.type||'ticket')+'</span>';
+    h+='<span><strong>Updated:</strong> '+CC.relTime(t.updatedAt)+'</span>';
+    h+='</div>';
+    if(d.comments&&d.comments.length>0){
+      h+='<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Recent Comments (newest first)</div>';
+      h+='<div style="max-height:250px;overflow-y:auto">';
+      d.comments.slice(0,8).forEach(function(c){
+        var badge=c.public?'<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(118,195,206,0.15);color:var(--av-blue);margin-left:6px">PUBLIC</span>':'<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(117,194,154,0.15);color:var(--av-green);margin-left:6px">INTERNAL</span>';
+        h+='<div style="border-left:2px solid '+(c.public?'var(--av-blue)':'var(--av-green)')+';padding:6px 10px;margin-bottom:6px;font-size:0.78rem;background:var(--bg-input);border-radius:0 4px 4px 0">';
+        h+='<div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:3px">'+CC.relTime(c.createdAt)+badge+'</div>';
+        h+='<div style="white-space:pre-wrap;color:var(--text-secondary);max-height:100px;overflow-y:auto">'+CC.esc(CC.trunc(c.body,500))+'</div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    } else {
+      h+='<div style="color:var(--text-muted);font-size:0.82rem">No comments</div>';
+    }
+    box.innerHTML=h;
+  }).catch(function(e){
+    box.innerHTML='<div style="color:var(--accent-red);font-size:0.82rem">Error: '+CC.esc(e.message)+'</div>';
+  });
+}
+
+// ---- Send Recommended Communication ----
+window.sendComment = function(ticketId, btn){
+  var textarea=document.getElementById('comm-'+ticketId);
+  var status=document.getElementById('comm-status-'+ticketId);
+  var body=textarea.value.trim();
+  if(!body){CC.toast('Type a message first',false);return;}
+
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span> Sending...';
+  CC.api('comment',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:ticketId, body:'--- Recommended Communication ---\n\n'+body+'\n\n-- TS Dashboard'})
+  }).then(function(d){
+    if(d&&d.success){
+      CC.toast('Internal note added to #'+ticketId, true);
+      btn.classList.remove('loading');
+      btn.textContent='Send as Internal Note';
+      textarea.value='';
+      status.textContent='Sent '+CC.fmtTime(new Date().toISOString());
+      status.style.color='var(--av-green)';
+      loadTicketDetail(ticketId);
+    } else {
+      CC.toast('Failed to send', false);
+      btn.classList.remove('loading');
+      btn.textContent='Send as Internal Note';
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent='Send as Internal Note';
+  });
+};
+
+// ---- Propagate Jira to Linked Ticket ----
+window.propagateJira = function(ticketId, problemId, btn){
+  btn.classList.add('loading');
+  btn.innerHTML='<span class="spinner"></span>';
+  CC.api('propagate-jira',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:ticketId, problemId:problemId})
+  }).then(function(d){
+    if(d&&d.success){
+      var jira=d.jiraLinks&&d.jiraLinks.length?d.jiraLinks[0].issueKey:'';
+      CC.toast('Jira '+jira+' added to #'+ticketId, true);
+      btn.outerHTML='<span style="color:var(--av-green);font-size:0.7rem;font-weight:600">Done</span>';
+    } else {
+      CC.toast('Failed to propagate Jira', false);
+      btn.classList.remove('loading');
+      btn.textContent='Add Jira';
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent='Add Jira';
+  });
+};
+
 // ---- Refresh All ----
 window.refreshAll = function(){
   var btn=document.getElementById('refresh-btn');
@@ -570,14 +1087,354 @@ window.refreshAll = function(){
   });
 };
 
+// ---- Inline Approval Queue ----
+var approvalCollapsed = loadState('approval_collapsed', false);
+
+function getApprovalQueue() {
+  return JSON.parse(localStorage.getItem('approvalQueue') || '[]');
+}
+
+function saveApprovalQueue(queue) {
+  localStorage.setItem('approvalQueue', JSON.stringify(queue));
+  if (typeof updateApprovalBadge === 'function') updateApprovalBadge();
+}
+
+window.renderInlineApproval = function() {
+  var queue = getApprovalQueue();
+  var section = document.getElementById('inline-approval-section');
+  var box = document.getElementById('inline-approval-box');
+  var badge = document.getElementById('approval-count-badge');
+
+  if (queue.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+  badge.textContent = queue.length;
+  badge.style.display = 'inline-flex';
+
+  if (approvalCollapsed) {
+    box.innerHTML = '<div style="padding:12px;font-size:0.82rem;color:var(--text-muted);cursor:pointer" onclick="toggleApprovalCollapse()">' +
+      queue.length + ' item' + (queue.length !== 1 ? 's' : '') + ' waiting — click to expand</div>';
+    return;
+  }
+
+  var h = '<div class="fade-in" style="display:flex;flex-direction:column;gap:10px">';
+  queue.forEach(function(item, idx) {
+    h += '<div class="approval-card" id="ia-card-' + idx + '" style="padding:14px 18px">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+    h += '<div>';
+    h += '<div style="font-size:0.92rem;font-weight:700;color:var(--text-primary)">' + CC.esc(item.pattern) + '</div>';
+    h += '<div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">' + (item.ticketCount || 0) + ' tickets';
+    if (item.orgCount) h += ' across ' + item.orgCount + ' orgs';
+    h += ' &middot; ' + CC.relTime(item.addedAt) + '</div>';
+    h += '</div>';
+    h += '<button class="btn btn-muted btn-sm" onclick="dismissApprovalItem(' + idx + ')" style="font-size:0.68rem">Dismiss</button>';
+    h += '</div>';
+
+    // Ticket chips
+    if (item.ticketIds && item.ticketIds.length) {
+      h += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">';
+      item.ticketIds.slice(0, 8).forEach(function(tid) {
+        h += '<a href="' + CC.ZD + tid + '" target="_blank" style="font-size:0.68rem;font-family:var(--font-mono);padding:1px 6px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--av-blue)">#' + tid + '</a>';
+      });
+      if (item.ticketIds.length > 8) h += '<span style="font-size:0.68rem;color:var(--text-muted)">+' + (item.ticketIds.length - 8) + ' more</span>';
+      h += '</div>';
+    }
+
+    // Compact form
+    h += '<div style="display:flex;gap:8px;align-items:flex-end">';
+    h += '<div style="flex:1">';
+    h += '<input type="text" id="ia-subj-' + idx + '" value="' + CC.esc(item.suggestedSubject || '') + '" placeholder="Subject" style="width:100%;padding:5px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:0.82rem;box-sizing:border-box;margin-bottom:4px">';
+    h += '<textarea id="ia-desc-' + idx + '" placeholder="Description" style="width:100%;min-height:40px;padding:5px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font-sub);font-size:0.78rem;resize:vertical;box-sizing:border-box">' + CC.esc(item.suggestedDescription || '') + '</textarea>';
+    h += '</div>';
+    h += '<button class="btn btn-approve" onclick="inlineApproveItem(' + idx + ',this)" id="ia-approve-' + idx + '" style="white-space:nowrap">Create PT</button>';
+    h += '</div>';
+
+    h += '<div id="ia-result-' + idx + '"></div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  box.innerHTML = h;
+};
+
+window.toggleApprovalCollapse = function() {
+  approvalCollapsed = !approvalCollapsed;
+  saveState('approval_collapsed', approvalCollapsed);
+  renderInlineApproval();
+};
+
+window.inlineApproveItem = function(idx, btn) {
+  var queue = getApprovalQueue();
+  var item = queue[idx];
+  if (!item) return;
+
+  var subject = document.getElementById('ia-subj-' + idx).value.trim();
+  var description = document.getElementById('ia-desc-' + idx).value.trim();
+  if (!subject) { CC.toast('Subject is required', false); return; }
+
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+  CC.api('create-problem', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subject: subject,
+      description: description,
+      ticketIds: item.ticketIds || [],
+      pattern: item.pattern,
+    }),
+  }).then(function(d) {
+    if (d && d.success) {
+      var problemId = d.problemId || d.ticketId || '?';
+      var card = document.getElementById('ia-card-' + idx);
+      card.style.borderLeftColor = 'var(--av-green)';
+      card.style.opacity = '0.7';
+      card.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:6px">' +
+        '<span style="color:var(--av-green);font-weight:700;font-size:0.85rem">Problem <a href="' + CC.ZD + problemId + '" target="_blank" style="color:var(--av-green)">ZD#' + problemId + '</a> Created</span></div>';
+
+      queue.splice(idx, 1);
+      saveApprovalQueue(queue);
+      CC.sync.emit('approval-updated', {});
+      CC.toast('Problem ticket #' + problemId + ' created', true);
+      logActivity('problem-created', null, problemId, subject);
+      setTimeout(function() { renderInlineApproval(); loadIncidents(); }, 5000);
+    } else {
+      CC.toast('Failed to create problem ticket', false);
+      btn.classList.remove('loading');
+      btn.innerHTML = 'Create PT';
+    }
+  }).catch(function(e) {
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.innerHTML = 'Create PT';
+  });
+};
+
+window.dismissApprovalItem = function(idx) {
+  var queue = getApprovalQueue();
+  if (idx < 0 || idx >= queue.length) return;
+  queue.splice(idx, 1);
+  saveApprovalQueue(queue);
+  CC.sync.emit('approval-updated', {});
+  CC.toast('Dismissed from approval queue', true);
+  renderInlineApproval();
+};
+
+// ---- Agent Presence (heartbeat every 60s) ----
+function sendPresence() {
+  var agent = CC.agentName || localStorage.getItem('ts_agent_name') || '';
+  if (!agent) return;
+  CC.api('presence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent: agent, page: 'Overview', claimedTickets: Object.keys(selectedIds) }),
+  }).catch(function() {});
+}
+
+function loadPresence() {
+  CC.api('presence').then(function(d) {
+    if (!d || !d.agents || !d.agents.length) {
+      document.getElementById('team-status').innerHTML = '';
+      return;
+    }
+    var h = '';
+    d.agents.forEach(function(a) {
+      var online = (Date.now() - new Date(a.lastSeen).getTime()) < 150000;
+      if (!online) return;
+      h += '<span style="padding:2px 8px;border-radius:4px;background:rgba(117,194,154,0.12);color:var(--av-green);font-weight:600">';
+      h += CC.esc(a.agent) + ': ' + CC.esc(a.page);
+      if (a.claimedTickets && a.claimedTickets.length) {
+        h += ' (' + a.claimedTickets.length + ' claimed)';
+      }
+      h += '</span>';
+    });
+    document.getElementById('team-status').innerHTML = h;
+  }).catch(function() {});
+}
+
+// ---- Activity Feed ----
+function logActivity(action, ticketId, problemId, detail) {
+  CC.api('activity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: action, ticketId: ticketId, problemId: problemId, detail: detail }),
+  }).catch(function() {});
+}
+
+window.loadActivity = function() {
+  CC.api('activity?limit=20').then(function(d) {
+    var section = document.getElementById('activity-section');
+    var box = document.getElementById('activity-box');
+
+    if (!d || !d.feed || !d.feed.length) {
+      if (d && d.message) {
+        section.style.display = 'none';
+      } else {
+        section.style.display = '';
+        box.innerHTML = '<div style="padding:12px;font-size:0.82rem;color:var(--text-muted)">No recent activity</div>';
+      }
+      return;
+    }
+
+    section.style.display = '';
+    document.getElementById('activity-count').textContent = d.feed.length + ' recent';
+
+    var h = '<div style="max-height:200px;overflow-y:auto;padding:4px 0">';
+    d.feed.forEach(function(entry) {
+      var icon = entry.action === 'triage-approve' ? '&#10003;' :
+                 entry.action === 'triage-dismiss' ? '&#10007;' :
+                 entry.action === 'auto-approve' ? '&#9889;' :
+                 entry.action === 'problem-created' ? '&#9733;' :
+                 entry.action === 'bulk-update' ? '&#9993;' : '&#8226;';
+      var color = entry.action.includes('approve') || entry.action === 'problem-created' ? 'var(--av-green)' :
+                  entry.action === 'triage-dismiss' ? 'var(--text-muted)' : 'var(--av-blue)';
+
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:3px 8px;font-size:0.75rem;border-bottom:1px solid var(--border-subtle)">';
+      h += '<span style="color:' + color + ';font-size:0.85rem;width:16px;text-align:center">' + icon + '</span>';
+      h += '<span style="font-weight:600;color:var(--text-primary);min-width:60px">' + CC.esc(entry.agent || '?') + '</span>';
+      h += '<span style="color:var(--text-secondary);flex:1">' + CC.esc(entry.action);
+      if (entry.ticketId) h += ' <a href="' + CC.ZD + entry.ticketId + '" target="_blank" style="font-family:var(--font-mono)">#' + entry.ticketId + '</a>';
+      if (entry.detail) h += ' — ' + CC.esc(entry.detail);
+      h += '</span>';
+      h += '<span style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.65rem;white-space:nowrap">' + CC.relTime(entry.at) + '</span>';
+      h += '</div>';
+    });
+    h += '</div>';
+    box.innerHTML = h;
+  }).catch(function() {});
+};
+
+// ---- Cross-Tab Sync ----
+CC.sync.on('triage-handled', function(d) {
+  handledIds[d.ticketId] = true;
+  saveState('triage_handledIds', handledIds);
+  delete selectedIds[d.ticketId];
+  var card = document.getElementById('tq-' + d.ticketId);
+  if (card) {
+    card.style.opacity = '0.4';
+    card.style.borderLeftColor = 'var(--av-green)';
+    card.innerHTML = '<div style="padding:10px"><span style="color:var(--av-green);font-weight:700;font-size:0.82rem">' +
+      (d.auto ? 'Auto-linked' : 'Linked') + ' #' + d.ticketId + ' to ZD#' + d.problemId + ' (other tab)</span></div>';
+  }
+});
+
+CC.sync.on('triage-dismissed', function(d) {
+  dismissedIds[d.ticketId] = true;
+  saveState('triage_dismissedIds', dismissedIds);
+  var card = document.getElementById('tq-' + d.ticketId);
+  if (card) card.remove();
+});
+
+CC.sync.on('approval-updated', function() {
+  renderInlineApproval();
+});
+
+// ---- Smart Polling (visibility-aware) ----
+function smartPoll(name, fn, intervalMs) {
+  function tick() {
+    if (document.hidden) {
+      setTimeout(tick, intervalMs);
+      return;
+    }
+    fn();
+    setTimeout(tick, intervalMs);
+  }
+  setTimeout(tick, intervalMs);
+}
+
+// Immediate refresh when tab becomes visible
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) {
+    loadTriageQueue();
+  }
+});
+
+// ---- Keyboard Shortcuts ----
+CC.keyboard.register('j', 'Focus next triage item', function() { CC.keyboard.moveFocus(1); }, 'Triage');
+CC.keyboard.register('k', 'Focus previous triage item', function() { CC.keyboard.moveFocus(-1); }, 'Triage');
+
+CC.keyboard.register('a', 'Approve & Link focused item', function() {
+  var tid = CC.keyboard.getFocusedTicketId();
+  if (!tid) return;
+  var btn = document.getElementById('approve-btn-' + tid);
+  if (btn && !btn.disabled) btn.click();
+}, 'Triage');
+
+CC.keyboard.register('enter', 'Approve & Link focused item', function() {
+  var tid = CC.keyboard.getFocusedTicketId();
+  if (!tid) return;
+  var btn = document.getElementById('approve-btn-' + tid);
+  if (btn && !btn.disabled) btn.click();
+}, 'Triage');
+
+CC.keyboard.register('d', 'Dismiss focused item', function() {
+  var tid = CC.keyboard.getFocusedTicketId();
+  if (tid) dismissTriageItem(tid);
+}, 'Triage');
+
+CC.keyboard.register('e', 'Edit reply on focused item', function() {
+  var tid = CC.keyboard.getFocusedTicketId();
+  if (!tid) return;
+  var textarea = document.getElementById('reply-' + tid);
+  if (textarea) textarea.focus();
+}, 'Triage');
+
+CC.keyboard.register('x', 'Toggle select on focused item', function() {
+  var tid = CC.keyboard.getFocusedTicketId();
+  if (!tid) return;
+  var cb = document.querySelector('#tq-' + tid + ' .batch-check');
+  if (cb) { cb.checked = !cb.checked; toggleSelect(tid, cb.checked); }
+}, 'Triage');
+
+CC.keyboard.register('r', 'Refresh all data', function() { refreshAll(); }, 'General');
+CC.keyboard.register('?', 'Show keyboard shortcuts', function() { CC.keyboard.showHelp(); }, 'General');
+CC.keyboard.register('escape', 'Clear focus / close panels', function() {
+  CC.keyboard.clearFocus();
+  CC.keyboard.hideHelp();
+  var pop = document.getElementById('triage-config-popover');
+  if (pop) pop.remove();
+}, 'General');
+
+// Nav shortcuts: 1-6 for tabs
+var navLinks = document.querySelectorAll('.nav-link');
+for (var ni = 0; ni < Math.min(navLinks.length, 6); ni++) {
+  (function(idx, link) {
+    CC.keyboard.register(String(idx + 1), link.textContent.trim(), function() { window.location.href = link.href; }, 'Navigation');
+  })(ni, navLinks[ni]);
+}
+
+CC.keyboard.register('ctrl+a', 'Select all matched triage items', function() {
+  document.querySelectorAll('.batch-check').forEach(function(cb) {
+    cb.checked = true;
+    selectedIds[cb.dataset.tid] = true;
+  });
+  updateBatchBar();
+}, 'Triage');
+
 // ---- Init ----
+CC.getAgentName(); // Prompt for name if not set yet
 loadIncidents();
 loadMetrics();
 loadTriageQueue();
+renderInlineApproval();
+loadPresence();
+loadActivity();
+sendPresence();
 
-// Triage queue polls every 30s, everything else every 5 min
-setInterval(function(){ loadTriageQueue(); }, 30 * 1000);
-setInterval(function(){ loadIncidents(); loadMetrics(); }, 5 * 60 * 1000);
+// Re-render approval queue when localStorage changes from another tab (approval.html)
+window.addEventListener('storage', function(e) {
+  if (e.key === 'approvalQueue') renderInlineApproval();
+});
+
+// Smart polling: triage every 30s, everything else every 5 min (skips background tabs)
+smartPoll('triage', loadTriageQueue, 30 * 1000);
+smartPoll('incidents', loadIncidents, 5 * 60 * 1000);
+smartPoll('metrics', loadMetrics, 5 * 60 * 1000);
+smartPoll('presence', function() { sendPresence(); loadPresence(); }, 60 * 1000);
+smartPoll('activity', loadActivity, 30 * 1000);
 
 })();
 </script>
