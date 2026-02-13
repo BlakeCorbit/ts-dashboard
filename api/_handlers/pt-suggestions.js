@@ -3,6 +3,7 @@
 // These are candidates for a new Problem Ticket.
 
 const { zdRequest, getJiraLinks } = require('../_zendesk');
+const { jiraRequest, isJiraConfigured } = require('../_jira');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -98,7 +99,28 @@ module.exports = async function handler(req, res) {
         totalTickets: group.tickets.length,
         unlinkedCount: unlinked.length,
         tickets: group.tickets,
+        issueSummary: null, // populated below
       });
+    }
+
+    // 4b. Fetch Jira issue summaries for each suggestion
+    if (isJiraConfigured() && suggestions.length > 0) {
+      const summaryBatch = 5;
+      for (let i = 0; i < suggestions.length; i += summaryBatch) {
+        const batch = suggestions.slice(i, i + summaryBatch);
+        const results = await Promise.allSettled(
+          batch.map(s =>
+            jiraRequest(`/issue/${s.issueKey}?fields=summary`)
+              .then(data => ({ key: s.issueKey, summary: data && data.fields && data.fields.summary }))
+          )
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value.summary) {
+            const match = suggestions.find(s => s.issueKey === r.value.key);
+            if (match) match.issueSummary = r.value.summary;
+          }
+        }
+      }
     }
 
     // Sort by total ticket count descending

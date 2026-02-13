@@ -129,6 +129,9 @@ function renderSuggestions(d){
     h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
     h += '<div>';
     h += '<a href="' + CC.esc(s.jiraUrl) + '" target="_blank" class="jira-key">' + CC.esc(s.issueKey) + '</a>';
+    if (s.issueSummary) {
+      h += '<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px">' + CC.esc(s.issueSummary) + '</div>';
+    }
     h += '</div>';
     h += '<div style="text-align:right">';
     h += '<div style="font-family:var(--font-mono);font-size:1.2rem;font-weight:800;color:var(--accent-yellow);line-height:1">' + s.totalTickets + '</div>';
@@ -181,9 +184,9 @@ window.createPT = function(idx, btn){
   // Collect unlinked ticket IDs
   var unlinkedIds = s.tickets.filter(function(t){ return !t.problemId; }).map(function(t){ return t.id; });
 
-  // Use first ticket's subject as the PT description (matches "PT - <description>" convention)
-  var firstSubject = s.tickets[0] ? s.tickets[0].subject : s.issueKey;
-  var ptSubject = 'PT - ' + firstSubject;
+  // Use Jira issue summary for the PT subject (falls back to first ticket subject)
+  var summaryText = s.issueSummary || (s.tickets[0] ? s.tickets[0].subject : s.issueKey);
+  var ptSubject = 'PT - ' + summaryText;
 
   CC.api('create-problem', {
     method: 'POST',
