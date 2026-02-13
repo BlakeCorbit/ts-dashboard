@@ -1,0 +1,4 @@
+data/churn.db
+data/churn-risk-scores.csv
+.env
+node_modules/

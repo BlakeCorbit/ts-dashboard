@@ -1,0 +1,6 @@
+Account Name,Account Status,Account Owner,MRR,Contract Start,Churn Date,Churn Reason,POS System,Shop Count
+"Smith Auto Repair",Active,Blake Corbit,450.00,2022-01-15,,,Tekmetric,3
+"Joe's Garage LLC",Active,Brien Nunn,280.00,2021-06-01,,,Protractor,1
+"Quality Car Care",Churned,Jacob Ryder,320.00,2020-03-10,2025-11-15,Price too high,Shop-Ware,2
+"Metro Auto Service",Active,Blake Corbit,550.00,2023-02-20,,,NAPA TRACS,4
+"Downtown Tire & Auto",Cancelled,Brien Nunn,180.00,2021-09-05,2025-12-01,Switched to competitor,Mitchell,1

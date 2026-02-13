@@ -1,0 +1,73 @@
+name: Update Churn Risk Data
+
+on:
+  schedule:
+    # Daily at 6am MT (13:00 UTC) - churn data doesn't need frequent updates
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  churn-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install churn-analyzer dependencies
+        run: cd churn-analyzer && npm install
+
+      - name: Check for SF data
+        id: sf-check
+        run: |
+          if ls churn-analyzer/data/imports/*.csv 1>/dev/null 2>&1; then
+            echo "has_sf_data=true" >> $GITHUB_OUTPUT
+            echo "Found SF CSV files"
+          else
+            echo "has_sf_data=false" >> $GITHUB_OUTPUT
+            echo "No SF CSV files found - will skip SF import"
+          fi
+
+      - name: Import Salesforce CSV data
+        if: steps.sf-check.outputs.has_sf_data == 'true'
+        run: |
+          cd churn-analyzer
+          for csv in data/imports/*.csv; do
+            echo "Importing $csv..."
+            node src/index.js import-sf "$csv"
+          done
+
+      - name: Import Zendesk data
+        env:
+          ZENDESK_SUBDOMAIN: ${{ secrets.ZENDESK_SUBDOMAIN }}
+          ZENDESK_EMAIL: ${{ secrets.ZENDESK_EMAIL }}
+          ZENDESK_API_TOKEN: ${{ secrets.ZENDESK_API_TOKEN }}
+        run: cd churn-analyzer && node src/index.js import-zendesk --days 180
+
+      - name: Run account matching
+        if: steps.sf-check.outputs.has_sf_data == 'true'
+        run: cd churn-analyzer && node src/index.js match
+
+      - name: Run churn analysis
+        if: steps.sf-check.outputs.has_sf_data == 'true'
+        run: cd churn-analyzer && node src/index.js analyze --validate
+
+      - name: Generate dashboard JSON
+        if: steps.sf-check.outputs.has_sf_data == 'true'
+        run: cd churn-analyzer && node src/index.js report --dashboard
+
+      - name: Show status
+        run: cd churn-analyzer && node src/index.js status
+
+      - name: Commit and push data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard/data/churn-dashboard.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "Update churn risk data [skip ci]"
+          git push

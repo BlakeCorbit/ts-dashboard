@@ -22,6 +22,7 @@ const HANDLERS = {
   'ticket-detail':  () => require('./_handlers/ticket-detail'),
   tickets:          () => require('./_handlers/tickets'),
   'triage-queue':   () => require('./_handlers/triage-queue'),
+  churn:            () => require('./_handlers/churn'),
 };
 
 module.exports = (req, res) => {

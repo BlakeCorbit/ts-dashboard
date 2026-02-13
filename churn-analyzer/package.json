@@ -1,0 +1,20 @@
+{
+  "name": "churn-analyzer",
+  "version": "1.0.0",
+  "description": "Customer churn prediction by correlating Salesforce account data with Zendesk support patterns",
+  "main": "src/index.js",
+  "scripts": {
+    "import:sf": "node src/index.js import-sf",
+    "import:zd": "node src/index.js import-zendesk",
+    "match": "node src/index.js match",
+    "analyze": "node src/index.js analyze",
+    "report": "node src/index.js report",
+    "dashboard": "node src/index.js report --dashboard",
+    "full": "node src/index.js import-zendesk && node src/index.js match && node src/index.js analyze && node src/index.js report --dashboard",
+    "status": "node src/index.js status"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "dotenv": "^16.4.5"
+  }
+}

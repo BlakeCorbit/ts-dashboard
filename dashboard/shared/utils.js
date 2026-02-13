@@ -14,7 +14,8 @@ function api(path, opts) {
       'incidents': 'data/incidents.json',
       'tickets?hours=24': 'data/triage.json',
       'detect': 'data/detected.json',
-      'agents': 'data/agents.json'
+      'agents': 'data/agents.json',
+      'churn': 'data/churn-dashboard.json'
     };
     var file = map[path] || 'data/metrics.json';
     return fetch(file + '?_=' + Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Churn Risk - AutoVitals Tech Support Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Tech Support Command Center</div>
+      <div class="header-subtitle" id="header-sub">Churn Risk Analysis</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"></div>
+    <button class="btn btn-primary" onclick="refreshAll()" id="refresh-btn">Refresh</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Risk Summary -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Churn Risk Summary</div>
+    </div>
+    <div class="stats-grid" id="summary-box">
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div>
+    </div>
+  </section>
+
+  <!-- Risk Distribution Charts -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">Risk Breakdown</div>
+    </div>
+    <div class="charts-grid" id="charts-box">
+      <div class="loading-shimmer" style="height:220px"></div>
+      <div class="loading-shimmer" style="height:220px"></div>
+    </div>
+  </section>
+
+  <!-- At-Risk Accounts Table -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">At-Risk Accounts</div>
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content">
+        <button class="triage-filter active" data-filter="all" onclick="setFilter('all',this)">All</button>
+        <button class="triage-filter" data-filter="critical" onclick="setFilter('critical',this)">Critical</button>
+        <button class="triage-filter" data-filter="high" onclick="setFilter('high',this)">High</button>
+        <button class="triage-filter" data-filter="medium" onclick="setFilter('medium',this)">Medium</button>
+      </div>
+    </div>
+    <div class="triage-card">
+      <div class="triage-wrap" id="accounts-box">
+        <div class="loading-shimmer" style="height:400px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Churn Correlation Analysis -->
+  <section id="correlation-section" style="display:none">
+    <div class="section-header">
+      <div class="section-title">Churn Correlation Analysis</div>
+    </div>
+    <div id="correlation-box"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var churnData = null;
+var currentFilter = 'all';
+var sortField = 'riskScore';
+var sortAsc = false;
+
+function riskColor(level) {
+  if (level === 'critical') return 'var(--accent-red)';
+  if (level === 'high') return 'var(--accent-orange)';
+  if (level === 'medium') return 'var(--accent-yellow)';
+  return 'var(--av-green)';
+}
+
+function riskBg(level) {
+  if (level === 'critical') return 'rgba(248,81,73,0.15)';
+  if (level === 'high') return 'rgba(232,134,58,0.15)';
+  if (level === 'medium') return 'rgba(240,192,80,0.15)';
+  return 'rgba(117,194,154,0.15)';
+}
+
+function trendArrow(trend) {
+  if (trend === 'increasing') return '<span style="color:var(--accent-red);font-weight:700">&#9650;</span>';
+  if (trend === 'decreasing') return '<span style="color:var(--av-green);font-weight:700">&#9660;</span>';
+  return '<span style="color:var(--text-muted)">&#8212;</span>';
+}
+
+// ---- Load Data ----
+function loadChurnData() {
+  CC.api('churn').then(function(d) {
+    if (!d) return;
+    churnData = d;
+    renderSummary(d);
+    renderCharts(d);
+    renderAccounts(d);
+    renderCorrelation(d);
+    renderStatus(d);
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
+  }).catch(function(e) {
+    CC.toast('Churn data: ' + e.message, false);
+  });
+}
+
+// ---- Status Badge ----
+function renderStatus(d) {
+  var el = document.getElementById('status-badge');
+  var s = d.summary;
+  var critical = s.critical || 0;
+  var high = s.high || 0;
+  var total = critical + high;
+  var cls, txt;
+  if (total === 0) { cls = 'status-green'; txt = 'Low Risk'; }
+  else if (critical >= 3) { cls = 'status-red'; txt = critical + ' Critical'; }
+  else { cls = 'status-yellow'; txt = total + ' At Risk'; }
+  el.innerHTML = '<span class="status-badge ' + cls + '"><span class="dot"></span>' + txt + '</span>';
+}
+
+// ---- Summary Cards ----
+function renderSummary(d) {
+  var box = document.getElementById('summary-box');
+  var s = d.summary;
+  var h = '';
+
+  h += '<div class="stat-card fade-in"><div class="stat-label">Total Accounts</div>';
+  h += '<div class="stat-value">' + CC.fmt(s.totalAccounts) + '</div>';
+  h += '<div class="stat-detail">' + CC.fmt(s.matched) + ' matched to Zendesk</div></div>';
+
+  h += '<div class="stat-card fade-in"><div class="stat-label">Critical Risk</div>';
+  h += '<div class="stat-value" style="color:var(--accent-red)">' + CC.fmt(s.critical) + '</div>';
+  h += '<div class="stat-detail">Score &ge; 75</div></div>';
+
+  h += '<div class="stat-card fade-in"><div class="stat-label">High Risk</div>';
+  h += '<div class="stat-value" style="color:var(--accent-orange)">' + CC.fmt(s.high) + '</div>';
+  h += '<div class="stat-detail">Score 50&ndash;74</div></div>';
+
+  if (s.modelRecall !== null) {
+    h += '<div class="stat-card fade-in"><div class="stat-label">Model Recall</div>';
+    h += '<div class="stat-value" style="color:var(--av-blue)">' + s.modelRecall + '%</div>';
+    h += '<div class="stat-detail">Predicted actual churns</div></div>';
+  } else {
+    h += '<div class="stat-card fade-in"><div class="stat-label">Medium + Low</div>';
+    h += '<div class="stat-value">' + CC.fmt(s.medium + s.low) + '</div>';
+    h += '<div class="stat-detail">' + CC.fmt(s.unscored) + ' unscored</div></div>';
+  }
+
+  box.innerHTML = h;
+}
+
+// ---- Charts ----
+function renderCharts(d) {
+  var box = document.getElementById('charts-box');
+  var h = '';
+
+  // Risk distribution bar chart
+  h += CC.hBar('Risk Distribution', d.riskDistribution.map(function(r, i) {
+    return { name: r.name, count: r.count };
+  }));
+
+  // Top risk factors
+  h += CC.hBar('Top Risk Factors', d.topRiskFactors.slice(0, 6));
+
+  box.innerHTML = h;
+}
+
+// ---- Accounts Table ----
+window.setFilter = function(filter, btn) {
+  currentFilter = filter;
+  var btns = document.querySelectorAll('.triage-filter');
+  btns.forEach(function(b) {
+    if (b === btn) {
+      b.classList.add('active');
+      b.style.background = 'var(--av-green-dark)';
+      b.style.color = '#fff';
+    } else {
+      b.classList.remove('active');
+      b.style.background = 'var(--bg-card)';
+      b.style.color = 'var(--text-secondary)';
+    }
+  });
+  if (churnData) renderAccounts(churnData);
+};
+
+window.sortBy = function(field) {
+  if (sortField === field) {
+    sortAsc = !sortAsc;
+  } else {
+    sortField = field;
+    sortAsc = false;
+  }
+  if (churnData) renderAccounts(churnData);
+};
+
+function renderAccounts(d) {
+  var box = document.getElementById('accounts-box');
+  var accounts = d.accounts || [];
+
+  // Filter
+  if (currentFilter !== 'all') {
+    accounts = accounts.filter(function(a) { return a.riskLevel === currentFilter; });
+  }
+
+  // Sort
+  accounts = accounts.slice().sort(function(a, b) {
+    var va = a[sortField], vb = b[sortField];
+    if (va == null) va = 0;
+    if (vb == null) vb = 0;
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb || '').toLowerCase(); }
+    var cmp = va < vb ? -1 : va > vb ? 1 : 0;
+    return sortAsc ? cmp : -cmp;
+  });
+
+  if (accounts.length === 0) {
+    box.innerHTML = '<div class="no-data">No accounts match this filter</div>';
+    return;
+  }
+
+  var arrow = function(field) {
+    if (sortField !== field) return '';
+    return sortAsc ? ' &#9650;' : ' &#9660;';
+  };
+
+  var h = '<table><thead><tr>';
+  h += '<th style="cursor:pointer" onclick="sortBy(\'name\')">Account' + arrow('name') + '</th>';
+  h += '<th style="cursor:pointer;text-align:center" onclick="sortBy(\'riskScore\')">Score' + arrow('riskScore') + '</th>';
+  h += '<th style="text-align:center">Level</th>';
+  h += '<th style="cursor:pointer;text-align:center" onclick="sortBy(\'tickets30d\')">30d' + arrow('tickets30d') + '</th>';
+  h += '<th style="text-align:center">Trend</th>';
+  h += '<th>Top Issue</th>';
+  h += '<th style="cursor:pointer;text-align:center" onclick="sortBy(\'escalations30d\')">Esc' + arrow('escalations30d') + '</th>';
+  h += '<th style="cursor:pointer;text-align:center" onclick="sortBy(\'mrr\')">MRR' + arrow('mrr') + '</th>';
+  h += '<th>Risk Factors</th>';
+  h += '</tr></thead><tbody>';
+
+  accounts.forEach(function(a) {
+    var rc = riskColor(a.riskLevel);
+    var rb = riskBg(a.riskLevel);
+
+    h += '<tr class="fade-in">';
+
+    // Name
+    h += '<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + CC.esc(a.name) + '">';
+    if (a.zdOrgId) {
+      h += '<a href="' + CC.ZD.replace('/agent/tickets/', '/agent/organizations/') + a.zdOrgId + '/tickets" target="_blank">' + CC.esc(CC.trunc(a.name, 28)) + '</a>';
+    } else {
+      h += CC.esc(CC.trunc(a.name, 28));
+    }
+    if (a.isChurned) h += ' <span style="font-size:0.6rem;color:var(--accent-red);font-weight:700">CHURNED</span>';
+    h += '</td>';
+
+    // Score
+    h += '<td style="text-align:center"><span style="font-family:var(--font-mono);font-weight:800;font-size:1.05rem;color:' + rc + '">' + a.riskScore + '</span></td>';
+
+    // Level badge
+    h += '<td style="text-align:center"><span class="priority-badge" style="background:' + rb + ';color:' + rc + '">' + CC.esc(a.riskLevel) + '</span></td>';
+
+    // Tickets 30d
+    h += '<td style="text-align:center;font-family:var(--font-mono);font-weight:600">' + (a.tickets30d || 0) + '</td>';
+
+    // Trend
+    h += '<td style="text-align:center">' + trendArrow(a.trend) + '</td>';
+
+    // Top category
+    h += '<td class="td-cat">' + CC.esc(a.topCategory || '--') + '</td>';
+
+    // Escalations
+    h += '<td style="text-align:center;font-family:var(--font-mono)">' + (a.escalations30d || 0) + '</td>';
+
+    // MRR
+    h += '<td style="text-align:center;font-family:var(--font-mono)">' + (a.mrr ? '$' + CC.fmt(a.mrr) : '--') + '</td>';
+
+    // Risk factors
+    h += '<td style="max-width:280px">';
+    if (a.riskFactors && a.riskFactors.length > 0) {
+      h += '<div style="font-size:0.72rem;color:var(--text-secondary);line-height:1.4">';
+      a.riskFactors.slice(0, 2).forEach(function(f) {
+        h += '<div style="margin-bottom:2px">' + CC.esc(f) + '</div>';
+      });
+      if (a.riskFactors.length > 2) {
+        h += '<div style="color:var(--text-muted)">+' + (a.riskFactors.length - 2) + ' more</div>';
+      }
+      h += '</div>';
+    } else {
+      h += '<span style="color:var(--text-muted);font-size:0.72rem">--</span>';
+    }
+    h += '</td>';
+
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  box.innerHTML = h;
+}
+
+// ---- Churn Correlation ----
+function renderCorrelation(d) {
+  var c = d.churnCorrelation;
+  if (!c || !c.hasChurnData) return;
+
+  document.getElementById('correlation-section').style.display = '';
+  var box = document.getElementById('correlation-box');
+
+  var metrics = [
+    { label: 'Avg Tickets/Month', churned: c.avgTicketsChurned, active: c.avgTicketsActive, unit: '' },
+    { label: 'Escalation Rate', churned: (c.avgEscalationRateChurned * 100).toFixed(0), active: (c.avgEscalationRateActive * 100).toFixed(0), unit: '%' },
+    { label: 'Avg Resolution (hrs)', churned: c.avgResolutionChurned, active: c.avgResolutionActive, unit: 'h' },
+  ];
+
+  var h = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" class="fade-in">';
+
+  metrics.forEach(function(m) {
+    var churnedVal = m.churned != null ? m.churned : '--';
+    var activeVal = m.active != null ? m.active : '--';
+    var worse = parseFloat(churnedVal) > parseFloat(activeVal);
+
+    h += '<div class="stat-card">';
+    h += '<div class="stat-label">' + CC.esc(m.label) + '</div>';
+    h += '<div style="display:flex;justify-content:space-around;margin-top:12px">';
+
+    // Churned
+    h += '<div style="text-align:center">';
+    h += '<div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:' + (worse ? 'var(--accent-red)' : 'var(--text-primary)') + '">' + churnedVal + m.unit + '</div>';
+    h += '<div style="font-size:0.68rem;color:var(--accent-red);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px">Churned</div>';
+    h += '</div>';
+
+    h += '<div style="width:1px;background:var(--border);margin:0 8px"></div>';
+
+    // Active
+    h += '<div style="text-align:center">';
+    h += '<div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:' + (!worse ? 'var(--av-green)' : 'var(--text-primary)') + '">' + activeVal + m.unit + '</div>';
+    h += '<div style="font-size:0.68rem;color:var(--av-green);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px">Active</div>';
+    h += '</div>';
+
+    h += '</div></div>';
+  });
+
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- Refresh ----
+window.refreshAll = function() {
+  var btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Refreshing...';
+  loadChurnData();
+  setTimeout(function() {
+    btn.classList.remove('loading');
+    btn.textContent = 'Refresh';
+  }, 1000);
+};
+
+// ---- Init ----
+loadChurnData();
+setInterval(loadChurnData, 5 * 60 * 1000);
+
+})();
+</script>
+</body>
+</html>
