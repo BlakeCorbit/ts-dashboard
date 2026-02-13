@@ -14,18 +14,26 @@ module.exports = async function handler(req, res) {
     const since = new Date(Date.now() - days * 24 * 3600000);
     const sinceStr = since.toISOString().replace(/\.\d{3}Z$/, 'Z');
 
-    // 1. Fetch recent open/pending/new tickets (exclude problem tickets and solved/closed)
+    // 1. Fetch recent open/pending/new tickets — paginate to get all (up to 1000)
     const searchQuery = `type:ticket -ticket_type:problem status<solved created>${sinceStr}`;
-    const data = await zdRequest('/search.json', {
-      params: {
-        query: searchQuery,
-        sort_by: 'created_at',
-        sort_order: 'desc',
-        per_page: '100',
-      },
-    });
+    const tickets = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore && page <= 10) {
+      const data = await zdRequest('/search.json', {
+        params: {
+          query: searchQuery,
+          sort_by: 'created_at',
+          sort_order: 'desc',
+          per_page: '100',
+          page: String(page),
+        },
+      });
+      tickets.push(...(data.results || []));
+      hasMore = (data.results || []).length === 100;
+      page++;
+    }
 
-    const tickets = data.results || [];
     if (!tickets.length) {
       return res.json({ suggestions: [], generatedAt: new Date().toISOString() });
     }
@@ -35,7 +43,7 @@ module.exports = async function handler(req, res) {
 
     // Get Jira links for all tickets (batched, results cached in KV for 5 min)
     const ticketJiraMap = {}; // ticketId -> [{ issueId, issueKey, url }]
-    const batchSize = 10;
+    const batchSize = 20;
     for (let i = 0; i < toScan.length; i += batchSize) {
       const batch = toScan.slice(i, i + batchSize);
       const results = await Promise.all(
