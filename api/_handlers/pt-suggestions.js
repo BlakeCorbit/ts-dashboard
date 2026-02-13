@@ -30,15 +30,10 @@ module.exports = async function handler(req, res) {
       return res.json({ suggestions: [], generatedAt: new Date().toISOString() });
     }
 
-    // 2. Pre-filter: tickets with any Jira-related tag (jira_auto_linked, jira-linked, jira_*, etc.)
-    const jiraTagged = tickets.filter(t =>
-      (t.tags || []).some(tag => tag.startsWith('jira'))
-    );
+    // 2. Check ALL tickets for Jira sidebar links (tags alone are unreliable)
+    const toScan = tickets;
 
-    // Scan all Jira-tagged tickets; fall back to all tickets if none tagged
-    const toScan = jiraTagged.length > 0 ? jiraTagged : tickets;
-
-    // Get Jira links for relevant tickets (batched)
+    // Get Jira links for all tickets (batched, results cached in KV for 5 min)
     const ticketJiraMap = {}; // ticketId -> [{ issueId, issueKey, url }]
     const batchSize = 10;
     for (let i = 0; i < toScan.length; i += batchSize) {
