@@ -1,6 +1,20 @@
 {
   "incidents": [
     {
+      "problemId": 135503,
+      "subject": "PT -  Service History tab on AV.X app does not display labor line",
+      "pattern": "Custom Pattern",
+      "posTag": null,
+      "jiraLinks": [
+        {
+          "issueKey": "AV-19150",
+          "url": "https://autovitals.atlassian.net/browse/AV-19150"
+        }
+      ],
+      "linkedCount": 0,
+      "createdAt": "2026-02-13T15:41:33Z"
+    },
+    {
       "problemId": 135389,
       "subject": "PT - AV.X - 6.9.4.- iOS - WiFi connection lost for 5-10 seconds when opening the app",
       "pattern": "Custom Pattern",
@@ -228,5 +242,5 @@
       "createdAt": "2024-07-27T15:21:45Z"
     }
   ],
-  "generatedAt": "2026-02-13T15:25:53.467Z"
+  "generatedAt": "2026-02-13T16:05:10.642Z"
 }
