@@ -30,12 +30,12 @@ module.exports = async function handler(req, res) {
       return res.json({ suggestions: [], generatedAt: new Date().toISOString() });
     }
 
-    // 2. Pre-filter: only process tickets that have Jira links (tagged jira_auto_linked or have sidebar links)
+    // 2. Pre-filter: tickets with any Jira-related tag (jira_auto_linked, jira-linked, jira_*, etc.)
     const jiraTagged = tickets.filter(t =>
-      (t.tags || []).some(tag => tag === 'jira_auto_linked' || tag.startsWith('jira_'))
+      (t.tags || []).some(tag => tag.startsWith('jira'))
     );
 
-    // If no Jira-tagged tickets, fall back to scanning all (slower)
+    // Scan all Jira-tagged tickets; fall back to all tickets if none tagged
     const toScan = jiraTagged.length > 0 ? jiraTagged : tickets;
 
     // Get Jira links for relevant tickets (batched)
