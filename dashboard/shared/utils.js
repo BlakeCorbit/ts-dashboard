@@ -18,15 +18,23 @@ function getAgentName() {
   return agentName;
 }
 
+// Pre-computed data files that are always served as static assets (no API needed)
+var STATIC_FILES = {
+  'churn': 'data/churn-dashboard.json'
+};
+
 function api(path, opts) {
+  // Always use static file for pre-computed data (works on both localhost and Vercel CDN)
+  if (STATIC_FILES[path]) {
+    return fetch(STATIC_FILES[path] + '?_=' + Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
   if (useStaticData) {
     var map = {
       'metrics': 'data/metrics.json',
       'incidents': 'data/incidents.json',
       'tickets?hours=24': 'data/triage.json',
       'detect': 'data/detected.json',
-      'agents': 'data/agents.json',
-      'churn': 'data/churn-dashboard.json'
+      'agents': 'data/agents.json'
     };
     var file = map[path] || 'data/metrics.json';
     return fetch(file + '?_=' + Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
