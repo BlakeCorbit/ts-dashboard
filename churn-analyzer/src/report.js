@@ -46,7 +46,7 @@ function generateDashboardJSON(db) {
   }
 
   // Risk distribution
-  const riskDistribution = [
+  let riskDistribution = [
     { name: 'Critical', count: countByLevel.critical },
     { name: 'High', count: countByLevel.high },
     { name: 'Medium', count: countByLevel.medium },
@@ -173,15 +173,14 @@ function generateDashboardJSON(db) {
       modelQuality: quality,
     };
 
-    // Get predictions — top 500, no feature vectors (saves ~90% of size)
+    // Get predictions — all risk levels, capped at 750
     predictions = db.prepare(`
       SELECT p.*, s.account_name, s.mrr, o.name as zd_org_name
       FROM churn_predictions p
       JOIN sf_accounts s ON s.sf_account_id = p.sf_account_id
       LEFT JOIN zd_organizations o ON o.id = p.zd_org_id
-      WHERE p.churn_risk_level IN ('critical', 'high', 'medium')
       ORDER BY p.churn_score DESC
-      LIMIT 500
+      LIMIT 750
     `).all().map(p => {
       // Only keep top 3 signals per prediction to save space
       const signals = JSON.parse(p.matched_signals).slice(0, 3).map(s => ({
@@ -223,6 +222,23 @@ function generateDashboardJSON(db) {
       sc.avgSeverity = Math.round(sc.avgSeverity / sc.count);
     }
     earlyWarnings = Object.values(signalCounts).sort((a, b) => b.count - a.count);
+
+    // Override risk distribution with prediction counts when signature is available
+    const predCounts = db.prepare(`
+      SELECT churn_risk_level, COUNT(*) as n FROM churn_predictions GROUP BY churn_risk_level
+    `).all();
+    const predByLevel = { critical: 0, high: 0, medium: 0, low: 0 };
+    for (const r of predCounts) predByLevel[r.churn_risk_level] = r.n;
+    riskDistribution = [
+      { name: 'Critical', count: predByLevel.critical },
+      { name: 'High', count: predByLevel.high },
+      { name: 'Medium', count: predByLevel.medium },
+      { name: 'Low', count: predByLevel.low },
+    ];
+    countByLevel.critical = predByLevel.critical;
+    countByLevel.high = predByLevel.high;
+    countByLevel.medium = predByLevel.medium;
+    countByLevel.low = predByLevel.low;
   }
 
   return {

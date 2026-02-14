@@ -7,11 +7,16 @@
  *
  * Features extracted per account (12 dimensions):
  *   ticket_count, tickets_per_month, escalation_rate, bad_csat_rate,
- *   avg_resolution_hours, reopen_rate, unique_categories, priority_high_rate,
+ *   median_resolution_hours, reopen_rate, unique_categories, priority_high_rate,
  *   ticket_velocity, problem_ticket_rate, avg_reopens_per_ticket, unresolved_rate
  */
 
 const { getDb, close } = require('./db');
+
+function computeMedian(sorted) {
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
 
 // ─── Feature Vector Computation ──────────────────────────────
 
@@ -55,12 +60,11 @@ function computeFeatureVector(db, orgId, referenceDate, windowDays) {
   const goodCsat = csatRow.good || 0;
   const csatTotal = badCsat + goodCsat;
 
-  // Resolution hours
-  const resRow = db.prepare(`
-    SELECT AVG(resolution_hours) as avg_hours
-    FROM zd_tickets WHERE org_id = ? AND created_at >= ? AND created_at <= ?
-    AND resolution_hours > 0
-  `).get(orgId, windowStart, refISO);
+  // Resolution hours (median)
+  const resRows = db.prepare(
+    'SELECT resolution_hours as h FROM zd_tickets WHERE org_id = ? AND created_at >= ? AND created_at <= ? AND resolution_hours > 0 ORDER BY resolution_hours'
+  ).all(orgId, windowStart, refISO);
+  const medianRes = resRows.length > 0 ? computeMedian(resRows.map(r => r.h)) : 0;
 
   // Unique categories
   const catRow = db.prepare(
@@ -103,7 +107,7 @@ function computeFeatureVector(db, orgId, referenceDate, windowDays) {
     tickets_per_month: ticketCount / months,
     escalation_rate: ticketCount > 0 ? escRow.n / ticketCount : 0,
     bad_csat_rate: csatTotal > 0 ? badCsat / csatTotal : 0,
-    avg_resolution_hours: resRow.avg_hours || 0,
+    median_resolution_hours: medianRes,
     reopen_rate: ticketCount > 0 ? totalReopens / ticketCount : 0,
     unique_categories: catRow.n,
     priority_high_rate: ticketCount > 0 ? highRow.n / ticketCount : 0,
@@ -144,9 +148,10 @@ function computeAllTimeFeatureVector(db, orgId) {
   const badCsat = csatRow.bad || 0;
   const csatTotal = badCsat + (csatRow.good || 0);
 
-  const resRow = db.prepare(
-    'SELECT AVG(resolution_hours) as avg_hours FROM zd_tickets WHERE org_id = ? AND resolution_hours > 0'
-  ).get(orgId);
+  const resRows2 = db.prepare(
+    'SELECT resolution_hours as h FROM zd_tickets WHERE org_id = ? AND resolution_hours > 0 ORDER BY resolution_hours'
+  ).all(orgId);
+  const medianRes = resRows2.length > 0 ? computeMedian(resRows2.map(r => r.h)) : 0;
 
   const catRow = db.prepare(
     'SELECT COUNT(DISTINCT category) as n FROM zd_tickets WHERE org_id = ?'
@@ -185,7 +190,7 @@ function computeAllTimeFeatureVector(db, orgId) {
     tickets_per_month: ticketCount / months,
     escalation_rate: ticketCount > 0 ? escRow.n / ticketCount : 0,
     bad_csat_rate: csatTotal > 0 ? badCsat / csatTotal : 0,
-    avg_resolution_hours: resRow.avg_hours || 0,
+    median_resolution_hours: medianRes,
     reopen_rate: ticketCount > 0 ? totalReopens / ticketCount : 0,
     unique_categories: catRow.n,
     priority_high_rate: ticketCount > 0 ? highRow.n / ticketCount : 0,
@@ -461,7 +466,7 @@ const FEATURE_LABELS = {
   tickets_per_month: 'Monthly ticket rate',
   escalation_rate: 'Escalation rate',
   bad_csat_rate: 'Bad CSAT rate',
-  avg_resolution_hours: 'Avg resolution time',
+  median_resolution_hours: 'Median resolution time',
   reopen_rate: 'Ticket reopen rate',
   unique_categories: 'Issue categories',
   priority_high_rate: 'High priority rate',
