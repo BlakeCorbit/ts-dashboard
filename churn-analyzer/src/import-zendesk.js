@@ -159,12 +159,12 @@ async function importTickets(zd, db, lookbackDays) {
       id, org_id, subject, status, priority, ticket_type,
       tags, category, pos_system, source, assignee_id, group_id,
       satisfaction_rating, created_at, updated_at, solved_at,
-      resolution_hours, is_escalation, reopen_count
+      resolution_hours, is_escalation, reopen_count, problem_id
     ) VALUES (
       @id, @org_id, @subject, @status, @priority, @ticket_type,
       @tags, @category, @pos_system, @source, @assignee_id, @group_id,
       @satisfaction_rating, @created_at, @updated_at, @solved_at,
-      @resolution_hours, @is_escalation, @reopen_count
+      @resolution_hours, @is_escalation, @reopen_count, @problem_id
     )
   `);
 
@@ -214,6 +214,7 @@ async function importTickets(zd, db, lookbackDays) {
         resolution_hours: resolutionHours,
         is_escalation: isEscalation,
         reopen_count: t.reopen_count || 0,
+        problem_id: t.problem_id || null,
       });
       imported++;
     }
@@ -253,12 +254,12 @@ async function backfillChurnedOrgs(zd, db) {
       id, org_id, subject, status, priority, ticket_type,
       tags, category, pos_system, source, assignee_id, group_id,
       satisfaction_rating, created_at, updated_at, solved_at,
-      resolution_hours, is_escalation, reopen_count
+      resolution_hours, is_escalation, reopen_count, problem_id
     ) VALUES (
       @id, @org_id, @subject, @status, @priority, @ticket_type,
       @tags, @category, @pos_system, @source, @assignee_id, @group_id,
       @satisfaction_rating, @created_at, @updated_at, @solved_at,
-      @resolution_hours, @is_escalation, @reopen_count
+      @resolution_hours, @is_escalation, @reopen_count, @problem_id
     )
   `);
 
@@ -314,6 +315,7 @@ async function backfillChurnedOrgs(zd, db) {
               resolution_hours: resolutionHours,
               is_escalation: isEscalation,
               reopen_count: t.reopen_count || 0,
+              problem_id: t.problem_id || null,
             });
             imported++;
           }
@@ -339,6 +341,66 @@ async function backfillChurnedOrgs(zd, db) {
   return { fetched: totalFetched, imported: totalImported };
 }
 
+// ─── Jira Link Import ─────────────────────────────────────────
+
+async function importJiraLinks(zd, db) {
+  const problemTickets = db.prepare(
+    "SELECT id FROM zd_tickets WHERE ticket_type = 'problem'"
+  ).all();
+
+  if (problemTickets.length === 0) {
+    console.log('  No problem tickets found, skipping Jira link import');
+    return { fetched: 0 };
+  }
+
+  // Only fetch for tickets not already cached
+  const existing = new Set(
+    db.prepare('SELECT DISTINCT ticket_id FROM zd_jira_links').all().map(r => r.ticket_id)
+  );
+  const toFetch = problemTickets.filter(pt => !existing.has(pt.id));
+  console.log(`  Jira links: ${toFetch.length} problem tickets to fetch (${existing.size} cached)`);
+
+  if (toFetch.length === 0) return { fetched: 0 };
+
+  const insert = db.prepare(`
+    INSERT OR REPLACE INTO zd_jira_links (ticket_id, issue_key, issue_url)
+    VALUES (@ticket_id, @issue_key, @issue_url)
+  `);
+
+  let totalLinks = 0;
+  let processed = 0;
+
+  for (const pt of toFetch) {
+    processed++;
+    if (processed % 50 === 0 || processed === 1) {
+      process.stdout.write(`    Jira links: ${processed}/${toFetch.length}...`);
+    }
+
+    try {
+      const links = await zd.getJiraLinks(pt.id);
+      for (const link of links) {
+        insert.run({
+          ticket_id: pt.id,
+          issue_key: link.issueKey,
+          issue_url: link.url,
+        });
+        totalLinks++;
+      }
+    } catch {
+      // Non-critical, skip
+    }
+
+    await new Promise(r => setTimeout(r, 200));
+
+    if (processed % 50 === 0) {
+      console.log(` ${totalLinks} links found`);
+    }
+  }
+
+  console.log(`  Imported ${totalLinks} Jira links from ${toFetch.length} problem tickets`);
+  return { fetched: totalLinks };
+}
+
 // ─── Main ──────────────────────────────────────────────────────
 
 async function run(args) {
@@ -361,12 +423,14 @@ async function run(args) {
     } else {
       const orgCount = await importOrganizations(zd, db);
       const ticketResult = await importTickets(zd, db, lookbackDays);
+      const jiraResult = await importJiraLinks(zd, db);
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log('');
       console.log('  Import Complete:');
       console.log(`    Organizations: ${orgCount}`);
       console.log(`    Tickets: ${ticketResult.imported}`);
+      console.log(`    Jira Links: ${jiraResult.fetched}`);
       console.log(`    Time: ${elapsed}s`);
     }
   } finally {

@@ -113,6 +113,35 @@ class ZendeskClient {
   }
 
   /**
+   * Get Jira links for a ticket via the Zendesk-Jira integration API.
+   * Uses /api/services/ (NOT /api/v2/).
+   */
+  async getJiraLinks(ticketId) {
+    try {
+      const url = `${this.rootUrl}/api/services/jira/links`;
+      const urlObj = new URL(url);
+      urlObj.searchParams.set('ticket_id', String(ticketId));
+
+      const response = await fetch(urlObj.toString(), {
+        headers: {
+          'Authorization': `Basic ${this.auth}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data.links || []).map(link => ({
+        issueKey: link.issue_key,
+        issueId: link.issue_id,
+        url: `https://autovitals.atlassian.net/browse/${link.issue_key}`,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Get ALL tickets for an org via the tickets endpoint (bypasses search limits).
    * Uses /api/v2/organizations/{id}/tickets.json which has no time restriction.
    */

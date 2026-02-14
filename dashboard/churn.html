@@ -103,6 +103,14 @@
     </div>
     <div id="correlation-box"></div>
   </section>
+
+  <!-- Problem Ticket Churn Correlation -->
+  <section id="problem-correlation-section" style="display:none">
+    <div class="section-header">
+      <div class="section-title">Problem Ticket &amp; Churn Correlation</div>
+    </div>
+    <div id="problem-correlation-box"></div>
+  </section>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -156,6 +164,7 @@ function loadChurnData() {
     renderCharts(d);
     renderAccounts(d);
     renderCorrelation(d);
+    renderProblemCorrelation(d);
     renderStatus(d);
 
     // Signature-based sections
@@ -414,18 +423,21 @@ function renderPredictions(d) {
   h += '<th style="text-align:center">Confidence</th>';
   h += '<th style="cursor:pointer;text-align:center" onclick="predSortBy(\'mrr\')">MRR' + arrow('mrr') + '</th>';
   h += '<th>Warning Signs</th>';
+  h += '<th style="text-align:center">Problems</th>';
   h += '</tr></thead><tbody>';
 
   preds.forEach(function(p, idx) {
     var rc = riskColor(p.churnRiskLevel);
     var rb = riskBg(p.churnRiskLevel);
     var hasTickets = (p.activeTickets && p.activeTickets.length > 0) || (p.historicalTickets && p.historicalTickets.length > 0);
+    var hasPTData = (p.problemTickets && p.problemTickets.length > 0);
+    var expandable = hasTickets || hasPTData;
 
-    h += '<tr class="fade-in" style="' + (hasTickets ? 'cursor:pointer' : '') + '" onclick="' + (hasTickets ? 'togglePredDetail(' + idx + ')' : '') + '">';
+    h += '<tr class="fade-in" style="' + (expandable ? 'cursor:pointer' : '') + '" onclick="' + (expandable ? 'togglePredDetail(' + idx + ')' : '') + '">';
 
     // Expand arrow
     h += '<td style="text-align:center;width:24px;padding:0 4px">';
-    if (hasTickets) {
+    if (expandable) {
       h += '<span id="pred-arrow-' + idx + '" style="font-size:0.65rem;color:var(--text-muted);user-select:none">&#9654;</span>';
     }
     h += '</td>';
@@ -470,11 +482,30 @@ function renderPredictions(d) {
     }
     h += '</td>';
 
+    // Problems column
+    h += '<td style="text-align:center">';
+    var hasPT = p.problemTickets && p.problemTickets.length > 0;
+    var hasJira = p.jiraLinks && p.jiraLinks.length > 0;
+    if (hasPT || hasJira) {
+      h += '<div style="display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap">';
+      if (hasPT) {
+        h += '<span title="' + p.problemTickets.length + ' problem ticket(s)" style="font-size:0.68rem;font-weight:700;color:var(--accent-red);background:rgba(248,81,73,0.12);padding:1px 5px;border-radius:3px">PT:' + p.problemTickets.length + '</span>';
+      }
+      if (hasJira) {
+        h += '<span title="' + p.jiraLinks.length + ' Jira issue(s)" style="font-size:0.68rem;font-weight:700;color:var(--av-blue);background:rgba(80,148,211,0.12);padding:1px 5px;border-radius:3px">J:' + p.jiraLinks.length + '</span>';
+      }
+      h += '</div>';
+    } else {
+      h += '<span style="color:var(--text-muted);font-size:0.72rem">--</span>';
+    }
+    h += '</td>';
+
     h += '</tr>';
 
     // Expandable detail row
-    if (hasTickets) {
-      h += '<tr><td colspan="8" style="padding:0;border-top:none">';
+    var hasDetail = hasTickets || hasPT;
+    if (hasDetail) {
+      h += '<tr><td colspan="9" style="padding:0;border-top:none">';
       h += '<div id="pred-detail-' + idx + '" style="display:none;padding:8px 16px 12px 40px;background:var(--bg-main);border-top:1px solid var(--border-subtle)">';
 
       // Active Tickets
@@ -508,6 +539,32 @@ function renderPredictions(d) {
         h += '<div style="font-size:0.72rem;color:var(--text-muted);padding:2px 0">No resolved tickets in last 6 months</div>';
       }
       h += '</div>';
+
+      // Problem Tickets
+      var problems = p.problemTickets || [];
+      if (problems.length > 0) {
+        h += '<div style="margin-top:10px">';
+        h += '<div style="font-size:0.68rem;font-weight:700;color:var(--accent-red);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;display:flex;align-items:center;gap:6px">';
+        h += 'Problem Tickets';
+        h += '<span style="font-family:var(--font-mono);font-weight:800;background:rgba(248,81,73,0.15);color:var(--accent-red);border-radius:10px;padding:1px 7px;font-size:0.65rem">' + problems.length + '</span>';
+        h += '</div>';
+        h += '<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden">';
+        problems.forEach(function(pt) {
+          h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem">';
+          h += '<a href="' + CC.ZD + pt.id + '" target="_blank" onclick="event.stopPropagation()" style="font-family:var(--font-mono);font-weight:600;color:var(--accent-red);flex-shrink:0">#' + pt.id + '</a>';
+          h += '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + CC.esc(pt.subject) + '">' + CC.esc(CC.trunc(pt.subject, 50)) + '</span>';
+          if (pt.jiraKeys && pt.jiraKeys.length > 0) {
+            pt.jiraKeys.forEach(function(key, i) {
+              var url = pt.jiraUrls && pt.jiraUrls[i] ? pt.jiraUrls[i] : ('https://autovitals.atlassian.net/browse/' + key);
+              h += '<a href="' + url + '" target="_blank" onclick="event.stopPropagation()" style="font-family:var(--font-mono);font-weight:700;font-size:0.65rem;color:var(--av-blue);background:rgba(80,148,211,0.1);padding:1px 6px;border-radius:3px;flex-shrink:0">' + CC.esc(key) + '</a>';
+            });
+          }
+          h += '<span style="color:var(--text-muted);flex-shrink:0;width:55px;text-align:right">' + fmtDate(pt.created) + '</span>';
+          h += '<span style="color:' + (pt.status === 'solved' || pt.status === 'closed' ? 'var(--text-muted)' : 'var(--accent-orange)') + ';font-weight:600;flex-shrink:0;font-size:0.65rem;text-transform:capitalize">' + CC.esc(pt.status) + '</span>';
+          h += '</div>';
+        });
+        h += '</div></div>';
+      }
 
       h += '</div></td></tr>';
     }
@@ -691,6 +748,63 @@ function renderCorrelation(d) {
 
     h += '</div></div>';
   });
+
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- Problem Ticket Correlation ----
+function renderProblemCorrelation(d) {
+  var c = d.churnCorrelation;
+  if (!c || !c.hasChurnData || c.churnedWithProblemRate == null) return;
+
+  document.getElementById('problem-correlation-section').style.display = '';
+  var box = document.getElementById('problem-correlation-box');
+
+  var h = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="fade-in">';
+
+  // Left: comparison card
+  h += '<div class="stat-card" style="padding:20px">';
+  h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:16px;color:var(--text-primary)">Accounts with Problem Tickets</div>';
+  h += '<div style="display:flex;justify-content:space-around">';
+
+  h += '<div style="text-align:center">';
+  h += '<div style="font-family:var(--font-mono);font-size:2rem;font-weight:800;color:var(--accent-red)">' + c.churnedWithProblemRate + '%</div>';
+  h += '<div style="font-size:0.68rem;color:var(--accent-red);font-weight:600;text-transform:uppercase;margin-top:4px">of Churned</div>';
+  h += '<div style="font-size:0.68rem;color:var(--text-muted)">(' + c.churnedWithProblems + ' accounts)</div>';
+  h += '</div>';
+
+  h += '<div style="width:1px;background:var(--border)"></div>';
+
+  h += '<div style="text-align:center">';
+  h += '<div style="font-family:var(--font-mono);font-size:2rem;font-weight:800;color:var(--av-green)">' + c.activeWithProblemRate + '%</div>';
+  h += '<div style="font-size:0.68rem;color:var(--av-green);font-weight:600;text-transform:uppercase;margin-top:4px">of Active</div>';
+  h += '<div style="font-size:0.68rem;color:var(--text-muted)">(' + c.activeWithProblems + ' accounts)</div>';
+  h += '</div>';
+
+  h += '</div></div>';
+
+  // Right: insight card
+  h += '<div class="stat-card" style="padding:20px">';
+  h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:12px;color:var(--text-primary)">Insight</div>';
+  var diff = c.churnedWithProblemRate - c.activeWithProblemRate;
+  if (diff > 2) {
+    h += '<div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">';
+    h += 'Churned accounts are <strong style="color:var(--accent-red)">' + Math.round(diff) + ' percentage points</strong> more likely to have been affected by problem tickets. ';
+    h += 'Problem tickets indicate systemic issues affecting multiple shops and correlate with churn risk.';
+    h += '</div>';
+  } else if (diff < -2) {
+    h += '<div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">';
+    h += 'Active accounts actually have a <strong style="color:var(--av-green)">higher</strong> problem ticket rate than churned accounts. ';
+    h += 'This may indicate that shops engaged with support (even on systemic issues) tend to stay, while unengaged shops churn silently.';
+    h += '</div>';
+  } else {
+    h += '<div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">';
+    h += 'Problem ticket rates are similar between churned and active accounts (' + c.churnedWithProblemRate + '% vs ' + c.activeWithProblemRate + '%). ';
+    h += 'Other support patterns may be stronger churn indicators.';
+    h += '</div>';
+  }
+  h += '</div>';
 
   h += '</div>';
   box.innerHTML = h;

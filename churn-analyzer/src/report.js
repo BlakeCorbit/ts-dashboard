@@ -128,6 +128,37 @@ function generateDashboardJSON(db) {
       WHERE s.churn_date IS NULL
     `).get();
 
+    // Problem ticket correlation
+    const churnedWithProblems = db.prepare(`
+      SELECT COUNT(DISTINCT s.sf_account_id) as n
+      FROM sf_accounts s
+      JOIN account_org_map m ON m.sf_account_id = s.sf_account_id
+      WHERE s.churn_date IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM zd_tickets t
+        WHERE t.org_id = m.zd_org_id AND t.ticket_type = 'problem'
+      )
+    `).get().n;
+
+    const activeWithProblems = db.prepare(`
+      SELECT COUNT(DISTINCT s.sf_account_id) as n
+      FROM sf_accounts s
+      JOIN account_org_map m ON m.sf_account_id = s.sf_account_id
+      WHERE s.churn_date IS NULL
+      AND EXISTS (
+        SELECT 1 FROM zd_tickets t
+        WHERE t.org_id = m.zd_org_id AND t.ticket_type = 'problem'
+      )
+    `).get().n;
+
+    const totalChurnedMatched = db.prepare(
+      "SELECT COUNT(DISTINCT s.sf_account_id) as n FROM sf_accounts s JOIN account_org_map m ON m.sf_account_id = s.sf_account_id WHERE s.churn_date IS NOT NULL"
+    ).get().n;
+
+    const totalActiveMatched = db.prepare(
+      "SELECT COUNT(DISTINCT s.sf_account_id) as n FROM sf_accounts s JOIN account_org_map m ON m.sf_account_id = s.sf_account_id WHERE s.churn_date IS NULL"
+    ).get().n;
+
     churnCorrelation = {
       hasChurnData: true,
       avgTicketsChurned: round(churnedMetrics.avg_tickets_monthly),
@@ -136,6 +167,10 @@ function generateDashboardJSON(db) {
       avgEscalationRateActive: round(activeMetrics.avg_escalation_rate),
       avgResolutionChurned: round(churnedMetrics.avg_resolution),
       avgResolutionActive: round(activeMetrics.avg_resolution),
+      churnedWithProblemRate: totalChurnedMatched > 0 ? round(churnedWithProblems / totalChurnedMatched * 100) : null,
+      activeWithProblemRate: totalActiveMatched > 0 ? round(activeWithProblems / totalActiveMatched * 100) : null,
+      churnedWithProblems,
+      activeWithProblems,
     };
   }
 
@@ -191,6 +226,29 @@ function generateDashboardJSON(db) {
       LIMIT 10
     `);
 
+    const getProblemTickets = db.prepare(`
+      SELECT t.id, t.subject, t.status, t.created_at,
+             GROUP_CONCAT(j.issue_key) as jira_keys,
+             GROUP_CONCAT(j.issue_url) as jira_urls
+      FROM zd_tickets t
+      LEFT JOIN zd_jira_links j ON j.ticket_id = t.id
+      WHERE t.org_id = ? AND t.ticket_type = 'problem'
+      GROUP BY t.id
+      ORDER BY t.created_at DESC
+    `);
+
+    const getIncidentCount = db.prepare(`
+      SELECT COUNT(*) as n FROM zd_tickets
+      WHERE org_id = ? AND problem_id IS NOT NULL
+    `);
+
+    const getOrgJiraLinks = db.prepare(`
+      SELECT DISTINCT j.issue_key, j.issue_url
+      FROM zd_jira_links j
+      JOIN zd_tickets t ON t.id = j.ticket_id
+      WHERE t.org_id = ?
+    `);
+
     predictions = db.prepare(`
       SELECT p.*, s.account_name, s.mrr, o.name as zd_org_name
       FROM churn_predictions p
@@ -217,6 +275,23 @@ function generateDashboardJSON(db) {
         category: t.category, created: t.created_at, resHours: t.resolution_hours ? Math.round(t.resolution_hours) : null,
       })) : [];
 
+      // Problem tickets + Jira links for this org
+      const problemTickets = p.zd_org_id ? getProblemTickets.all(p.zd_org_id).map(t => ({
+        id: t.id,
+        subject: t.subject,
+        status: t.status,
+        created: t.created_at,
+        jiraKeys: t.jira_keys ? t.jira_keys.split(',') : [],
+        jiraUrls: t.jira_urls ? t.jira_urls.split(',') : [],
+      })) : [];
+
+      const incidentCount = p.zd_org_id ? getIncidentCount.get(p.zd_org_id).n : 0;
+
+      const jiraLinks = p.zd_org_id ? getOrgJiraLinks.all(p.zd_org_id).map(j => ({
+        key: j.issue_key,
+        url: j.issue_url,
+      })) : [];
+
       return {
         name: p.account_name,
         zdOrgId: p.zd_org_id,
@@ -228,6 +303,9 @@ function generateDashboardJSON(db) {
         mrr: p.mrr,
         activeTickets,
         historicalTickets,
+        problemTickets,
+        incidentCount,
+        jiraLinks,
       };
     });
 
@@ -456,6 +534,8 @@ function status() {
   console.log(`    ZD Tickets:      ${stats.zdTickets}`);
   console.log(`    Matched:         ${stats.matched} (${stats.confirmed} confirmed)`);
   console.log(`    Risk Scores:     ${stats.riskScores}`);
+  console.log(`    Problem Tickets: ${stats.problemTickets} (${stats.incidentsLinked} incidents linked)`);
+  console.log(`    Jira Links:      ${stats.jiraLinks}`);
   console.log(`    Churn Signatures: ${stats.churnSignatures}`);
   console.log(`    Churn Predictions: ${stats.churnPredictions}`);
 

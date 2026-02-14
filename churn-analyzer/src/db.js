@@ -183,10 +183,23 @@ function initSchema(db) {
       UNIQUE(sf_account_id, window_days)
     );
 
+    -- Jira links for problem tickets
+    CREATE TABLE IF NOT EXISTS zd_jira_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL,
+      issue_key TEXT NOT NULL,
+      issue_url TEXT,
+      fetched_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(ticket_id, issue_key)
+    );
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_tickets_org ON zd_tickets(org_id);
     CREATE INDEX IF NOT EXISTS idx_tickets_created ON zd_tickets(created_at);
     CREATE INDEX IF NOT EXISTS idx_tickets_org_created ON zd_tickets(org_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_jira_links_ticket ON zd_jira_links(ticket_id);
+    CREATE INDEX IF NOT EXISTS idx_jira_links_issue ON zd_jira_links(issue_key);
+    CREATE INDEX IF NOT EXISTS idx_tickets_type ON zd_tickets(ticket_type);
     CREATE INDEX IF NOT EXISTS idx_risk_level ON risk_scores(risk_level);
     CREATE INDEX IF NOT EXISTS idx_risk_score ON risk_scores(overall_score DESC);
     CREATE INDEX IF NOT EXISTS idx_sf_status ON sf_accounts(status);
@@ -196,6 +209,16 @@ function initSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_predictions_level ON churn_predictions(churn_risk_level);
     CREATE INDEX IF NOT EXISTS idx_predictions_sf ON churn_predictions(sf_account_id);
   `);
+
+  // Migration: add problem_id column to existing zd_tickets table
+  try {
+    db.exec('ALTER TABLE zd_tickets ADD COLUMN problem_id INTEGER DEFAULT NULL');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Index on problem_id (after migration ensures column exists)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tickets_problem ON zd_tickets(problem_id)');
 }
 
 function close() {
@@ -220,6 +243,9 @@ function getStats() {
     riskScores: db.prepare('SELECT COUNT(*) as n FROM risk_scores').get().n,
     churnSignatures: db.prepare('SELECT COUNT(*) as n FROM churn_signatures').get().n,
     churnPredictions: db.prepare('SELECT COUNT(*) as n FROM churn_predictions').get().n,
+    problemTickets: db.prepare("SELECT COUNT(*) as n FROM zd_tickets WHERE ticket_type = 'problem'").get().n,
+    incidentsLinked: db.prepare("SELECT COUNT(*) as n FROM zd_tickets WHERE problem_id IS NOT NULL").get().n,
+    jiraLinks: db.prepare('SELECT COUNT(*) as n FROM zd_jira_links').get().n,
     lastSignature: db.prepare('SELECT MAX(computed_at) as t FROM churn_signatures').get().t,
     lastTicketFetch: db.prepare('SELECT MAX(fetched_at) as t FROM zd_tickets').get().t,
   };
