@@ -226,11 +226,125 @@ async function importTickets(zd, db, lookbackDays) {
   return result;
 }
 
+// ─── Backfill Churned Orgs ─────────────────────────────────────
+
+async function backfillChurnedOrgs(zd, db) {
+  const windowDays = parseInt(process.env.CHURN_LOOKBACK_WINDOW || '180');
+
+  // Find churned accounts matched to ZD orgs but missing tickets in pre-churn window
+  const missing = db.prepare(`
+    SELECT DISTINCT m.zd_org_id, s.churn_date, s.account_name
+    FROM sf_accounts s
+    JOIN account_org_map m ON s.sf_account_id = m.sf_account_id
+    WHERE s.churn_date IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM zd_tickets t
+      WHERE t.org_id = m.zd_org_id
+      AND t.created_at >= datetime(s.churn_date, '-' || ${windowDays} || ' days')
+      AND t.created_at <= s.churn_date
+    )
+  `).all();
+
+  console.log(`  Found ${missing.length} churned orgs missing tickets in ${windowDays}d pre-churn window`);
+  if (missing.length === 0) return { fetched: 0, imported: 0 };
+
+  const insert = db.prepare(`
+    INSERT OR REPLACE INTO zd_tickets (
+      id, org_id, subject, status, priority, ticket_type,
+      tags, category, pos_system, source, assignee_id, group_id,
+      satisfaction_rating, created_at, updated_at, solved_at,
+      resolution_hours, is_escalation, reopen_count
+    ) VALUES (
+      @id, @org_id, @subject, @status, @priority, @ticket_type,
+      @tags, @category, @pos_system, @source, @assignee_id, @group_id,
+      @satisfaction_rating, @created_at, @updated_at, @solved_at,
+      @resolution_hours, @is_escalation, @reopen_count
+    )
+  `);
+
+  let totalFetched = 0;
+  let totalImported = 0;
+  let orgsProcessed = 0;
+
+  for (const row of missing) {
+    orgsProcessed++;
+    if (orgsProcessed % 50 === 0 || orgsProcessed === 1) {
+      process.stdout.write(`  Processing org ${orgsProcessed}/${missing.length}...`);
+    }
+
+    try {
+      const tickets = await zd.getAllOrgTickets(row.zd_org_id);
+      totalFetched += tickets.length;
+
+      if (tickets.length > 0) {
+        const insertMany = db.transaction((tickets) => {
+          let imported = 0;
+          for (const t of tickets) {
+            const tags = t.tags || [];
+            if (shouldIgnore(tags)) continue;
+
+            let resolutionHours = null;
+            if (t.created_at && (t.status === 'solved' || t.status === 'closed')) {
+              const solvedAt = t.solved_at || t.updated_at;
+              if (solvedAt) {
+                resolutionHours = (new Date(solvedAt).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60);
+                if (resolutionHours < 0) resolutionHours = null;
+              }
+            }
+
+            const isEscalation = (t.priority === 'urgent' || t.priority === 'high' || t.type === 'problem') ? 1 : 0;
+
+            insert.run({
+              id: t.id,
+              org_id: t.organization_id || null,
+              subject: t.subject || '',
+              status: t.status || '',
+              priority: t.priority || 'normal',
+              ticket_type: t.type || null,
+              tags: JSON.stringify(tags),
+              category: extractFromTags(tags, TAG_TO_CATEGORY) || 'Other',
+              pos_system: extractFromTags(tags, TAG_TO_POS),
+              source: extractFromTags(tags, TAG_TO_SOURCE) || 'Unknown',
+              assignee_id: t.assignee_id || null,
+              group_id: t.group_id || null,
+              satisfaction_rating: t.satisfaction_rating?.score || null,
+              created_at: t.created_at || null,
+              updated_at: t.updated_at || null,
+              solved_at: t.solved_at || null,
+              resolution_hours: resolutionHours,
+              is_escalation: isEscalation,
+              reopen_count: t.reopen_count || 0,
+            });
+            imported++;
+          }
+          return imported;
+        });
+
+        const count = insertMany(tickets);
+        totalImported += count;
+      }
+    } catch (e) {
+      // Skip orgs that error (deleted org, etc.)
+      if (!e.message.includes('404')) {
+        console.log(`\n  Warning: org ${row.zd_org_id} (${row.account_name}): ${e.message.slice(0, 100)}`);
+      }
+    }
+
+    if (orgsProcessed % 50 === 0) {
+      console.log(` ${totalFetched} tickets fetched, ${totalImported} imported`);
+    }
+  }
+
+  console.log(`  Backfill complete: ${totalFetched} tickets fetched, ${totalImported} imported from ${orgsProcessed} orgs`);
+  return { fetched: totalFetched, imported: totalImported };
+}
+
 // ─── Main ──────────────────────────────────────────────────────
 
 async function run(args) {
   const daysFlag = args.indexOf('--days');
   const lookbackDays = daysFlag >= 0 ? parseInt(args[daysFlag + 1]) : null;
+  const backfill = args.includes('--backfill-churned');
 
   console.log('=== Zendesk Data Import ===');
   const startTime = Date.now();
@@ -239,15 +353,22 @@ async function run(args) {
   const db = getDb();
 
   try {
-    const orgCount = await importOrganizations(zd, db);
-    const ticketResult = await importTickets(zd, db, lookbackDays);
+    if (backfill) {
+      console.log('  Mode: backfill churned orgs (all-time tickets)');
+      const result = await backfillChurnedOrgs(zd, db);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`  Time: ${elapsed}s`);
+    } else {
+      const orgCount = await importOrganizations(zd, db);
+      const ticketResult = await importTickets(zd, db, lookbackDays);
 
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log('');
-    console.log('  Import Complete:');
-    console.log(`    Organizations: ${orgCount}`);
-    console.log(`    Tickets: ${ticketResult.imported}`);
-    console.log(`    Time: ${elapsed}s`);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log('');
+      console.log('  Import Complete:');
+      console.log(`    Organizations: ${orgCount}`);
+      console.log(`    Tickets: ${ticketResult.imported}`);
+      console.log(`    Time: ${elapsed}s`);
+    }
   } finally {
     close();
   }

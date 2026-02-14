@@ -102,7 +102,7 @@ class ZendeskClient {
   }
 
   /**
-   * Get tickets for a specific organization.
+   * Get tickets for a specific organization via search.
    */
   async getOrgTickets(orgId, sinceDate) {
     const since = sinceDate ? sinceDate.toISOString().split('T')[0] : '';
@@ -110,6 +110,24 @@ class ZendeskClient {
       ? `type:ticket organization_id:${orgId} created>=${since}`
       : `type:ticket organization_id:${orgId}`;
     return this.searchAll(query, 2000);
+  }
+
+  /**
+   * Get ALL tickets for an org via the tickets endpoint (bypasses search limits).
+   * Uses /api/v2/organizations/{id}/tickets.json which has no time restriction.
+   */
+  async getAllOrgTickets(orgId) {
+    const tickets = [];
+    let url = `/organizations/${orgId}/tickets.json`;
+
+    while (url) {
+      const data = await this.request(url, { per_page: '100' });
+      tickets.push(...(data.tickets || []));
+      url = data.next_page || null;
+      if (url) await new Promise(r => setTimeout(r, 300));
+    }
+
+    return tickets;
   }
 }
 

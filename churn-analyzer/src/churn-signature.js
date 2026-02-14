@@ -114,6 +114,88 @@ function computeFeatureVector(db, orgId, referenceDate, windowDays) {
   };
 }
 
+/**
+ * Compute a feature vector using ALL tickets for an org (no time window).
+ * Used for churned accounts to maximize data available for learning.
+ */
+function computeAllTimeFeatureVector(db, orgId) {
+  const totalRow = db.prepare(
+    'SELECT COUNT(*) as n, MIN(created_at) as first, MAX(created_at) as last FROM zd_tickets WHERE org_id = ?'
+  ).get(orgId);
+  const ticketCount = totalRow.n;
+  if (ticketCount === 0) return null;
+
+  // Compute span in months from first to last ticket
+  const firstDate = new Date(totalRow.first);
+  const lastDate = new Date(totalRow.last);
+  const spanMs = lastDate.getTime() - firstDate.getTime();
+  const months = Math.max(1, spanMs / (30 * 24 * 60 * 60 * 1000));
+
+  const escRow = db.prepare(
+    'SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND is_escalation = 1'
+  ).get(orgId);
+
+  const csatRow = db.prepare(`
+    SELECT
+      SUM(CASE WHEN satisfaction_rating = 'bad' THEN 1 ELSE 0 END) as bad,
+      SUM(CASE WHEN satisfaction_rating = 'good' THEN 1 ELSE 0 END) as good
+    FROM zd_tickets WHERE org_id = ?
+  `).get(orgId);
+  const badCsat = csatRow.bad || 0;
+  const csatTotal = badCsat + (csatRow.good || 0);
+
+  const resRow = db.prepare(
+    'SELECT AVG(resolution_hours) as avg_hours FROM zd_tickets WHERE org_id = ? AND resolution_hours > 0'
+  ).get(orgId);
+
+  const catRow = db.prepare(
+    'SELECT COUNT(DISTINCT category) as n FROM zd_tickets WHERE org_id = ?'
+  ).get(orgId);
+
+  const highRow = db.prepare(
+    "SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND priority IN ('urgent', 'high')"
+  ).get(orgId);
+
+  const probRow = db.prepare(
+    "SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND ticket_type = 'problem'"
+  ).get(orgId);
+
+  const reopenRow = db.prepare(
+    'SELECT SUM(reopen_count) as total FROM zd_tickets WHERE org_id = ?'
+  ).get(orgId);
+  const totalReopens = reopenRow.total || 0;
+
+  const unresolvedRow = db.prepare(
+    "SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND status IN ('new', 'open', 'pending', 'hold')"
+  ).get(orgId);
+
+  // Velocity: last 30d of their history vs prior period
+  const d30 = new Date(lastDate.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const d90 = new Date(lastDate.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const recent30 = db.prepare(
+    'SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ?'
+  ).get(orgId, d30).n;
+  const prior60 = db.prepare(
+    'SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ? AND created_at < ?'
+  ).get(orgId, d90, d30).n;
+  const priorMonthlyAvg = prior60 / 2;
+
+  return {
+    ticket_count: ticketCount,
+    tickets_per_month: ticketCount / months,
+    escalation_rate: ticketCount > 0 ? escRow.n / ticketCount : 0,
+    bad_csat_rate: csatTotal > 0 ? badCsat / csatTotal : 0,
+    avg_resolution_hours: resRow.avg_hours || 0,
+    reopen_rate: ticketCount > 0 ? totalReopens / ticketCount : 0,
+    unique_categories: catRow.n,
+    priority_high_rate: ticketCount > 0 ? highRow.n / ticketCount : 0,
+    ticket_velocity: priorMonthlyAvg > 0 ? recent30 / priorMonthlyAvg : (recent30 > 0 ? 2.0 : 0),
+    problem_ticket_rate: ticketCount > 0 ? probRow.n / ticketCount : 0,
+    avg_reopens_per_ticket: ticketCount > 0 ? totalReopens / ticketCount : 0,
+    unresolved_rate: ticketCount > 0 ? unresolvedRow.n / ticketCount : 0,
+  };
+}
+
 // ─── Statistical Helpers ─────────────────────────────────────
 
 function mean(arr) {
@@ -166,26 +248,26 @@ function buildChurnSignature(db, windowDays, excludeIds) {
     AND m.zd_org_id IN (SELECT DISTINCT org_id FROM zd_tickets WHERE org_id IS NOT NULL)
   `).all();
 
-  // Compute feature vectors for churned accounts (pre-churn window)
+  // Compute feature vectors for churned accounts using ALL their ticket history
   const churnedVectors = [];
   for (const c of churned) {
-    // Check cache first
+    // Check cache (use windowDays=0 as key for all-time)
     const cached = db.prepare(
-      'SELECT feature_vector FROM pre_churn_snapshots WHERE sf_account_id = ? AND window_days = ?'
-    ).get(c.sf_account_id, windowDays);
+      'SELECT feature_vector FROM pre_churn_snapshots WHERE sf_account_id = ? AND window_days = 0'
+    ).get(c.sf_account_id);
 
     let fv;
     if (cached && !excludeIds.length) {
       fv = JSON.parse(cached.feature_vector);
     } else {
-      fv = computeFeatureVector(db, c.zd_org_id, new Date(c.churn_date), windowDays);
-      // Cache it (only if not excluding — exclude means cross-validation)
+      fv = computeAllTimeFeatureVector(db, c.zd_org_id);
+      // Cache it
       if (fv && !excludeIds.length) {
         db.prepare(`
           INSERT OR REPLACE INTO pre_churn_snapshots
           (sf_account_id, zd_org_id, churn_date, window_days, feature_vector, ticket_count)
           VALUES (?, ?, ?, ?, ?, ?)
-        `).run(c.sf_account_id, c.zd_org_id, c.churn_date, windowDays, JSON.stringify(fv), fv.ticket_count);
+        `).run(c.sf_account_id, c.zd_org_id, c.churn_date, 0, JSON.stringify(fv), fv.ticket_count);
       }
     }
     if (fv) churnedVectors.push(fv);
