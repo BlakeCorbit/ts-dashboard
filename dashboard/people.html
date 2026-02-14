@@ -369,6 +369,7 @@ var actionItemsData = null;
 var interactionsData = null;
 var agentsData = null;
 var currentFilter = 'all';
+var showInactive = false;
 var openPersonId = null;
 
 // Avatar colors by team
@@ -441,7 +442,8 @@ function renderStats() {
   var box = document.getElementById('stats-box');
   if (!peopleData) return;
 
-  var totalPeople = peopleData.people.length;
+  var visiblePeople = showInactive ? peopleData.people : peopleData.people.filter(function(p) { return p.active !== false; });
+  var totalPeople = visiblePeople.length;
   var totalItems = actionItemsData ? actionItemsData.items.length : 0;
   var overdueItems = actionItemsData ? actionItemsData.items.filter(function(ai) { return ai.status === 'overdue'; }).length : 0;
   var openItems = actionItemsData ? actionItemsData.items.filter(function(ai) { return ai.status === 'open' || ai.status === 'in-progress'; }).length : 0;
@@ -470,6 +472,15 @@ function renderFilters() {
   teams.forEach(function(team) {
     h += '<button class="filter-chip' + (currentFilter === team ? ' active' : '') + '" onclick="setFilter(\'' + CC.esc(team) + '\')">' + CC.esc(team) + '</button>';
   });
+  // Inactive toggle
+  var inactiveCount = peopleData ? peopleData.people.filter(function(p) { return !p.active; }).length : 0;
+  if (inactiveCount > 0) {
+    h += '<span style="margin-left:auto;display:flex;align-items:center;gap:6px">';
+    h += '<label style="font-size:0.7rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:5px">';
+    h += '<input type="checkbox" id="show-inactive" ' + (showInactive ? 'checked' : '') + ' onchange="toggleInactive(this.checked)" style="accent-color:var(--av-green);cursor:pointer">';
+    h += 'Show inactive (' + inactiveCount + ')</label>';
+    h += '</span>';
+  }
   bar.innerHTML = h;
 }
 
@@ -478,6 +489,9 @@ function renderPeopleGrid() {
   if (!peopleData) return;
 
   var people = peopleData.people;
+  if (!showInactive) {
+    people = people.filter(function(p) { return p.active !== false; });
+  }
   if (currentFilter !== 'all') {
     people = people.filter(function(p) { return p.team === currentFilter; });
   }
@@ -500,11 +514,14 @@ function renderPeopleGrid() {
     var bgColor = TEAM_COLORS[p.team] || 'linear-gradient(135deg, #545d68, #8b949e)';
     var badgeStyle = TEAM_BADGE_STYLES[p.team] || 'background:rgba(84,93,104,0.2);color:var(--text-muted)';
 
-    h += '<div class="person-card' + (openPersonId === p.id ? ' active' : '') + '" onclick="openPerson(\'' + CC.esc(p.id) + '\')">';
+    var isInactive = p.active === false;
+    h += '<div class="person-card' + (openPersonId === p.id ? ' active' : '') + '" style="' + (isInactive ? 'opacity:0.55' : '') + '" onclick="openPerson(\'' + CC.esc(p.id) + '\')">';
     h += '<div class="person-header">';
     h += '<div class="person-avatar" style="background:' + bgColor + '">' + initials + '</div>';
     h += '<div>';
-    h += '<div class="person-name">' + CC.esc(p.name) + '</div>';
+    h += '<div class="person-name">' + CC.esc(p.name);
+    if (isInactive) h += ' <span style="font-size:0.6rem;color:var(--text-muted);font-weight:400;vertical-align:middle;background:var(--bg-input);padding:1px 6px;border-radius:8px;border:1px solid var(--border)">INACTIVE</span>';
+    h += '</div>';
     h += '<div class="person-role">' + CC.esc(p.role || 'Team Member') + '</div>';
     if (p.team) h += '<span class="person-team-badge" style="' + badgeStyle + '">' + CC.esc(p.team) + '</span>';
     h += '</div></div>';
@@ -710,6 +727,12 @@ window.closePanel = function() {
 
 window.setFilter = function(filter) {
   currentFilter = filter;
+  renderFilters();
+  renderPeopleGrid();
+};
+
+window.toggleInactive = function(checked) {
+  showInactive = checked;
   renderFilters();
   renderPeopleGrid();
 };
