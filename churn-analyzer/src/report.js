@@ -257,12 +257,15 @@ function generateDashboardJSON(db) {
       ORDER BY p.churn_score DESC
       LIMIT 750
     `).all().map(p => {
-      // Only keep top 3 signals per prediction to save space
-      const signals = JSON.parse(p.matched_signals).slice(0, 3).map(s => ({
+      const allSignals = JSON.parse(p.matched_signals).map(s => ({
         feature: s.feature,
         explanation: s.explanation,
         severity: s.severity,
       }));
+      const signals = allSignals.slice(0, 3);
+
+      // Feature vector for detail view
+      const featureVector = JSON.parse(p.feature_vector || '{}');
 
       // Fetch tickets for this org
       const activeTickets = p.zd_org_id ? getActiveTickets.all(p.zd_org_id).map(t => ({
@@ -298,9 +301,11 @@ function generateDashboardJSON(db) {
         churnScore: p.churn_score,
         churnRiskLevel: p.churn_risk_level,
         matchedSignals: signals,
+        allSignals: allSignals,
         signalCount: p.signal_count,
         confidence: p.confidence,
         mrr: p.mrr,
+        featureVector,
         activeTickets,
         historicalTickets,
         problemTickets,

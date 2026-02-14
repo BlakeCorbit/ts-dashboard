@@ -113,6 +113,13 @@
   </section>
 </div>
 
+<!-- Shop Detail Modal -->
+<div id="shop-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);overflow-y:auto;padding:24px" onclick="if(event.target===this)closeShopModal()">
+  <div style="max-width:900px;margin:0 auto;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);box-shadow:0 16px 48px rgba(0,0,0,0.4);position:relative">
+    <div id="shop-modal-content"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="shared/utils.js"></script>
@@ -389,6 +396,9 @@ function renderPredictions(d) {
   var box = document.getElementById('predictions-box');
   var preds = d.predictions || [];
 
+  // Tag with original index for detail modal
+  preds.forEach(function(p, i) { p._idx = i; });
+
   // Filter
   if (predFilter !== 'all') {
     preds = preds.filter(function(p) { return p.churnRiskLevel === predFilter; });
@@ -442,13 +452,9 @@ function renderPredictions(d) {
     }
     h += '</td>';
 
-    // Name
+    // Name (click opens detail modal)
     h += '<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + CC.esc(p.name) + '">';
-    if (p.zdOrgId) {
-      h += '<a href="' + CC.ZD.replace('/agent/tickets/', '/agent/organizations/') + p.zdOrgId + '/tickets" target="_blank" onclick="event.stopPropagation()">' + CC.esc(CC.trunc(p.name, 28)) + '</a>';
-    } else {
-      h += CC.esc(CC.trunc(p.name, 28));
-    }
+    h += '<span onclick="event.stopPropagation();openShopDetail(' + p._idx + ')" style="color:var(--av-blue);cursor:pointer;text-decoration:underline;text-decoration-style:dotted">' + CC.esc(CC.trunc(p.name, 28)) + '</span>';
     h += '</td>';
 
     // Churn Score
@@ -809,6 +815,258 @@ function renderProblemCorrelation(d) {
   h += '</div>';
   box.innerHTML = h;
 }
+
+// ---- Shop Detail Modal ----
+window.openShopDetail = function(idx) {
+  if (!churnData || !churnData.predictions) return;
+  var p = churnData.predictions[idx];
+  if (!p) return;
+
+  var sig = churnData.churnSignature;
+  var features = sig && sig.features ? sig.features : [];
+  var rc = riskColor(p.churnRiskLevel);
+  var rb = riskBg(p.churnRiskLevel);
+
+  var h = '';
+
+  // Header
+  h += '<div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start">';
+  h += '<div>';
+  h += '<div style="font-size:1.1rem;font-weight:800;color:var(--text-primary)">' + CC.esc(p.name) + '</div>';
+  h += '<div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap">';
+  if (p.zdOrgId) h += '<a href="' + CC.ZD.replace('/agent/tickets/', '/agent/organizations/') + p.zdOrgId + '/tickets" target="_blank" style="font-size:0.72rem;color:var(--av-blue);font-weight:600">View in Zendesk</a>';
+  if (p.mrr) h += '<span style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-secondary)">$' + CC.fmt(p.mrr) + '/mo</span>';
+  h += '<span class="priority-badge" style="background:' + rb + ';color:' + rc + '">' + CC.esc(p.churnRiskLevel) + '</span>';
+  h += '</div></div>';
+  h += '<div style="display:flex;gap:8px;align-items:center">';
+  h += '<button class="btn btn-sm" onclick="copyShopSummary(' + idx + ')" title="Copy summary for Slack/email" style="font-size:0.72rem">Copy Summary</button>';
+  h += '<button class="btn btn-sm" onclick="closeShopModal()" style="font-size:0.85rem;padding:4px 10px;font-weight:700">&times;</button>';
+  h += '</div></div>';
+
+  // Score + Signals overview
+  h += '<div style="padding:16px 24px;display:grid;grid-template-columns:140px 1fr;gap:16px">';
+
+  // Left: big score
+  h += '<div style="text-align:center;padding:12px 0">';
+  h += '<div style="font-family:var(--font-mono);font-size:2.8rem;font-weight:900;color:' + rc + ';line-height:1">' + p.churnScore + '</div>';
+  h += '<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-top:4px">Churn Score</div>';
+  h += '<div style="margin-top:8px">' + confBadge(p.confidence) + ' confidence</div>';
+  h += '<div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted);margin-top:4px">' + p.signalCount + ' signals firing</div>';
+  h += '</div>';
+
+  // Right: feature comparison bars
+  h += '<div>';
+  h += '<div style="font-size:0.72rem;font-weight:700;color:var(--text-primary);margin-bottom:8px">Feature Breakdown vs Churned/Active Averages</div>';
+  features.forEach(function(f) {
+    var val = p.featureVector ? p.featureVector[f.name] : null;
+    if (val == null) return;
+
+    var churnedMean = f.churnedMean;
+    var activeMean = f.activeMean;
+    var maxVal = Math.max(val, churnedMean, activeMean, 1);
+
+    // Is this value concerning?
+    var isBad = (f.direction === 'higher_means_risk' && val >= f.threshold) ||
+                (f.direction === 'lower_means_risk' && val <= f.threshold);
+    var valColor = isBad ? 'var(--accent-red)' : 'var(--av-green)';
+
+    var fmtVal = val;
+    if (f.name.includes('rate') || f.name === 'unresolved_rate') fmtVal = (val * 100).toFixed(0) + '%';
+    else if (f.name === 'ticket_velocity') fmtVal = val.toFixed(1) + 'x';
+    else if (f.name === 'median_resolution_hours') fmtVal = Math.round(val) + 'h';
+    else fmtVal = typeof val === 'number' ? (val % 1 === 0 ? val : val.toFixed(1)) : val;
+
+    h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+    h += '<div style="width:130px;font-size:0.68rem;color:var(--text-secondary);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + CC.esc(f.label) + '">' + CC.esc(f.label) + '</div>';
+
+    // Mini bar chart: shop value vs churned mean vs active mean
+    h += '<div style="flex:1;display:flex;align-items:center;gap:4px">';
+    h += '<div style="flex:1;height:10px;background:var(--bg-main);border-radius:3px;position:relative;overflow:visible">';
+    var shopPct = Math.min(val / maxVal * 100, 100);
+    h += '<div style="height:100%;width:' + shopPct + '%;background:' + valColor + ';border-radius:3px;opacity:0.8"></div>';
+    // Churned marker
+    var cPct = Math.min(churnedMean / maxVal * 100, 100);
+    h += '<div title="Churned avg" style="position:absolute;left:' + cPct + '%;top:-2px;width:2px;height:14px;background:var(--accent-red);opacity:0.6"></div>';
+    // Active marker
+    var aPct = Math.min(activeMean / maxVal * 100, 100);
+    h += '<div title="Active avg" style="position:absolute;left:' + aPct + '%;top:-2px;width:2px;height:14px;background:var(--av-green);opacity:0.6"></div>';
+    h += '</div>';
+    h += '</div>';
+
+    h += '<div style="width:50px;text-align:right;font-family:var(--font-mono);font-size:0.68rem;color:' + valColor + ';font-weight:700;flex-shrink:0">' + fmtVal + '</div>';
+    h += '</div>';
+  });
+
+  // Legend
+  h += '<div style="display:flex;gap:12px;margin-top:6px;font-size:0.62rem;color:var(--text-muted)">';
+  h += '<span><span style="display:inline-block;width:10px;height:2px;background:var(--accent-red);vertical-align:middle;margin-right:3px"></span>Churned avg</span>';
+  h += '<span><span style="display:inline-block;width:10px;height:2px;background:var(--av-green);vertical-align:middle;margin-right:3px"></span>Active avg</span>';
+  h += '</div>';
+  h += '</div></div>';
+
+  // Warning Signals (all of them)
+  var allSigs = p.allSignals || p.matchedSignals || [];
+  if (allSigs.length > 0) {
+    h += '<div style="padding:0 24px 16px">';
+    h += '<div style="font-size:0.72rem;font-weight:700;color:var(--text-primary);margin-bottom:8px">All Warning Signals (' + allSigs.length + ')</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">';
+    allSigs.forEach(function(s) {
+      var sevColor = s.severity >= 80 ? 'var(--accent-red)' : s.severity >= 50 ? 'var(--accent-orange)' : 'var(--accent-yellow)';
+      h += '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg-main);border-radius:4px;font-size:0.7rem">';
+      h += '<div style="width:28px;text-align:center;font-family:var(--font-mono);font-weight:800;color:' + sevColor + ';flex-shrink:0">' + s.severity + '</div>';
+      h += '<div style="color:var(--text-secondary);line-height:1.3">' + CC.esc(s.explanation) + '</div>';
+      h += '</div>';
+    });
+    h += '</div></div>';
+  }
+
+  // Tickets sections
+  h += '<div style="padding:0 24px 16px">';
+
+  // Active Tickets
+  var active = p.activeTickets || [];
+  h += '<div style="margin-bottom:12px">';
+  h += '<div style="font-size:0.72rem;font-weight:700;color:var(--accent-orange);margin-bottom:6px;display:flex;align-items:center;gap:6px">Active Tickets';
+  if (active.length > 0) h += '<span style="font-family:var(--font-mono);font-weight:800;background:rgba(232,134,58,0.15);color:var(--accent-orange);border-radius:10px;padding:1px 7px;font-size:0.65rem">' + active.length + '</span>';
+  h += '</div>';
+  if (active.length > 0) {
+    h += '<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden">';
+    active.forEach(function(t) { h += renderTicketRow(t, true); });
+    h += '</div>';
+  } else {
+    h += '<div style="font-size:0.72rem;color:var(--text-muted)">No active tickets</div>';
+  }
+  h += '</div>';
+
+  // Historical Tickets
+  var hist = p.historicalTickets || [];
+  h += '<div style="margin-bottom:12px">';
+  h += '<div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;display:flex;align-items:center;gap:6px">Recent Resolved';
+  if (hist.length > 0) h += '<span style="font-family:var(--font-mono);font-weight:800;background:var(--bg-input);color:var(--text-muted);border-radius:10px;padding:1px 7px;font-size:0.65rem">' + hist.length + '</span>';
+  h += '</div>';
+  if (hist.length > 0) {
+    h += '<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden">';
+    hist.forEach(function(t) { h += renderTicketRow(t, false); });
+    h += '</div>';
+  } else {
+    h += '<div style="font-size:0.72rem;color:var(--text-muted)">No resolved tickets in last 6 months</div>';
+  }
+  h += '</div>';
+
+  // Problem Tickets
+  var problems = p.problemTickets || [];
+  if (problems.length > 0) {
+    h += '<div style="margin-bottom:12px">';
+    h += '<div style="font-size:0.72rem;font-weight:700;color:var(--accent-red);margin-bottom:6px;display:flex;align-items:center;gap:6px">Problem Tickets';
+    h += '<span style="font-family:var(--font-mono);font-weight:800;background:rgba(248,81,73,0.15);color:var(--accent-red);border-radius:10px;padding:1px 7px;font-size:0.65rem">' + problems.length + '</span>';
+    h += '</div>';
+    h += '<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden">';
+    problems.forEach(function(pt) {
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem">';
+      h += '<a href="' + CC.ZD + pt.id + '" target="_blank" style="font-family:var(--font-mono);font-weight:600;color:var(--accent-red);flex-shrink:0">#' + pt.id + '</a>';
+      h += '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + CC.esc(CC.trunc(pt.subject, 60)) + '</span>';
+      if (pt.jiraKeys && pt.jiraKeys.length > 0) {
+        pt.jiraKeys.forEach(function(key, i) {
+          var url = pt.jiraUrls && pt.jiraUrls[i] ? pt.jiraUrls[i] : ('https://autovitals.atlassian.net/browse/' + key);
+          h += '<a href="' + url + '" target="_blank" style="font-family:var(--font-mono);font-weight:700;font-size:0.65rem;color:var(--av-blue);background:rgba(80,148,211,0.1);padding:1px 6px;border-radius:3px;flex-shrink:0">' + CC.esc(key) + '</a>';
+        });
+      }
+      h += '<span style="color:' + (pt.status === 'solved' || pt.status === 'closed' ? 'var(--text-muted)' : 'var(--accent-orange)') + ';font-weight:600;flex-shrink:0;font-size:0.65rem;text-transform:capitalize">' + CC.esc(pt.status) + '</span>';
+      h += '</div>';
+    });
+    h += '</div></div>';
+  }
+
+  // Jira Links (all distinct for this org)
+  var jiras = p.jiraLinks || [];
+  if (jiras.length > 0) {
+    h += '<div style="margin-bottom:12px">';
+    h += '<div style="font-size:0.72rem;font-weight:700;color:var(--av-blue);margin-bottom:6px">Linked Jira Issues (' + jiras.length + ')</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    jiras.forEach(function(j) {
+      h += '<a href="' + j.url + '" target="_blank" style="font-family:var(--font-mono);font-weight:700;font-size:0.72rem;color:var(--av-blue);background:rgba(80,148,211,0.1);padding:3px 8px;border-radius:4px;text-decoration:none">' + CC.esc(j.key) + '</a>';
+    });
+    h += '</div></div>';
+  }
+
+  if (p.incidentCount > 0) {
+    h += '<div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:12px">' + p.incidentCount + ' ticket(s) linked as incidents to problem tickets</div>';
+  }
+
+  h += '</div>';
+
+  document.getElementById('shop-modal-content').innerHTML = h;
+  document.getElementById('shop-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeShopModal = function() {
+  document.getElementById('shop-modal').style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+window.copyShopSummary = function(idx) {
+  if (!churnData || !churnData.predictions) return;
+  var p = churnData.predictions[idx];
+  if (!p) return;
+
+  var lines = [];
+  lines.push('**' + p.name + '** - Churn Risk: ' + p.churnRiskLevel.toUpperCase() + ' (Score: ' + p.churnScore + '/100)');
+  if (p.mrr) lines.push('MRR: $' + CC.fmt(p.mrr) + '/mo');
+  lines.push('Confidence: ' + (p.confidence || 'low') + ' | Signals firing: ' + p.signalCount);
+  lines.push('');
+
+  var allSigs = p.allSignals || p.matchedSignals || [];
+  if (allSigs.length > 0) {
+    lines.push('Warning Signals:');
+    allSigs.forEach(function(s) {
+      lines.push('  - ' + s.explanation);
+    });
+    lines.push('');
+  }
+
+  var active = p.activeTickets || [];
+  if (active.length > 0) {
+    lines.push('Active Tickets (' + active.length + '):');
+    active.forEach(function(t) {
+      lines.push('  - #' + t.id + ' [' + t.priority + '] ' + t.subject);
+    });
+    lines.push('');
+  }
+
+  var problems = p.problemTickets || [];
+  if (problems.length > 0) {
+    lines.push('Problem Tickets (' + problems.length + '):');
+    problems.forEach(function(pt) {
+      var jira = pt.jiraKeys && pt.jiraKeys.length > 0 ? ' (' + pt.jiraKeys.join(', ') + ')' : '';
+      lines.push('  - #' + pt.id + ' ' + pt.subject + jira);
+    });
+    lines.push('');
+  }
+
+  if (p.zdOrgId) {
+    lines.push('Zendesk: https://autovitals.zendesk.com/agent/organizations/' + p.zdOrgId + '/tickets');
+  }
+
+  var text = lines.join('\n');
+  navigator.clipboard.writeText(text).then(function() {
+    CC.toast('Summary copied to clipboard!', true);
+  }).catch(function() {
+    // Fallback
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    CC.toast('Summary copied!', true);
+  });
+};
+
+// Close modal on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeShopModal();
+});
 
 // ---- Refresh ----
 window.refreshAll = function() {
