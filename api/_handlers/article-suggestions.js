@@ -18,6 +18,28 @@ const EXCLUDED_PATTERNS = [
   'ROs not showing', 'Data not syncing', 'Binary integration', 'Partner API',
 ];
 
+// ZD section mapping — maps ticket patterns to the best-fit Help Center sections
+// IDs from sections.json; used for smart placement and section-aware matching
+const PATTERN_SECTIONS = {
+  'TVP issues':          [{ id: 360013552372, name: 'TVP.X' }, { id: 4409181653012, name: 'TVP Display Settings' }, { id: 4417800652564, name: 'TVP.X Settings' }],
+  'Email delivery':      [{ id: 4409181801108, name: 'Customer Communication' }, { id: 4414776161044, name: 'Thank You Messages and Reviews' }],
+  'SMS delivery':        [{ id: 4409181801108, name: 'Customer Communication' }],
+  'Login/access':        [{ id: 4403287293972, name: 'AutoVitals Settings' }, { id: 4417812763540, name: 'Business Control Panel' }],
+  'Inspection issues':   [{ id: 11734471307412, name: 'Inspection Results' }, { id: 4409295139476, name: 'Editing Inspection Sheets' }],
+  'Reminders/campaigns': [{ id: 4417885812244, name: 'Service Reminders' }, { id: 4411219332756, name: 'Campaigns' }],
+  'Chat issues':         [{ id: 18374589671316, name: 'Conversation Center' }, { id: 4409182176020, name: 'Internal Shop Communication' }],
+  'Performance/errors':  [{ id: 360013552372, name: 'TVP.X' }],
+  'Appointments':        [{ id: 4410295511956, name: 'Appointments' }],
+  'Media upload':        [{ id: 360013773092, name: 'Settings' }],  // AV.X App
+  'Camera/photo issues': [{ id: 360013773092, name: 'Settings' }],  // AV.X App
+  'Notification issues': [{ id: 360013773092, name: 'Settings' }],  // AV.X App
+  'Audio/video issues':  [{ id: 360013773092, name: 'Settings' }],  // AV.X App
+  'App freezing/crashing': [{ id: 360013773092, name: 'Settings' }], // AV.X App
+};
+
+// Stale threshold: articles not updated in this many days are candidates for refresh
+const STALE_DAYS = 365;
+
 // Triage rule metadata for building article bodies
 const RULE_META = {
   'TVP issues':          { title: 'Troubleshooting: TVP Page Issues', category: 'Platform', runbook: null, action: 'Check if TVP loads at all or shows errors. Try clear cache (shop.autovitals.com/services/clearCache.asmx/Shop?shopid=X). Check browser compatibility. Verify shop is active.' },
@@ -66,6 +88,68 @@ function fuzzyMatch(articleTitle, pattern) {
     if (a.includes(kw)) matched++;
   }
   return keywords.length > 0 ? matched / keywords.length : 0;
+}
+
+// Section-aware scoring: combines title match + section relevance + staleness
+function scoreArticle(article, errorPattern) {
+  const titleScore = fuzzyMatch(article.title, errorPattern);
+  const sections = PATTERN_SECTIONS[errorPattern] || [];
+  const inRelevantSection = sections.some(s => s.id === article.sectionId);
+  const sectionBoost = inRelevantSection ? 0.25 : 0;
+
+  // Stale articles are still matches but flagged for update
+  const updatedAt = article.updatedAt ? new Date(article.updatedAt) : null;
+  const ageMs = updatedAt ? Date.now() - updatedAt.getTime() : Infinity;
+  const isStale = ageMs > STALE_DAYS * 86400000;
+
+  const totalScore = Math.min(titleScore + sectionBoost, 1.0);
+  return { score: totalScore, inRelevantSection, isStale };
+}
+
+// Determine recommended action for a suggestion based on existing articles
+function recommendAction(existingArticles, errorPattern) {
+  const sections = PATTERN_SECTIONS[errorPattern] || [];
+  const scored = existingArticles.map(a => ({
+    ...a,
+    ...scoreArticle(a, errorPattern),
+  }));
+
+  // Strong match (>= 0.5): article exists covering this topic
+  const strongMatches = scored.filter(a => a.score >= 0.5);
+
+  if (strongMatches.length > 0) {
+    // Sort by score desc, prefer stale articles (update candidates)
+    strongMatches.sort((a, b) => {
+      if (a.isStale !== b.isStale) return a.isStale ? -1 : 1;
+      return b.score - a.score;
+    });
+    const best = strongMatches[0];
+    if (best.isStale) {
+      return {
+        action: 'update_existing',
+        targetArticle: { id: best.id, title: best.title, url: best.url, sectionId: best.sectionId, score: best.score },
+        recommendedSection: sections[0] || null,
+        relatedArticles: strongMatches.slice(0, 5),
+      };
+    }
+    // Good match, not stale — already covered
+    return {
+      action: 'already_covered',
+      targetArticle: { id: best.id, title: best.title, url: best.url, sectionId: best.sectionId, score: best.score },
+      recommendedSection: sections[0] || null,
+      relatedArticles: strongMatches.slice(0, 5),
+    };
+  }
+
+  // Weak matches (0.3-0.5): might be adjacent — suggest create new but show related
+  const weakMatches = scored.filter(a => a.score >= 0.3 && a.score < 0.5);
+
+  return {
+    action: 'create_new',
+    targetArticle: null,
+    recommendedSection: sections[0] || null,
+    relatedArticles: weakMatches.slice(0, 5),
+  };
 }
 
 // ---- Internal body builders (agent-focused) ----
@@ -411,6 +495,7 @@ async function fetchExistingArticles() {
       sectionId: a.section_id,
       draft: a.draft,
       url: a.html_url,
+      updatedAt: a.updated_at,
     })));
     hcUrl = data.next_page ? data.next_page.replace(/^https:\/\/[^/]+\/api\/v2/, '') : null;
   }
@@ -441,6 +526,11 @@ module.exports = async function handler(req, res) {
     for (const ticket of flaggedTickets) {
       const similar = await findSimilarTickets(ticket);
 
+      // Use clusterer to detect the pattern from the ticket subject
+      const clusterer = new TicketClusterer();
+      const detectedPattern = clusterer.extractErrorPattern(ticket);
+      const flaggedRec = recommendAction(existingArticles, detectedPattern !== 'other' ? detectedPattern : ticket.subject);
+
       flaggedSuggestions.push({
         source: 'flagged',
         pattern: ticket.subject,
@@ -455,14 +545,21 @@ module.exports = async function handler(req, res) {
         suggestedBodyInternal: buildFlaggedArticleBodyInternal(ticket, similar),
         suggestedBodyExternal: buildFlaggedArticleBodyExternal(ticket),
         existingArticles: existingArticles.filter(a => fuzzyMatch(a.title, ticket.subject) >= 0.4),
-        hasGap: true,
+        hasGap: flaggedRec.action !== 'already_covered',
         flaggedTicketId: ticket.id,
+        recommendedAction: flaggedRec.action === 'already_covered' ? 'create_new' : flaggedRec.action, // flagged = always allow create
+        recommendedSection: flaggedRec.recommendedSection,
+        updateTarget: flaggedRec.targetArticle,
+        relatedArticles: (flaggedRec.relatedArticles || []).map(a => ({
+          id: a.id, title: a.title, url: a.url, score: a.score, isStale: a.isStale,
+        })),
       });
     }
 
     // ---- Build Source 2: Jira WAD suggestions ----
     const jiraSuggestions = jiraIssues.map(issue => {
       const summary = issue.fields.summary || '';
+      const jiraRec = recommendAction(existingArticles, summary);
       return {
         source: 'jira-wad',
         pattern: `${issue.key}: ${summary}`,
@@ -476,8 +573,14 @@ module.exports = async function handler(req, res) {
         suggestedBodyInternal: buildJiraArticleBodyInternal(issue),
         suggestedBodyExternal: buildJiraArticleBodyExternal(issue),
         existingArticles: existingArticles.filter(a => fuzzyMatch(a.title, summary) >= 0.4),
-        hasGap: true,
+        hasGap: jiraRec.action !== 'already_covered',
         updatedAt: issue.fields.updated,
+        recommendedAction: jiraRec.action,
+        recommendedSection: jiraRec.recommendedSection,
+        updateTarget: jiraRec.targetArticle,
+        relatedArticles: (jiraRec.relatedArticles || []).map(a => ({
+          id: a.id, title: a.title, url: a.url, score: a.score, isStale: a.isStale,
+        })),
       };
     });
 
@@ -491,8 +594,11 @@ module.exports = async function handler(req, res) {
         action: null,
       };
 
-      const matchingArticles = existingArticles
-        .filter(a => fuzzyMatch(a.title, cluster.errorPattern) >= 0.5)
+      const recommendation = recommendAction(existingArticles, cluster.errorPattern);
+
+      // Legacy field: existingArticles for backward compat
+      const matchingArticles = recommendation.relatedArticles
+        .filter(a => a.score >= 0.5)
         .map(a => ({ id: a.id, title: a.title, url: a.url, draft: a.draft }));
 
       return {
@@ -515,13 +621,22 @@ module.exports = async function handler(req, res) {
         }),
         suggestedBodyExternal: buildArticleBodyExternal(meta, cluster),
         existingArticles: matchingArticles,
-        hasGap: matchingArticles.length === 0,
+        hasGap: recommendation.action === 'create_new',
+        recommendedAction: recommendation.action,
+        recommendedSection: recommendation.recommendedSection,
+        updateTarget: recommendation.targetArticle,
+        relatedArticles: recommendation.relatedArticles.map(a => ({
+          id: a.id, title: a.title, url: a.url, score: a.score, isStale: a.isStale,
+        })),
       };
     });
 
-    // Sort patterns: gaps first, then by ticket count
+    // Sort patterns: create_new first, then update_existing, then covered; by ticket count within
+    const ACTION_PRIORITY = { create_new: 0, update_existing: 1, already_covered: 2 };
     patternSuggestions.sort((a, b) => {
-      if (a.hasGap !== b.hasGap) return a.hasGap ? -1 : 1;
+      const pa = ACTION_PRIORITY[a.recommendedAction] ?? 2;
+      const pb = ACTION_PRIORITY[b.recommendedAction] ?? 2;
+      if (pa !== pb) return pa - pb;
       return b.ticketCount - a.ticketCount;
     });
 

@@ -237,10 +237,12 @@ function renderPatterns(){
   var countEl = document.getElementById('pattern-count');
   var items = (data.patterns || []).filter(function(s){ return !isDismissed(s); });
 
-  var gaps = items.filter(function(s){ return s.hasGap; });
-  var covered = items.filter(function(s){ return !s.hasGap; });
+  var newItems = items.filter(function(s){ return s.recommendedAction === 'create_new'; });
+  var updateItems = items.filter(function(s){ return s.recommendedAction === 'update_existing'; });
+  var covered = items.filter(function(s){ return s.recommendedAction === 'already_covered' || (!s.recommendedAction && !s.hasGap); });
 
-  countEl.textContent = gaps.length + ' gap' + (gaps.length !== 1 ? 's' : '') + ', ' + covered.length + ' covered';
+  var actionableCount = newItems.length + updateItems.length;
+  countEl.textContent = actionableCount + ' actionable, ' + covered.length + ' covered';
 
   if(items.length === 0){
     box.innerHTML = '<div class="all-clear fade-in" style="padding:30px">' +
@@ -251,9 +253,14 @@ function renderPatterns(){
 
   var h = '<div class="fade-in">';
 
-  if(gaps.length > 0){
-    h += '<div style="font-size:0.82rem;color:var(--accent-yellow);font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Missing Articles (' + gaps.length + ')</div>';
-    gaps.forEach(function(s, idx){ h += buildCard(s, 'p-' + idx, true, 'var(--accent-yellow)'); });
+  if(newItems.length > 0){
+    h += '<div style="font-size:0.82rem;color:var(--accent-yellow);font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">New Articles Needed (' + newItems.length + ')</div>';
+    newItems.forEach(function(s, idx){ h += buildCard(s, 'p-' + idx, true, 'var(--accent-yellow)'); });
+  }
+
+  if(updateItems.length > 0){
+    h += '<div style="font-size:0.82rem;color:var(--av-blue);font-weight:600;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.5px">Stale Articles — Update Recommended (' + updateItems.length + ')</div>';
+    updateItems.forEach(function(s, idx){ h += buildCard(s, 'pu-' + idx, true, 'var(--av-blue)'); });
   }
 
   if(covered.length > 0){
@@ -277,9 +284,27 @@ function buildCard(s, id, isGap, borderColor){
   // Source badge
   if(s.source === 'flagged') h += '<span class="age-pill" style="background:rgba(255,193,7,0.15);color:var(--accent-yellow);font-size:0.7rem">FLAGGED</span>';
   else if(s.source === 'jira-wad') h += '<span class="age-pill" style="background:rgba(59,130,246,0.15);color:var(--av-blue);font-size:0.7rem">JIRA WAD</span>';
+  else if(s.recommendedAction === 'update_existing') h += '<span class="age-pill" style="background:rgba(59,130,246,0.15);color:var(--av-blue);font-size:0.7rem">Update Stale</span>';
   else h += '<span class="age-pill ' + (isGap ? 'age-warning' : 'age-ok') + '" style="font-size:0.7rem">' + (isGap ? 'No Article' : 'Covered') + '</span>';
 
   h += '</div></div>';
+
+  // Recommendation banner
+  if(s.recommendedAction && s.recommendedAction !== 'already_covered'){
+    h += '<div style="margin:6px 0 8px;padding:8px 12px;border-radius:6px;font-size:0.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+    if(s.recommendedAction === 'update_existing'){
+      h += 'background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15)">';
+      h += '<strong style="color:var(--av-blue)">Recommended:</strong> Update existing article';
+      if(s.updateTarget) h += ' &mdash; <a href="' + CC.esc(s.updateTarget.url || '') + '" target="_blank" style="color:var(--av-blue)">' + CC.esc(s.updateTarget.title) + '</a>';
+    } else {
+      h += 'background:rgba(255,193,7,0.06);border:1px solid rgba(255,193,7,0.15)">';
+      h += '<strong style="color:var(--accent-yellow)">Recommended:</strong> Create new article';
+    }
+    if(s.recommendedSection){
+      h += ' <span style="color:var(--text-muted)">&rarr; ' + CC.esc(s.recommendedSection.name) + '</span>';
+    }
+    h += '</div>';
+  }
 
   // Stats line
   h += '<div class="cluster-stats">';
@@ -309,8 +334,18 @@ function buildCard(s, id, isGap, borderColor){
     h += '</div>';
   }
 
-  // Existing articles (if covered)
-  if(!isGap && s.existingArticles && s.existingArticles.length){
+  // Related articles (for any card with related matches)
+  if(s.relatedArticles && s.relatedArticles.length){
+    h += '<div style="margin:8px 0;font-size:0.78rem">';
+    h += '<span style="color:var(--text-muted)">Related articles:</span> ';
+    s.relatedArticles.forEach(function(a){
+      var staleTag = a.isStale ? ' <span style="color:var(--accent-yellow);font-size:0.68rem">(stale)</span>' : '';
+      h += '<a href="' + CC.esc(a.url || '') + '" target="_blank" style="color:var(--av-green);margin-right:8px">' + CC.esc(a.title) + '</a>' + staleTag;
+    });
+    h += '</div>';
+  }
+  // Existing articles fallback (if no relatedArticles but has existingArticles — backward compat)
+  else if(!isGap && s.existingArticles && s.existingArticles.length){
     h += '<div style="margin:8px 0;font-size:0.82rem">';
     h += '<span style="color:var(--text-muted)">Matching articles:</span> ';
     s.existingArticles.forEach(function(a){
@@ -328,23 +363,27 @@ function buildCard(s, id, isGap, borderColor){
     h += '<label>Article Title</label>';
     h += '<input type="text" id="title-' + id + '" value="' + CC.esc(s.suggestedTitle || '') + '">';
 
-    // Body label with toggle + preview link
+    // Body label with toggle + edit link
     h += '<label style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">';
-    h += 'Article Body (HTML)';
+    h += 'Article Preview';
     h += '<div class="body-toggle">';
     h += '<button class="body-toggle-btn active" id="tog-int-' + id + '" onclick="switchBody(\'' + id + '\',\'internal\')">Internal</button>';
     h += '<button class="body-toggle-btn" id="tog-ext-' + id + '" onclick="switchBody(\'' + id + '\',\'external\')">Customer</button>';
     h += '</div>';
-    h += '<a href="javascript:void(0)" onclick="togglePreview(\'' + id + '\')" style="color:var(--av-blue);font-weight:400;margin-left:auto">Toggle Preview</a>';
+    h += '<a href="javascript:void(0)" onclick="togglePreview(\'' + id + '\')" style="color:var(--av-blue);font-weight:400;margin-left:auto" id="edit-link-' + id + '">Edit HTML</a>';
     h += '</label>';
-    h += '<textarea id="body-' + id + '" rows="10">' + CC.esc(s.suggestedBodyInternal || s.suggestedBody || '') + '</textarea>';
-    h += '<div id="preview-' + id + '" style="display:none;padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);margin-top:8px;font-family:var(--font-sub);line-height:1.6;color:var(--text-primary)"></div>';
+    h += '<div id="preview-' + id + '" style="padding:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font-sub);line-height:1.6;color:var(--text-primary)">' + (s.suggestedBodyInternal || s.suggestedBody || '') + '</div>';
+    h += '<textarea id="body-' + id + '" rows="10" style="display:none">' + CC.esc(s.suggestedBodyInternal || s.suggestedBody || '') + '</textarea>';
     h += '</div>';
 
-    // Dual destination buttons
+    // Destination buttons — include Update option when recommended
     h += '<div class="dest-btns" id="btns-' + id + '">';
+    if(s.recommendedAction === 'update_existing' && s.updateTarget){
+      h += '<button class="btn btn-link" style="background:var(--av-blue);color:#fff" onclick="updateArticle(\'' + id + '\',this)">Update ZD Article</button>';
+    }
     h += '<button class="btn btn-link" onclick="createArticle(\'' + id + '\',\'confluence\',this)">Internal &rarr; Confluence</button>';
-    h += '<button class="btn btn-approve" onclick="createArticle(\'' + id + '\',\'zendesk\',this)">Customer Article &rarr; ZD</button>';
+    var sectionParam = s.recommendedSection ? String(s.recommendedSection.id) : 'null';
+    h += '<button class="btn btn-approve" onclick="createArticle(\'' + id + '\',\'zendesk\',this,' + sectionParam + ')">New &rarr; ZD' + (s.recommendedSection ? ' (' + CC.esc(s.recommendedSection.name) + ')' : '') + '</button>';
     h += '<button class="btn btn-muted" onclick="dismissSuggestion(\'' + id + '\')">Dismiss</button>';
     h += '</div>';
   } else {
@@ -367,8 +406,9 @@ function getSuggestion(id){
   var list;
   if(prefix === 'f') list = (data.flagged || []).filter(function(s){ return !isDismissed(s); });
   else if(prefix === 'j') list = (data.jiraWAD || []).filter(function(s){ return !isDismissed(s); });
-  else if(prefix === 'p') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && s.hasGap; });
-  else if(prefix === 'pc') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && !s.hasGap; });
+  else if(prefix === 'p') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && s.recommendedAction === 'create_new'; });
+  else if(prefix === 'pu') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && s.recommendedAction === 'update_existing'; });
+  else if(prefix === 'pc') list = (data.patterns || []).filter(function(s){ return !isDismissed(s) && (s.recommendedAction === 'already_covered' || (!s.recommendedAction && !s.hasGap)); });
   else return null;
 
   return list[idx] || null;
@@ -382,37 +422,107 @@ window.switchBody = function(id, mode){
   bodyMode[id] = mode;
   var textarea = document.getElementById('body-' + id);
   var preview = document.getElementById('preview-' + id);
+  var newBody;
 
   if(mode === 'external'){
-    textarea.value = s.suggestedBodyExternal || '';
+    newBody = s.suggestedBodyExternal || '';
     document.getElementById('tog-int-' + id).classList.remove('active');
     document.getElementById('tog-ext-' + id).classList.add('active');
   } else {
-    textarea.value = s.suggestedBodyInternal || s.suggestedBody || '';
+    newBody = s.suggestedBodyInternal || s.suggestedBody || '';
     document.getElementById('tog-int-' + id).classList.add('active');
     document.getElementById('tog-ext-' + id).classList.remove('active');
   }
 
-  // Update preview if visible
-  if(preview.style.display !== 'none'){
-    preview.innerHTML = textarea.value;
-  }
+  // Always update both — textarea holds the source of truth for publish, preview shows rendered
+  textarea.value = newBody;
+  preview.innerHTML = newBody;
 };
 
-// Toggle HTML preview
+// Toggle between preview and HTML editor
 window.togglePreview = function(id){
   var textarea = document.getElementById('body-' + id);
   var preview = document.getElementById('preview-' + id);
-  if(preview.style.display === 'none'){
-    preview.innerHTML = textarea.value;
-    preview.style.display = 'block';
-  } else {
+  var editLink = document.getElementById('edit-link-' + id);
+  if(textarea.style.display === 'none'){
+    // Switch to editor — sync textarea from preview (in case preview was modified)
+    textarea.style.display = '';
     preview.style.display = 'none';
+    if(editLink) editLink.textContent = 'Preview';
+  } else {
+    // Switch to preview — render current textarea content
+    preview.innerHTML = textarea.value;
+    textarea.style.display = 'none';
+    preview.style.display = '';
+    if(editLink) editLink.textContent = 'Edit HTML';
   }
 };
 
+// Update existing ZD article
+window.updateArticle = function(id, btn){
+  var s = getSuggestion(id);
+  if(!s || !s.updateTarget) return;
+
+  var title = document.getElementById('title-' + id).value.trim();
+  var body = document.getElementById('body-' + id).value.trim();
+
+  if(!title){ CC.toast('Title is required', false); return; }
+  if(!body){ CC.toast('Body is required', false); return; }
+
+  btn.classList.add('loading');
+  var origText = btn.textContent;
+  btn.innerHTML = '<span class="spinner"></span> Updating...';
+
+  var labels = ['troubleshooting', 'auto-generated', 'updated'];
+  if(s.category) labels.push(s.category.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+
+  CC.api('create-article', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ title: title, body: body, labels: labels, action: 'update', articleId: s.updateTarget.id })
+  }).then(function(d){
+    if(d && d.success){
+      var resultEl = document.getElementById('result-' + id);
+      var existing = resultEl.innerHTML || '';
+      resultEl.innerHTML = existing +
+        '<div style="margin-top:12px;padding:12px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:var(--radius)">' +
+        '<div style="font-size:0.88rem;font-weight:700;color:var(--av-blue);margin-bottom:4px">' +
+        'Updated: <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">' + CC.esc(d.title) + '</a></div>' +
+        '<div style="font-size:0.78rem;color:var(--text-muted)">Article ID: ' + d.articleId + ' &middot; <a href="' + CC.esc(d.url) + '" target="_blank" style="color:var(--av-blue)">Open</a></div></div>';
+
+      btn.disabled = true;
+      btn.classList.remove('loading');
+      btn.textContent = 'Updated';
+      btn.style.opacity = '0.5';
+
+      var created = getCreated();
+      created.unshift({
+        articleId: d.articleId,
+        title: d.title,
+        url: d.url,
+        pattern: s.errorPattern || s.pattern,
+        source: s.source,
+        destination: 'zendesk-update',
+        createdAt: new Date().toISOString(),
+      });
+      saveCreated(created);
+
+      CC.toast('Article updated', true);
+      renderCreated();
+    } else {
+      CC.toast('Failed to update article', false);
+      btn.classList.remove('loading');
+      btn.textContent = origText;
+    }
+  }).catch(function(e){
+    CC.toast(e.message, false);
+    btn.classList.remove('loading');
+    btn.textContent = origText;
+  });
+};
+
 // Create article — dual destination
-window.createArticle = function(id, destination, btn){
+window.createArticle = function(id, destination, btn, sectionId){
   var s = getSuggestion(id);
   if(!s) return;
 
@@ -432,10 +542,13 @@ window.createArticle = function(id, destination, btn){
   if(s.category) labels.push(s.category.toLowerCase().replace(/[^a-z0-9]/g, '-'));
   if(destination === 'confluence') labels.push('internal');
 
+  // Use recommended section if available and no explicit override
+  var targetSection = sectionId || (s.recommendedSection ? s.recommendedSection.id : undefined);
+
   CC.api('create-article', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ title: title, body: body, labels: labels, destination: destination })
+    body: JSON.stringify({ title: title, body: body, labels: labels, destination: destination, sectionId: targetSection })
   }).then(function(d){
     if(d && d.success){
       // Show success but keep card functional for the other destination
@@ -514,7 +627,7 @@ function renderCreated(){
   var h = '<div class="fade-in" style="display:grid;gap:8px">';
   created.forEach(function(a){
     var sourceLabel = a.source === 'flagged' ? 'Flagged' : a.source === 'jira-wad' ? 'Jira WAD' : 'Pattern';
-    var destLabel = a.destination === 'confluence' ? 'Confluence' : 'ZD';
+    var destLabel = a.destination === 'confluence' ? 'Confluence' : a.destination === 'zendesk-update' ? 'ZD (Updated)' : 'ZD';
     var destColor = a.destination === 'confluence' ? 'var(--av-blue)' : 'var(--av-green)';
     h += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border)">';
     h += '<div style="flex:1">';

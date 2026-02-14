@@ -128,6 +128,37 @@ async function createConfluencePage({ title, body, labels }) {
   };
 }
 
+// ---- Zendesk: update an existing article ----
+async function updateZendeskArticle({ articleId, title, body, labels }) {
+  const articleData = {
+    article: {
+      title,
+      body,
+      label_names: labels || ['troubleshooting', 'auto-generated', 'updated'],
+    },
+  };
+
+  const result = await zdRequest('/help_center/articles/' + articleId + '.json', {
+    method: 'PUT',
+    body: articleData,
+  });
+
+  if (!result || !result.article) {
+    throw new Error('Zendesk update returned unexpected response');
+  }
+
+  return {
+    success: true,
+    destination: 'zendesk',
+    action: 'updated',
+    articleId: result.article.id,
+    title: result.article.title,
+    url: result.article.html_url,
+    draft: result.article.draft,
+    sectionId: result.article.section_id,
+  };
+}
+
 // ---- Handler ----
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -140,10 +171,16 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { title, body, labels, sectionId, destination } = req.body || {};
+    const { title, body, labels, sectionId, destination, action, articleId } = req.body || {};
 
     if (!title || !body) {
       return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    // Update existing ZD article
+    if (action === 'update' && articleId) {
+      const result = await updateZendeskArticle({ articleId, title, body, labels });
+      return res.json(result);
     }
 
     if (destination === 'confluence') {
