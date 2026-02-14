@@ -112,9 +112,47 @@ async function importTickets(zd, db, lookbackDays) {
     console.log(`  Full fetch: last ${days} days (since ${sinceDate.toISOString().split('T')[0]})`);
   }
 
-  console.log('  Fetching tickets...');
-  const tickets = await zd.getTicketsSince(sinceDate, 10000);
-  console.log(`  Found ${tickets.length} tickets`);
+  // Extend lookback for churn signature analysis if SF churn data exists
+  // Cap at 2 years max to avoid Zendesk search limits
+  const maxLookbackMs = 730 * 24 * 60 * 60 * 1000; // 2 years
+  const absoluteFloor = new Date(Date.now() - maxLookbackMs);
+  const earliestChurn = db.prepare(
+    "SELECT MIN(churn_date) as d FROM sf_accounts WHERE churn_date IS NOT NULL AND churn_date >= ?"
+  ).get(absoluteFloor.toISOString().split('T')[0]);
+  if (earliestChurn && earliestChurn.d) {
+    const churnWindowDays = parseInt(process.env.CHURN_LOOKBACK_WINDOW || '90');
+    const neededDate = new Date(
+      new Date(earliestChurn.d).getTime() - churnWindowDays * 24 * 60 * 60 * 1000
+    );
+    if (neededDate > absoluteFloor && neededDate < sinceDate) {
+      console.log(`  Extending lookback to ${neededDate.toISOString().split('T')[0]} for churn signature analysis`);
+      sinceDate = neededDate;
+    }
+  }
+
+  // Fetch tickets in weekly chunks to avoid Zendesk search result size limits
+  console.log('  Fetching tickets in weekly chunks...');
+  const tickets = [];
+  const now = new Date();
+  let chunkStart = new Date(sinceDate);
+
+  while (chunkStart < now) {
+    const chunkEnd = new Date(chunkStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const endDate = chunkEnd > now ? now : chunkEnd;
+    const startStr = chunkStart.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+
+    process.stdout.write(`    ${startStr} to ${endStr}...`);
+    const chunk = await zd.searchAll(
+      `type:ticket created>=${startStr} created<${endStr}`, 10000
+    );
+    tickets.push(...chunk);
+    console.log(` ${chunk.length} tickets`);
+
+    chunkStart = chunkEnd;
+    if (chunk.length > 0) await new Promise(r => setTimeout(r, 300));
+  }
+  console.log(`  Total: ${tickets.length} tickets`);
 
   const insert = db.prepare(`
     INSERT OR REPLACE INTO zd_tickets (

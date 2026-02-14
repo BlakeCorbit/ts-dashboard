@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getDb, close } = require('./db');
+const { FEATURE_LABELS, fmtFeatureValue } = require('./churn-signature');
 
 // ─── Dashboard JSON Output ─────────────────────────────────────
 
@@ -76,25 +77,22 @@ function generateDashboardJSON(db) {
     .sort((a, b) => b[1] - a[1])
     .map(([name, count]) => ({ name, count }));
 
-  // Account details sorted by risk score
+  // Account details sorted by risk score — only include scored accounts with activity
   const accounts = db.prepare(`
     SELECT r.*, s.account_name, s.mrr, s.status as sf_status, s.churn_date, o.name as zd_org_name
     FROM risk_scores r
     JOIN sf_accounts s ON s.sf_account_id = r.sf_account_id
     LEFT JOIN zd_organizations o ON o.id = r.zd_org_id
+    WHERE r.overall_score > 0 OR s.churn_date IS NOT NULL
     ORDER BY r.overall_score DESC
+    LIMIT 1000
   `).all().map(r => ({
     name: r.account_name,
-    sfAccountId: r.sf_account_id,
     zdOrgId: r.zd_org_id,
-    zdOrgName: r.zd_org_name,
     riskScore: r.overall_score,
     riskLevel: r.risk_level,
-    sfStatus: r.sf_status,
     isChurned: !!r.churn_date,
     tickets30d: r.ticket_count_30d,
-    tickets60d: r.ticket_count_60d,
-    tickets90d: r.ticket_count_90d,
     trend: r.trend_direction,
     topCategory: (() => {
       try {
@@ -103,18 +101,7 @@ function generateDashboardJSON(db) {
       } catch { return null; }
     })(),
     escalations30d: r.escalation_count_30d,
-    badCsat: r.bad_satisfaction_count,
-    avgResolutionHours: r.avg_resolution_hours ? Math.round(r.avg_resolution_hours) : null,
     mrr: r.mrr,
-    scores: {
-      volume: r.volume_score,
-      escalation: r.escalation_score,
-      sentiment: r.sentiment_score,
-      velocity: r.velocity_score,
-      resolution: r.resolution_score,
-      breadth: r.breadth_score,
-      recency: r.recency_score,
-    },
     riskFactors: JSON.parse(r.risk_factors || '[]'),
   }));
 
@@ -152,6 +139,92 @@ function generateDashboardJSON(db) {
     };
   }
 
+  // Churn signature data (if available)
+  let churnSignature = { available: false };
+  let predictions = [];
+  let earlyWarnings = [];
+
+  const latestSig = db.prepare(
+    'SELECT * FROM churn_signatures ORDER BY computed_at DESC LIMIT 1'
+  ).get();
+
+  if (latestSig) {
+    const sig = JSON.parse(latestSig.signature_json);
+    const quality = latestSig.model_quality ? JSON.parse(latestSig.model_quality) : null;
+
+    churnSignature = {
+      available: true,
+      computedAt: latestSig.computed_at,
+      windowDays: latestSig.window_days,
+      churnedSampleSize: latestSig.churned_sample_size,
+      activeSampleSize: latestSig.active_sample_size,
+      features: Object.entries(sig.features)
+        .map(([name, f]) => ({
+          name,
+          label: FEATURE_LABELS[name] || name,
+          churnedMean: f.churned_mean,
+          activeMean: f.active_mean,
+          separation: f.separation,
+          direction: f.direction,
+          weight: f.weight,
+          threshold: f.threshold,
+        }))
+        .sort((a, b) => b.separation - a.separation),
+      modelQuality: quality,
+    };
+
+    // Get predictions — top 500, no feature vectors (saves ~90% of size)
+    predictions = db.prepare(`
+      SELECT p.*, s.account_name, s.mrr, o.name as zd_org_name
+      FROM churn_predictions p
+      JOIN sf_accounts s ON s.sf_account_id = p.sf_account_id
+      LEFT JOIN zd_organizations o ON o.id = p.zd_org_id
+      WHERE p.churn_risk_level IN ('critical', 'high', 'medium')
+      ORDER BY p.churn_score DESC
+      LIMIT 500
+    `).all().map(p => {
+      // Only keep top 3 signals per prediction to save space
+      const signals = JSON.parse(p.matched_signals).slice(0, 3).map(s => ({
+        feature: s.feature,
+        explanation: s.explanation,
+        severity: s.severity,
+      }));
+      return {
+        name: p.account_name,
+        zdOrgId: p.zd_org_id,
+        churnScore: p.churn_score,
+        churnRiskLevel: p.churn_risk_level,
+        matchedSignals: signals,
+        signalCount: p.signal_count,
+        confidence: p.confidence,
+        mrr: p.mrr,
+      };
+    });
+
+    // Build early warning signal aggregation
+    const signalCounts = {};
+    const atRisk = predictions.filter(p => p.churnRiskLevel === 'critical' || p.churnRiskLevel === 'high');
+    for (const p of atRisk) {
+      for (const signal of p.matchedSignals) {
+        const key = signal.feature;
+        if (!signalCounts[key]) {
+          signalCounts[key] = {
+            feature: key,
+            label: FEATURE_LABELS[key] || key,
+            count: 0,
+            avgSeverity: 0,
+          };
+        }
+        signalCounts[key].count++;
+        signalCounts[key].avgSeverity += signal.severity;
+      }
+    }
+    for (const sc of Object.values(signalCounts)) {
+      sc.avgSeverity = Math.round(sc.avgSeverity / sc.count);
+    }
+    earlyWarnings = Object.values(signalCounts).sort((a, b) => b.count - a.count);
+  }
+
   return {
     summary: {
       totalAccounts: total,
@@ -167,6 +240,9 @@ function generateDashboardJSON(db) {
     topRiskFactors,
     accounts,
     churnCorrelation,
+    churnSignature,
+    predictions,
+    earlyWarnings,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -180,38 +256,52 @@ function round(val) {
 
 function generateCSV(db) {
   const rows = db.prepare(`
-    SELECT r.*, s.account_name, s.mrr, s.status as sf_status, s.churn_date
+    SELECT r.*, s.account_name, s.mrr, s.status as sf_status, s.churn_date,
+      p.churn_score, p.churn_risk_level, p.signal_count, p.confidence, p.matched_signals
     FROM risk_scores r
     JOIN sf_accounts s ON s.sf_account_id = r.sf_account_id
-    ORDER BY r.overall_score DESC
+    LEFT JOIN churn_predictions p ON p.sf_account_id = r.sf_account_id
+    ORDER BY COALESCE(p.churn_score, r.overall_score) DESC
   `).all();
 
   const headers = [
-    'Account Name', 'Risk Score', 'Risk Level', 'MRR', 'SF Status', 'Churned',
+    'Account Name', 'Churn Score', 'Churn Risk', 'Signals', 'Confidence',
+    'Heuristic Score', 'Heuristic Level', 'MRR', 'SF Status', 'Churned',
     'Tickets 30d', 'Tickets 90d', 'Trend', 'Escalations 30d',
     'Bad CSAT', 'Avg Resolution Hours', 'Unique Categories',
     'Volume Score', 'Escalation Score', 'Sentiment Score', 'Velocity Score',
-    'Resolution Score', 'Breadth Score', 'Recency Score', 'Risk Factors',
+    'Resolution Score', 'Breadth Score', 'Recency Score',
+    'Risk Factors', 'Warning Signals',
   ];
 
-  const csvRows = rows.map(r => [
-    `"${(r.account_name || '').replace(/"/g, '""')}"`,
-    r.overall_score,
-    r.risk_level,
-    r.mrr || '',
-    r.sf_status || '',
-    r.churn_date ? 'Yes' : 'No',
-    r.ticket_count_30d,
-    r.ticket_count_90d,
-    r.trend_direction,
-    r.escalation_count_30d,
-    r.bad_satisfaction_count,
-    r.avg_resolution_hours ? Math.round(r.avg_resolution_hours) : '',
-    r.unique_categories,
-    r.volume_score, r.escalation_score, r.sentiment_score, r.velocity_score,
-    r.resolution_score, r.breadth_score, r.recency_score,
-    `"${(JSON.parse(r.risk_factors || '[]')).join('; ').replace(/"/g, '""')}"`,
-  ].join(','));
+  const csvRows = rows.map(r => {
+    const signals = r.matched_signals
+      ? JSON.parse(r.matched_signals).map(s => s.explanation).join('; ')
+      : '';
+    return [
+      `"${(r.account_name || '').replace(/"/g, '""')}"`,
+      r.churn_score != null ? r.churn_score : '',
+      r.churn_risk_level || '',
+      r.signal_count != null ? r.signal_count : '',
+      r.confidence || '',
+      r.overall_score,
+      r.risk_level,
+      r.mrr || '',
+      r.sf_status || '',
+      r.churn_date ? 'Yes' : 'No',
+      r.ticket_count_30d,
+      r.ticket_count_90d,
+      r.trend_direction,
+      r.escalation_count_30d,
+      r.bad_satisfaction_count,
+      r.avg_resolution_hours ? Math.round(r.avg_resolution_hours) : '',
+      r.unique_categories,
+      r.volume_score, r.escalation_score, r.sentiment_score, r.velocity_score,
+      r.resolution_score, r.breadth_score, r.recency_score,
+      `"${(JSON.parse(r.risk_factors || '[]')).join('; ').replace(/"/g, '""')}"`,
+      `"${signals.replace(/"/g, '""')}"`,
+    ].join(',');
+  });
 
   return [headers.join(','), ...csvRows].join('\n');
 }
@@ -255,7 +345,41 @@ function printConsoleReport(db) {
     console.log(`    Avg resolution (hrs): Churned ${c.avgResolutionChurned} vs Active ${c.avgResolutionActive}`);
   }
 
-  // Top 15 highest risk
+  // Churn signature info
+  if (data.churnSignature.available) {
+    console.log('');
+    console.log('  === Churn Early Warning System ===');
+    console.log(`  Signature: ${data.churnSignature.churnedSampleSize} churned accounts, ${data.churnSignature.windowDays}-day window`);
+
+    if (data.churnSignature.modelQuality) {
+      const q = data.churnSignature.modelQuality;
+      console.log(`  Model: Recall ${q.recall}% | Precision ${q.precision}% | F1 ${q.f1}%`);
+    }
+
+    if (data.churnSignature.features.length > 0) {
+      console.log('');
+      console.log('  Top predictive signals:');
+      for (const f of data.churnSignature.features.slice(0, 5)) {
+        console.log(`    ${f.label.padEnd(24)} separation: ${f.separation.toFixed(2)}  weight: ${(f.weight * 100).toFixed(0)}%`);
+      }
+    }
+
+    const atRisk = data.predictions.filter(p => p.churnRiskLevel === 'critical' || p.churnRiskLevel === 'high');
+    if (atRisk.length > 0) {
+      console.log('');
+      console.log(`  Early Warning Alerts: ${atRisk.length} accounts match pre-churn patterns`);
+      for (const p of atRisk.slice(0, 10)) {
+        const mrr = p.mrr ? ` ($${p.mrr}/mo)` : '';
+        const topSignal = p.matchedSignals.length > 0 ? p.matchedSignals[0].explanation : '';
+        console.log(`    ${p.churnScore.toString().padStart(5)} [${p.churnRiskLevel.padEnd(8)}] ${p.name}${mrr}`);
+        if (topSignal) {
+          console.log(`          ${topSignal}`);
+        }
+      }
+    }
+  }
+
+  // Top 15 highest risk (heuristic)
   if (data.accounts.length > 0) {
     console.log('');
     console.log('  Highest Risk Accounts:');
@@ -285,7 +409,12 @@ function status() {
   console.log(`    ZD Tickets:      ${stats.zdTickets}`);
   console.log(`    Matched:         ${stats.matched} (${stats.confirmed} confirmed)`);
   console.log(`    Risk Scores:     ${stats.riskScores}`);
+  console.log(`    Churn Signatures: ${stats.churnSignatures}`);
+  console.log(`    Churn Predictions: ${stats.churnPredictions}`);
 
+  if (stats.lastSignature) {
+    console.log(`    Last signature:  ${stats.lastSignature}`);
+  }
   if (stats.lastTicketFetch) {
     console.log(`    Last ZD fetch:   ${stats.lastTicketFetch}`);
   }
@@ -306,7 +435,7 @@ function run(args) {
     const outDir = path.join(__dirname, '..', '..', 'dashboard', 'data');
     fs.mkdirSync(outDir, { recursive: true });
     const outPath = path.join(outDir, 'churn-dashboard.json');
-    fs.writeFileSync(outPath, JSON.stringify(data, null, 2));
+    fs.writeFileSync(outPath, JSON.stringify(data));
     console.log(`Dashboard JSON written to ${outPath}`);
     console.log(`  ${data.accounts.length} accounts, ${data.summary.critical} critical, ${data.summary.high} high risk`);
   } else if (csv) {

@@ -5,7 +5,7 @@ var API = '/api/';
 var ZD = 'https://bayiq.zendesk.com/agent/tickets/';
 var JIRA = 'https://autovitals.atlassian.net/browse/';
 
-var useStaticData = location.protocol === 'file:' || (location.hostname === 'localhost' && !location.port);
+var useStaticData = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
 // Agent name for team coordination (stored in localStorage, prompted once)
 var agentName = localStorage.getItem('ts_agent_name') || '';

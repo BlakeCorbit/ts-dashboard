@@ -142,6 +142,47 @@ function initSchema(db) {
       FOREIGN KEY (sf_account_id) REFERENCES sf_accounts(sf_account_id)
     );
 
+    -- Churn signatures (learned patterns from historical churn data)
+    CREATE TABLE IF NOT EXISTS churn_signatures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      computed_at TEXT DEFAULT (datetime('now')),
+      window_days INTEGER NOT NULL,
+      churned_sample_size INTEGER NOT NULL,
+      active_sample_size INTEGER NOT NULL,
+      signature_json TEXT NOT NULL,
+      model_quality TEXT
+    );
+
+    -- Churn predictions (per-account scores from signature-based analysis)
+    CREATE TABLE IF NOT EXISTS churn_predictions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sf_account_id TEXT NOT NULL,
+      zd_org_id INTEGER,
+      signature_id INTEGER,
+      computed_at TEXT DEFAULT (datetime('now')),
+      churn_score REAL NOT NULL,
+      churn_risk_level TEXT NOT NULL,
+      feature_vector TEXT NOT NULL,
+      matched_signals TEXT NOT NULL,
+      signal_count INTEGER NOT NULL,
+      confidence TEXT,
+      FOREIGN KEY (sf_account_id) REFERENCES sf_accounts(sf_account_id),
+      FOREIGN KEY (signature_id) REFERENCES churn_signatures(id)
+    );
+
+    -- Pre-churn snapshots (cached feature vectors for churned accounts)
+    CREATE TABLE IF NOT EXISTS pre_churn_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sf_account_id TEXT NOT NULL,
+      zd_org_id INTEGER NOT NULL,
+      churn_date TEXT NOT NULL,
+      window_days INTEGER NOT NULL,
+      feature_vector TEXT NOT NULL,
+      ticket_count INTEGER NOT NULL,
+      computed_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(sf_account_id, window_days)
+    );
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_tickets_org ON zd_tickets(org_id);
     CREATE INDEX IF NOT EXISTS idx_tickets_created ON zd_tickets(created_at);
@@ -151,6 +192,9 @@ function initSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_sf_status ON sf_accounts(status);
     CREATE INDEX IF NOT EXISTS idx_map_sf ON account_org_map(sf_account_id);
     CREATE INDEX IF NOT EXISTS idx_map_zd ON account_org_map(zd_org_id);
+    CREATE INDEX IF NOT EXISTS idx_predictions_score ON churn_predictions(churn_score DESC);
+    CREATE INDEX IF NOT EXISTS idx_predictions_level ON churn_predictions(churn_risk_level);
+    CREATE INDEX IF NOT EXISTS idx_predictions_sf ON churn_predictions(sf_account_id);
   `);
 }
 
@@ -174,6 +218,9 @@ function getStats() {
     matched: db.prepare('SELECT COUNT(*) as n FROM account_org_map').get().n,
     confirmed: db.prepare('SELECT COUNT(*) as n FROM account_org_map WHERE confirmed = 1').get().n,
     riskScores: db.prepare('SELECT COUNT(*) as n FROM risk_scores').get().n,
+    churnSignatures: db.prepare('SELECT COUNT(*) as n FROM churn_signatures').get().n,
+    churnPredictions: db.prepare('SELECT COUNT(*) as n FROM churn_predictions').get().n,
+    lastSignature: db.prepare('SELECT MAX(computed_at) as t FROM churn_signatures').get().t,
     lastTicketFetch: db.prepare('SELECT MAX(fetched_at) as t FROM zd_tickets').get().t,
   };
 }

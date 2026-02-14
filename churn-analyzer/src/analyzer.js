@@ -1,15 +1,26 @@
 /**
  * Churn Analysis Engine
  *
- * Computes risk scores for each matched account across 7 dimensions:
- * volume, escalation, sentiment, velocity, resolution, breadth, recency.
+ * Dual-mode analysis:
+ *   1. Signature-based: When >= 3 churned accounts are matched to ZD orgs,
+ *      learns from historical churn patterns and scores active accounts.
+ *   2. Heuristic: Fallback mode using generic risk thresholds (7 dimensions).
  *
  * Usage:
  *   node src/index.js analyze
  *   node src/index.js analyze --validate
+ *   node src/index.js analyze --learn    (force rebuild churn signature)
  */
 
 const { getDb, close } = require('./db');
+const {
+  computeFeatureVector,
+  getOrBuildSignature,
+  buildChurnSignature,
+  scoreAccountAgainstSignature,
+  runCrossValidation,
+  printSignatureSummary,
+} = require('./churn-signature');
 
 // ─── Risk Weights (configurable via .env) ──────────────────────
 
@@ -51,12 +62,9 @@ function computeSentimentScore(badCount, goodCount) {
 }
 
 function computeVelocityScore(count30d, count90d) {
-  // Compare recent 30d to average monthly rate over prior 60d
   const priorMonthlyAvg = (count90d - count30d) / 2;
-
   if (priorMonthlyAvg === 0 && count30d === 0) return 0;
   if (priorMonthlyAvg === 0 && count30d > 0) return 80;
-
   const acceleration = count30d / priorMonthlyAvg;
   if (acceleration >= 2.0) return 100;
   if (acceleration >= 1.5) return 75;
@@ -166,16 +174,157 @@ function generateRiskFactors(metrics, components) {
   return factors;
 }
 
-// ─── Main Analysis ─────────────────────────────────────────────
+// ─── Signature-Based Analysis ─────────────────────────────────
 
-function run(args) {
+function runSignatureAnalysis(db, args) {
+  const learn = args.includes('--learn');
   const validate = args.includes('--validate');
+  const windowDays = parseInt(process.env.CHURN_LOOKBACK_WINDOW || '90');
 
-  console.log('=== Churn Risk Analysis ===');
-  const db = getDb();
+  // Build or load signature
+  let sig;
+  if (learn) {
+    console.log(`  Building fresh churn signature (${windowDays}-day window)...`);
+    sig = buildChurnSignature(db, windowDays);
+  } else {
+    sig = getOrBuildSignature(db, windowDays);
+  }
+
+  if (!sig) {
+    console.log('  Could not build signature (no churned accounts with ticket data).');
+    console.log('  Falling back to heuristic analysis.');
+    return runHeuristicAnalysis(db, args);
+  }
+
+  console.log('');
+  printSignatureSummary(sig);
+
+  // Get active (non-churned) matched accounts with ZD tickets
+  const activeAccounts = db.prepare(`
+    SELECT m.sf_account_id, m.zd_org_id, s.account_name, s.mrr, s.status
+    FROM account_org_map m
+    JOIN sf_accounts s ON s.sf_account_id = m.sf_account_id
+    WHERE s.churn_date IS NULL
+    AND m.zd_org_id IN (SELECT DISTINCT org_id FROM zd_tickets WHERE org_id IS NOT NULL)
+  `).all();
+
+  console.log('');
+  console.log(`  Scoring ${activeAccounts.length} active accounts against churn signature...`);
+
+  // Clear old predictions
+  db.prepare('DELETE FROM churn_predictions').run();
+
+  const insertPrediction = db.prepare(`
+    INSERT INTO churn_predictions (
+      sf_account_id, zd_org_id, signature_id, churn_score, churn_risk_level,
+      feature_vector, matched_signals, signal_count, confidence
+    ) VALUES (
+      @sf_account_id, @zd_org_id, @signature_id, @churn_score, @churn_risk_level,
+      @feature_vector, @matched_signals, @signal_count, @confidence
+    )
+  `);
+
+  const now = new Date();
+  const predResults = { critical: 0, high: 0, medium: 0, low: 0, skipped: 0 };
+
+  const predictAll = db.transaction((accounts) => {
+    for (const acct of accounts) {
+      const fv = computeFeatureVector(db, acct.zd_org_id, now, windowDays);
+      if (!fv) {
+        predResults.skipped++;
+        continue;
+      }
+
+      const result = scoreAccountAgainstSignature(fv, sig);
+
+      insertPrediction.run({
+        sf_account_id: acct.sf_account_id,
+        zd_org_id: acct.zd_org_id,
+        signature_id: sig.id || null,
+        churn_score: result.score,
+        churn_risk_level: result.riskLevel,
+        feature_vector: JSON.stringify(fv),
+        matched_signals: JSON.stringify(result.matchedSignals),
+        signal_count: result.signalCount,
+        confidence: result.confidence,
+      });
+
+      predResults[result.riskLevel]++;
+    }
+  });
+
+  predictAll(activeAccounts);
+
+  console.log('');
+  console.log('  Early Warning Predictions:');
+  console.log(`    Critical: ${predResults.critical}`);
+  console.log(`    High:     ${predResults.high}`);
+  console.log(`    Medium:   ${predResults.medium}`);
+  console.log(`    Low:      ${predResults.low}`);
+  if (predResults.skipped > 0) {
+    console.log(`    Skipped:  ${predResults.skipped} (no tickets in window)`);
+  }
+
+  // Show top at-risk accounts
+  const topPredictions = db.prepare(`
+    SELECT p.*, s.account_name, s.mrr
+    FROM churn_predictions p
+    JOIN sf_accounts s ON s.sf_account_id = p.sf_account_id
+    ORDER BY p.churn_score DESC
+    LIMIT 10
+  `).all();
+
+  if (topPredictions.length > 0) {
+    console.log('');
+    console.log('  Top 10 Early Warning Alerts:');
+    console.log('  ──────────────────────────────────────────────────────────────');
+    for (const p of topPredictions) {
+      const mrr = p.mrr ? ` ($${p.mrr}/mo)` : '';
+      const signals = JSON.parse(p.matched_signals);
+      const topSignal = signals.length > 0 ? signals[0].explanation : '';
+      console.log(`    ${p.churn_score.toString().padStart(5)} [${p.churn_risk_level.padEnd(8)}] ${p.account_name}${mrr}`);
+      if (topSignal) {
+        console.log(`          ${topSignal}`);
+      }
+    }
+  }
+
+  // Also run heuristic analysis for backward compatibility (populates risk_scores)
+  console.log('');
+  console.log('  Also running heuristic analysis for backward compatibility...');
+  runHeuristicAnalysis(db, args.filter(a => a !== '--learn'), true);
+
+  // Cross-validation
+  if (validate) {
+    console.log('');
+    console.log('  --- Signature Cross-Validation ---');
+    const quality = runCrossValidation(db, windowDays);
+    if (quality) {
+      console.log(`  Churned sample: ${quality.truePositives + quality.falseNegatives}`);
+      console.log(`  True positives (caught): ${quality.truePositives}`);
+      console.log(`  False negatives (missed): ${quality.falseNegatives}`);
+      console.log(`  False positives (false alarms): ${quality.falsePositives}`);
+      console.log(`  Recall:    ${quality.recall}%`);
+      console.log(`  Precision: ${quality.precision}%`);
+      console.log(`  F1 Score:  ${quality.f1}%`);
+
+      if (quality.missed.length > 0) {
+        console.log('');
+        console.log('  Missed churns:');
+        for (const m of quality.missed.slice(0, 10)) {
+          console.log(`    "${m.name}" scored ${m.score} (${m.level}, ${m.signals} signals)`);
+        }
+      }
+    }
+  }
+}
+
+// ─── Heuristic Analysis (original logic) ──────────────────────
+
+function runHeuristicAnalysis(db, args, quiet) {
+  const validate = args.includes('--validate');
   const weights = getWeights();
 
-  // Get all matched accounts
   const matched = db.prepare(`
     SELECT m.sf_account_id, m.zd_org_id, s.account_name, s.mrr, s.status, s.churn_date
     FROM account_org_map m
@@ -183,19 +332,19 @@ function run(args) {
   `).all();
 
   if (matched.length === 0) {
-    console.error('No matched accounts found. Run: node src/index.js match');
-    close();
-    process.exit(1);
+    if (!quiet) {
+      console.error('No matched accounts found. Run: node src/index.js match');
+      process.exit(1);
+    }
+    return;
   }
 
-  console.log(`  Analyzing ${matched.length} matched accounts...`);
+  if (!quiet) console.log(`  Analyzing ${matched.length} matched accounts (heuristic mode)...`);
 
-  // Compute fleet-wide stats
   const now = new Date();
   const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const d90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Fleet median tickets per org in 30d
   const orgCounts30d = db.prepare(`
     SELECT org_id, COUNT(*) as cnt
     FROM zd_tickets
@@ -208,7 +357,6 @@ function run(args) {
     ? orgCounts30d[Math.floor(orgCounts30d.length / 2)].cnt
     : 1;
 
-  // Fleet average resolution hours
   const fleetRes = db.prepare(`
     SELECT AVG(resolution_hours) as avg_hours
     FROM zd_tickets
@@ -216,9 +364,8 @@ function run(args) {
   `).get(d90);
   const fleetAvgHours = fleetRes ? fleetRes.avg_hours || 24 : 24;
 
-  console.log(`  Fleet stats: median ${fleetMedian30d} tickets/30d, avg resolution ${Math.round(fleetAvgHours)}h`);
+  if (!quiet) console.log(`  Fleet stats: median ${fleetMedian30d} tickets/30d, avg resolution ${Math.round(fleetAvgHours)}h`);
 
-  // Prepare queries
   const qCount = db.prepare('SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ?');
   const qEscalation = db.prepare('SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ? AND is_escalation = 1');
   const qSatisfaction = db.prepare(`
@@ -231,25 +378,18 @@ function run(args) {
     SELECT AVG(resolution_hours) as avg_hours
     FROM zd_tickets WHERE org_id = ? AND resolution_hours > 0 AND created_at >= ?
   `);
-  const qCategories = db.prepare(`
-    SELECT COUNT(DISTINCT category) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ?
-  `);
+  const qCategories = db.prepare(
+    'SELECT COUNT(DISTINCT category) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ?'
+  );
   const qTopCategories = db.prepare(`
     SELECT category, COUNT(*) as cnt FROM zd_tickets
     WHERE org_id = ? AND created_at >= ?
     GROUP BY category ORDER BY cnt DESC LIMIT 3
   `);
-  const qLastTicket = db.prepare(`
-    SELECT MAX(created_at) as last_at FROM zd_tickets WHERE org_id = ?
-  `);
-  const qOpenTickets = db.prepare(`
-    SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND status IN ('new', 'open', 'pending', 'hold')
-  `);
-  const qReopened = db.prepare(`
-    SELECT SUM(reopen_count) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ?
-  `);
+  const qLastTicket = db.prepare('SELECT MAX(created_at) as last_at FROM zd_tickets WHERE org_id = ?');
+  const qOpenTickets = db.prepare("SELECT COUNT(*) as n FROM zd_tickets WHERE org_id = ? AND status IN ('new', 'open', 'pending', 'hold')");
+  const qReopened = db.prepare('SELECT SUM(reopen_count) as n FROM zd_tickets WHERE org_id = ? AND created_at >= ?');
 
-  // Clear old scores
   db.prepare('DELETE FROM risk_scores').run();
 
   const insertScore = db.prepare(`
@@ -280,7 +420,6 @@ function run(args) {
     for (const acct of accounts) {
       const orgId = acct.zd_org_id;
 
-      // Gather raw metrics
       const count30d = qCount.get(orgId, d30).n;
       const count60d = qCount.get(orgId, d60).n;
       const count90d = qCount.get(orgId, d90).n;
@@ -302,7 +441,6 @@ function run(args) {
         daysSinceLastTicket = Math.floor((now.getTime() - new Date(lastTicket.last_at).getTime()) / (24 * 60 * 60 * 1000));
       }
 
-      // Compute component scores
       const components = {
         volume: computeVolumeScore(count30d, fleetMedian30d),
         escalation: computeEscalationScore(escalation30d, count30d),
@@ -358,17 +496,19 @@ function run(args) {
 
   const results = analyzeAll(matched);
 
-  console.log('');
-  console.log('  Risk Distribution:');
-  console.log(`    Critical: ${results.critical}`);
-  console.log(`    High:     ${results.high}`);
-  console.log(`    Medium:   ${results.medium}`);
-  console.log(`    Low:      ${results.low}`);
-
-  // Model validation
-  if (validate) {
+  if (!quiet) {
     console.log('');
-    console.log('  --- Model Validation ---');
+    console.log('  Heuristic Risk Distribution:');
+    console.log(`    Critical: ${results.critical}`);
+    console.log(`    High:     ${results.high}`);
+    console.log(`    Medium:   ${results.medium}`);
+    console.log(`    Low:      ${results.low}`);
+  }
+
+  // Model validation (heuristic)
+  if (validate && !quiet) {
+    console.log('');
+    console.log('  --- Heuristic Model Validation ---');
 
     const churned = db.prepare(`
       SELECT s.sf_account_id, s.account_name, r.overall_score, r.risk_level
@@ -379,7 +519,6 @@ function run(args) {
 
     if (churned.length === 0) {
       console.log('  No churn data available for validation.');
-      console.log('  Import a CSV with churn dates to enable model validation.');
     } else {
       let tp = 0, fn = 0;
       for (const c of churned) {
@@ -407,26 +546,55 @@ function run(args) {
   }
 
   // Show top 10 highest risk
-  const topRisk = db.prepare(`
-    SELECT r.*, s.account_name, s.mrr
-    FROM risk_scores r
-    JOIN sf_accounts s ON s.sf_account_id = r.sf_account_id
-    ORDER BY r.overall_score DESC
-    LIMIT 10
-  `).all();
+  if (!quiet) {
+    const topRisk = db.prepare(`
+      SELECT r.*, s.account_name, s.mrr
+      FROM risk_scores r
+      JOIN sf_accounts s ON s.sf_account_id = r.sf_account_id
+      ORDER BY r.overall_score DESC
+      LIMIT 10
+    `).all();
 
-  if (topRisk.length > 0) {
-    console.log('');
-    console.log('  Top 10 Highest Risk:');
-    console.log('  ────────────────────────────────────────────────────────');
-    for (const r of topRisk) {
-      const mrr = r.mrr ? ` ($${r.mrr}/mo)` : '';
-      const factors = JSON.parse(r.risk_factors || '[]');
-      console.log(`    ${r.overall_score.toString().padStart(5)} [${r.risk_level.padEnd(8)}] ${r.account_name}${mrr}`);
-      if (factors.length > 0) {
-        console.log(`          ${factors[0]}`);
+    if (topRisk.length > 0) {
+      console.log('');
+      console.log('  Top 10 Highest Risk:');
+      console.log('  ────────────────────────────────────────────────────────');
+      for (const r of topRisk) {
+        const mrr = r.mrr ? ` ($${r.mrr}/mo)` : '';
+        const factors = JSON.parse(r.risk_factors || '[]');
+        console.log(`    ${r.overall_score.toString().padStart(5)} [${r.risk_level.padEnd(8)}] ${r.account_name}${mrr}`);
+        if (factors.length > 0) {
+          console.log(`          ${factors[0]}`);
+        }
       }
     }
+  }
+}
+
+// ─── Main Entry Point ─────────────────────────────────────────
+
+function run(args) {
+  console.log('=== Churn Risk Analysis ===');
+  const db = getDb();
+
+  // Check if we have enough churned accounts for signature-based scoring
+  const churnedMatchedCount = db.prepare(`
+    SELECT COUNT(*) as n FROM sf_accounts s
+    JOIN account_org_map m ON s.sf_account_id = m.sf_account_id
+    WHERE s.churn_date IS NOT NULL
+  `).get().n;
+
+  const minSample = parseInt(process.env.CHURN_MIN_SAMPLE_SIZE || '3');
+
+  if (churnedMatchedCount >= minSample) {
+    console.log(`  Found ${churnedMatchedCount} churned accounts with ZD matches -- using signature-based scoring`);
+    runSignatureAnalysis(db, args);
+  } else {
+    if (churnedMatchedCount > 0) {
+      console.log(`  Only ${churnedMatchedCount} churned account(s) matched -- need at least ${minSample} for signature learning`);
+    }
+    console.log('  Using heuristic risk scoring');
+    runHeuristicAnalysis(db, args);
   }
 
   close();

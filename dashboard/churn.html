@@ -16,7 +16,7 @@
     <div class="header-divider"></div>
     <div>
       <div class="header-title">Tech Support Command Center</div>
-      <div class="header-subtitle" id="header-sub">Churn Risk Analysis</div>
+      <div class="header-subtitle" id="header-sub">Churn Early Warning System</div>
     </div>
   </div>
   <div class="header-right">
@@ -40,6 +40,32 @@
     </div>
   </section>
 
+  <!-- Churn Signature Panel (shown when signature data exists) -->
+  <section id="signature-section" style="display:none">
+    <div class="section-header">
+      <div class="section-title">Churn Signature - Learned Patterns</div>
+    </div>
+    <div id="signature-box"></div>
+  </section>
+
+  <!-- Early Warning Predictions (shown when signature data exists) -->
+  <section id="predictions-section" style="display:none">
+    <div class="section-header">
+      <div class="section-title">Early Warning Alerts</div>
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content">
+        <button class="triage-filter active" data-filter="all" onclick="setPredFilter('all',this)">All</button>
+        <button class="triage-filter" data-filter="critical" onclick="setPredFilter('critical',this)">Critical</button>
+        <button class="triage-filter" data-filter="high" onclick="setPredFilter('high',this)">High</button>
+        <button class="triage-filter" data-filter="medium" onclick="setPredFilter('medium',this)">Medium</button>
+      </div>
+    </div>
+    <div class="triage-card">
+      <div class="triage-wrap" id="predictions-box">
+        <div class="loading-shimmer" style="height:400px"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- Risk Distribution Charts -->
   <section>
     <div class="section-header">
@@ -51,10 +77,10 @@
     </div>
   </section>
 
-  <!-- At-Risk Accounts Table -->
+  <!-- Heuristic At-Risk Accounts Table -->
   <section>
     <div class="section-header">
-      <div class="section-title">At-Risk Accounts</div>
+      <div class="section-title">Heuristic Risk Scores</div>
       <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content">
         <button class="triage-filter active" data-filter="all" onclick="setFilter('all',this)">All</button>
         <button class="triage-filter" data-filter="critical" onclick="setFilter('critical',this)">Critical</button>
@@ -88,8 +114,11 @@
 
 var churnData = null;
 var currentFilter = 'all';
+var predFilter = 'all';
 var sortField = 'riskScore';
 var sortAsc = false;
+var predSortField = 'churnScore';
+var predSortAsc = false;
 
 function riskColor(level) {
   if (level === 'critical') return 'var(--accent-red)';
@@ -111,6 +140,12 @@ function trendArrow(trend) {
   return '<span style="color:var(--text-muted)">&#8212;</span>';
 }
 
+function confBadge(conf) {
+  var colors = { high: 'var(--av-green)', medium: 'var(--accent-yellow)', low: 'var(--text-muted)' };
+  var c = colors[conf] || colors.low;
+  return '<span style="font-size:0.65rem;color:' + c + ';font-weight:600;text-transform:uppercase">' + CC.esc(conf || 'low') + '</span>';
+}
+
 // ---- Load Data ----
 function loadChurnData() {
   CC.api('churn').then(function(d) {
@@ -121,6 +156,13 @@ function loadChurnData() {
     renderAccounts(d);
     renderCorrelation(d);
     renderStatus(d);
+
+    // Signature-based sections
+    if (d.churnSignature && d.churnSignature.available) {
+      renderSignature(d);
+      renderPredictions(d);
+    }
+
     document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(d.generatedAt);
   }).catch(function(e) {
     CC.toast('Churn data: ' + e.message, false);
@@ -130,45 +172,256 @@ function loadChurnData() {
 // ---- Status Badge ----
 function renderStatus(d) {
   var el = document.getElementById('status-badge');
-  var s = d.summary;
-  var critical = s.critical || 0;
-  var high = s.high || 0;
-  var total = critical + high;
-  var cls, txt;
-  if (total === 0) { cls = 'status-green'; txt = 'Low Risk'; }
-  else if (critical >= 3) { cls = 'status-red'; txt = critical + ' Critical'; }
-  else { cls = 'status-yellow'; txt = total + ' At Risk'; }
-  el.innerHTML = '<span class="status-badge ' + cls + '"><span class="dot"></span>' + txt + '</span>';
+  var hasSignature = d.churnSignature && d.churnSignature.available;
+
+  if (hasSignature && d.predictions) {
+    var crit = d.predictions.filter(function(p) { return p.churnRiskLevel === 'critical'; }).length;
+    var high = d.predictions.filter(function(p) { return p.churnRiskLevel === 'high'; }).length;
+    var total = crit + high;
+    var cls, txt;
+    if (total === 0) { cls = 'status-green'; txt = 'Low Risk'; }
+    else if (crit >= 3) { cls = 'status-red'; txt = crit + ' Critical'; }
+    else { cls = 'status-yellow'; txt = total + ' At Risk'; }
+    el.innerHTML = '<span class="status-badge ' + cls + '"><span class="dot"></span>' + txt + '</span>';
+  } else {
+    var s = d.summary;
+    var critical = s.critical || 0;
+    var high2 = s.high || 0;
+    var total2 = critical + high2;
+    var cls2, txt2;
+    if (total2 === 0) { cls2 = 'status-green'; txt2 = 'Low Risk'; }
+    else if (critical >= 3) { cls2 = 'status-red'; txt2 = critical + ' Critical'; }
+    else { cls2 = 'status-yellow'; txt2 = total2 + ' At Risk'; }
+    el.innerHTML = '<span class="status-badge ' + cls2 + '"><span class="dot"></span>' + txt2 + '</span>';
+  }
 }
 
 // ---- Summary Cards ----
 function renderSummary(d) {
   var box = document.getElementById('summary-box');
   var s = d.summary;
+  var sig = d.churnSignature;
   var h = '';
 
   h += '<div class="stat-card fade-in"><div class="stat-label">Total Accounts</div>';
   h += '<div class="stat-value">' + CC.fmt(s.totalAccounts) + '</div>';
   h += '<div class="stat-detail">' + CC.fmt(s.matched) + ' matched to Zendesk</div></div>';
 
-  h += '<div class="stat-card fade-in"><div class="stat-label">Critical Risk</div>';
-  h += '<div class="stat-value" style="color:var(--accent-red)">' + CC.fmt(s.critical) + '</div>';
-  h += '<div class="stat-detail">Score &ge; 75</div></div>';
+  if (sig && sig.available && d.predictions) {
+    var predCrit = d.predictions.filter(function(p) { return p.churnRiskLevel === 'critical'; }).length;
+    var predHigh = d.predictions.filter(function(p) { return p.churnRiskLevel === 'high'; }).length;
 
-  h += '<div class="stat-card fade-in"><div class="stat-label">High Risk</div>';
-  h += '<div class="stat-value" style="color:var(--accent-orange)">' + CC.fmt(s.high) + '</div>';
-  h += '<div class="stat-detail">Score 50&ndash;74</div></div>';
+    h += '<div class="stat-card fade-in"><div class="stat-label">Early Warnings</div>';
+    h += '<div class="stat-value" style="color:var(--accent-red)">' + CC.fmt(predCrit + predHigh) + '</div>';
+    h += '<div class="stat-detail">' + predCrit + ' critical, ' + predHigh + ' high</div></div>';
 
-  if (s.modelRecall !== null) {
-    h += '<div class="stat-card fade-in"><div class="stat-label">Model Recall</div>';
-    h += '<div class="stat-value" style="color:var(--av-blue)">' + s.modelRecall + '%</div>';
-    h += '<div class="stat-detail">Predicted actual churns</div></div>';
+    h += '<div class="stat-card fade-in"><div class="stat-label">Churn Signature</div>';
+    h += '<div class="stat-value" style="color:var(--av-blue)">' + CC.fmt(sig.churnedSampleSize) + '</div>';
+    h += '<div class="stat-detail">churned accounts learned</div></div>';
+
+    if (sig.modelQuality) {
+      h += '<div class="stat-card fade-in"><div class="stat-label">Model Quality</div>';
+      h += '<div class="stat-value" style="color:var(--av-blue)">' + sig.modelQuality.f1 + '%</div>';
+      h += '<div class="stat-detail">F1 (Recall ' + sig.modelQuality.recall + '% / Prec ' + sig.modelQuality.precision + '%)</div></div>';
+    } else {
+      h += '<div class="stat-card fade-in"><div class="stat-label">Analysis Window</div>';
+      h += '<div class="stat-value">' + sig.windowDays + 'd</div>';
+      h += '<div class="stat-detail">pre-churn lookback</div></div>';
+    }
   } else {
-    h += '<div class="stat-card fade-in"><div class="stat-label">Medium + Low</div>';
-    h += '<div class="stat-value">' + CC.fmt(s.medium + s.low) + '</div>';
-    h += '<div class="stat-detail">' + CC.fmt(s.unscored) + ' unscored</div></div>';
+    h += '<div class="stat-card fade-in"><div class="stat-label">Critical Risk</div>';
+    h += '<div class="stat-value" style="color:var(--accent-red)">' + CC.fmt(s.critical) + '</div>';
+    h += '<div class="stat-detail">Score &ge; 75</div></div>';
+
+    h += '<div class="stat-card fade-in"><div class="stat-label">High Risk</div>';
+    h += '<div class="stat-value" style="color:var(--accent-orange)">' + CC.fmt(s.high) + '</div>';
+    h += '<div class="stat-detail">Score 50&ndash;74</div></div>';
+
+    if (s.modelRecall !== null) {
+      h += '<div class="stat-card fade-in"><div class="stat-label">Model Recall</div>';
+      h += '<div class="stat-value" style="color:var(--av-blue)">' + s.modelRecall + '%</div>';
+      h += '<div class="stat-detail">Predicted actual churns</div></div>';
+    } else {
+      h += '<div class="stat-card fade-in"><div class="stat-label">Medium + Low</div>';
+      h += '<div class="stat-value">' + CC.fmt(s.medium + s.low) + '</div>';
+      h += '<div class="stat-detail">' + CC.fmt(s.unscored) + ' unscored</div></div>';
+    }
   }
 
+  box.innerHTML = h;
+}
+
+// ---- Churn Signature Panel ----
+function renderSignature(d) {
+  var sig = d.churnSignature;
+  if (!sig || !sig.available) return;
+
+  document.getElementById('signature-section').style.display = '';
+  var box = document.getElementById('signature-box');
+
+  var features = sig.features || [];
+  var maxSep = features.length > 0 ? features[0].separation : 1;
+
+  var h = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="fade-in">';
+
+  // Feature importance bars
+  h += '<div class="stat-card" style="padding:16px">';
+  h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:12px;color:var(--text-primary)">Signal Importance (Separation)</div>';
+  features.forEach(function(f) {
+    var pct = maxSep > 0 ? Math.round(f.separation / maxSep * 100) : 0;
+    var barColor = f.separation >= 1.0 ? 'var(--accent-red)' : f.separation >= 0.5 ? 'var(--accent-orange)' : 'var(--accent-yellow)';
+    h += '<div style="display:flex;align-items:center;margin-bottom:6px;gap:8px">';
+    h += '<div style="width:160px;font-size:0.72rem;color:var(--text-secondary);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + CC.esc(f.label) + '">' + CC.esc(f.label) + '</div>';
+    h += '<div style="flex:1;height:14px;background:var(--bg-main);border-radius:3px;overflow:hidden">';
+    h += '<div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:3px;transition:width 0.5s"></div>';
+    h += '</div>';
+    h += '<div style="width:42px;text-align:right;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted)">' + f.separation.toFixed(2) + '</div>';
+    h += '<div style="width:36px;text-align:right;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted)">' + (f.weight * 100).toFixed(0) + '%</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+
+  // Early warning signal summary
+  h += '<div class="stat-card" style="padding:16px">';
+  h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:12px;color:var(--text-primary)">Top Warning Signals Firing</div>';
+  var warnings = d.earlyWarnings || [];
+  if (warnings.length > 0) {
+    warnings.slice(0, 8).forEach(function(w) {
+      h += '<div style="display:flex;align-items:center;margin-bottom:6px;gap:8px">';
+      h += '<div style="font-family:var(--font-mono);font-weight:800;font-size:0.85rem;color:var(--accent-red);width:28px;text-align:right">' + w.count + '</div>';
+      h += '<div style="font-size:0.72rem;color:var(--text-secondary)">' + CC.esc(w.label) + '</div>';
+      h += '</div>';
+    });
+  } else {
+    h += '<div class="no-data" style="padding:20px 0">No warning signals firing</div>';
+  }
+  h += '</div>';
+
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+// ---- Predictions Table ----
+window.setPredFilter = function(filter, btn) {
+  predFilter = filter;
+  var section = document.getElementById('predictions-section');
+  var btns = section.querySelectorAll('.triage-filter');
+  btns.forEach(function(b) {
+    if (b === btn) {
+      b.classList.add('active');
+      b.style.background = 'var(--av-green-dark)';
+      b.style.color = '#fff';
+    } else {
+      b.classList.remove('active');
+      b.style.background = 'var(--bg-card)';
+      b.style.color = 'var(--text-secondary)';
+    }
+  });
+  if (churnData) renderPredictions(churnData);
+};
+
+window.predSortBy = function(field) {
+  if (predSortField === field) {
+    predSortAsc = !predSortAsc;
+  } else {
+    predSortField = field;
+    predSortAsc = false;
+  }
+  if (churnData) renderPredictions(churnData);
+};
+
+function renderPredictions(d) {
+  if (!d.churnSignature || !d.churnSignature.available || !d.predictions) return;
+
+  document.getElementById('predictions-section').style.display = '';
+  var box = document.getElementById('predictions-box');
+  var preds = d.predictions || [];
+
+  // Filter
+  if (predFilter !== 'all') {
+    preds = preds.filter(function(p) { return p.churnRiskLevel === predFilter; });
+  }
+
+  // Sort
+  preds = preds.slice().sort(function(a, b) {
+    var va = a[predSortField], vb = b[predSortField];
+    if (va == null) va = 0;
+    if (vb == null) vb = 0;
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb || '').toLowerCase(); }
+    var cmp = va < vb ? -1 : va > vb ? 1 : 0;
+    return predSortAsc ? cmp : -cmp;
+  });
+
+  if (preds.length === 0) {
+    box.innerHTML = '<div class="no-data">No accounts match this filter</div>';
+    return;
+  }
+
+  var arrow = function(field) {
+    if (predSortField !== field) return '';
+    return predSortAsc ? ' &#9650;' : ' &#9660;';
+  };
+
+  var h = '<table><thead><tr>';
+  h += '<th style="cursor:pointer" onclick="predSortBy(\'name\')">Account' + arrow('name') + '</th>';
+  h += '<th style="cursor:pointer;text-align:center" onclick="predSortBy(\'churnScore\')">Churn Score' + arrow('churnScore') + '</th>';
+  h += '<th style="text-align:center">Level</th>';
+  h += '<th style="cursor:pointer;text-align:center" onclick="predSortBy(\'signalCount\')">Signals' + arrow('signalCount') + '</th>';
+  h += '<th style="text-align:center">Confidence</th>';
+  h += '<th style="cursor:pointer;text-align:center" onclick="predSortBy(\'mrr\')">MRR' + arrow('mrr') + '</th>';
+  h += '<th>Warning Signs</th>';
+  h += '</tr></thead><tbody>';
+
+  preds.forEach(function(p) {
+    var rc = riskColor(p.churnRiskLevel);
+    var rb = riskBg(p.churnRiskLevel);
+
+    h += '<tr class="fade-in">';
+
+    // Name
+    h += '<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + CC.esc(p.name) + '">';
+    if (p.zdOrgId) {
+      h += '<a href="' + CC.ZD.replace('/agent/tickets/', '/agent/organizations/') + p.zdOrgId + '/tickets" target="_blank">' + CC.esc(CC.trunc(p.name, 28)) + '</a>';
+    } else {
+      h += CC.esc(CC.trunc(p.name, 28));
+    }
+    h += '</td>';
+
+    // Churn Score
+    h += '<td style="text-align:center"><span style="font-family:var(--font-mono);font-weight:800;font-size:1.05rem;color:' + rc + '">' + p.churnScore + '</span></td>';
+
+    // Level badge
+    h += '<td style="text-align:center"><span class="priority-badge" style="background:' + rb + ';color:' + rc + '">' + CC.esc(p.churnRiskLevel) + '</span></td>';
+
+    // Signal count
+    h += '<td style="text-align:center;font-family:var(--font-mono);font-weight:600">' + p.signalCount + '</td>';
+
+    // Confidence
+    h += '<td style="text-align:center">' + confBadge(p.confidence) + '</td>';
+
+    // MRR
+    h += '<td style="text-align:center;font-family:var(--font-mono)">' + (p.mrr ? '$' + CC.fmt(p.mrr) : '--') + '</td>';
+
+    // Warning signs (matched signals)
+    h += '<td style="max-width:320px">';
+    if (p.matchedSignals && p.matchedSignals.length > 0) {
+      h += '<div style="font-size:0.72rem;color:var(--text-secondary);line-height:1.4">';
+      p.matchedSignals.slice(0, 2).forEach(function(s) {
+        h += '<div style="margin-bottom:2px">' + CC.esc(s.explanation) + '</div>';
+      });
+      if (p.matchedSignals.length > 2) {
+        h += '<div style="color:var(--text-muted)">+' + (p.matchedSignals.length - 2) + ' more signals</div>';
+      }
+      h += '</div>';
+    } else {
+      h += '<span style="color:var(--text-muted);font-size:0.72rem">--</span>';
+    }
+    h += '</td>';
+
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
   box.innerHTML = h;
 }
 
@@ -182,16 +435,23 @@ function renderCharts(d) {
     return { name: r.name, count: r.count };
   }));
 
-  // Top risk factors
-  h += CC.hBar('Top Risk Factors', d.topRiskFactors.slice(0, 6));
+  // Top risk factors (or early warning signals if available)
+  if (d.earlyWarnings && d.earlyWarnings.length > 0) {
+    h += CC.hBar('Early Warning Signals', d.earlyWarnings.slice(0, 6).map(function(w) {
+      return { name: w.label, count: w.count };
+    }));
+  } else {
+    h += CC.hBar('Top Risk Factors', d.topRiskFactors.slice(0, 6));
+  }
 
   box.innerHTML = h;
 }
 
-// ---- Accounts Table ----
+// ---- Heuristic Accounts Table ----
 window.setFilter = function(filter, btn) {
   currentFilter = filter;
-  var btns = document.querySelectorAll('.triage-filter');
+  var section = btn.closest('section');
+  var btns = section.querySelectorAll('.triage-filter');
   btns.forEach(function(b) {
     if (b === btn) {
       b.classList.add('active');
@@ -220,12 +480,10 @@ function renderAccounts(d) {
   var box = document.getElementById('accounts-box');
   var accounts = d.accounts || [];
 
-  // Filter
   if (currentFilter !== 'all') {
     accounts = accounts.filter(function(a) { return a.riskLevel === currentFilter; });
   }
 
-  // Sort
   accounts = accounts.slice().sort(function(a, b) {
     var va = a[sortField], vb = b[sortField];
     if (va == null) va = 0;
@@ -263,7 +521,6 @@ function renderAccounts(d) {
 
     h += '<tr class="fade-in">';
 
-    // Name
     h += '<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + CC.esc(a.name) + '">';
     if (a.zdOrgId) {
       h += '<a href="' + CC.ZD.replace('/agent/tickets/', '/agent/organizations/') + a.zdOrgId + '/tickets" target="_blank">' + CC.esc(CC.trunc(a.name, 28)) + '</a>';
@@ -273,28 +530,14 @@ function renderAccounts(d) {
     if (a.isChurned) h += ' <span style="font-size:0.6rem;color:var(--accent-red);font-weight:700">CHURNED</span>';
     h += '</td>';
 
-    // Score
     h += '<td style="text-align:center"><span style="font-family:var(--font-mono);font-weight:800;font-size:1.05rem;color:' + rc + '">' + a.riskScore + '</span></td>';
-
-    // Level badge
     h += '<td style="text-align:center"><span class="priority-badge" style="background:' + rb + ';color:' + rc + '">' + CC.esc(a.riskLevel) + '</span></td>';
-
-    // Tickets 30d
     h += '<td style="text-align:center;font-family:var(--font-mono);font-weight:600">' + (a.tickets30d || 0) + '</td>';
-
-    // Trend
     h += '<td style="text-align:center">' + trendArrow(a.trend) + '</td>';
-
-    // Top category
     h += '<td class="td-cat">' + CC.esc(a.topCategory || '--') + '</td>';
-
-    // Escalations
     h += '<td style="text-align:center;font-family:var(--font-mono)">' + (a.escalations30d || 0) + '</td>';
-
-    // MRR
     h += '<td style="text-align:center;font-family:var(--font-mono)">' + (a.mrr ? '$' + CC.fmt(a.mrr) : '--') + '</td>';
 
-    // Risk factors
     h += '<td style="max-width:280px">';
     if (a.riskFactors && a.riskFactors.length > 0) {
       h += '<div style="font-size:0.72rem;color:var(--text-secondary);line-height:1.4">';
@@ -342,7 +585,6 @@ function renderCorrelation(d) {
     h += '<div class="stat-label">' + CC.esc(m.label) + '</div>';
     h += '<div style="display:flex;justify-content:space-around;margin-top:12px">';
 
-    // Churned
     h += '<div style="text-align:center">';
     h += '<div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:' + (worse ? 'var(--accent-red)' : 'var(--text-primary)') + '">' + churnedVal + m.unit + '</div>';
     h += '<div style="font-size:0.68rem;color:var(--accent-red);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px">Churned</div>';
@@ -350,7 +592,6 @@ function renderCorrelation(d) {
 
     h += '<div style="width:1px;background:var(--border);margin:0 8px"></div>';
 
-    // Active
     h += '<div style="text-align:center">';
     h += '<div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:' + (!worse ? 'var(--av-green)' : 'var(--text-primary)') + '">' + activeVal + m.unit + '</div>';
     h += '<div style="font-size:0.68rem;color:var(--av-green);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px">Active</div>';

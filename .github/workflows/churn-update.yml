@@ -55,7 +55,7 @@ jobs:
 
       - name: Run churn analysis
         if: steps.sf-check.outputs.has_sf_data == 'true'
-        run: cd churn-analyzer && node src/index.js analyze --validate
+        run: cd churn-analyzer && node src/index.js analyze --validate --learn
 
       - name: Generate dashboard JSON
         if: steps.sf-check.outputs.has_sf_data == 'true'

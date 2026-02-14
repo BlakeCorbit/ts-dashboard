@@ -37,6 +37,7 @@ const commands = {
   'import-zendesk': () => require('./import-zendesk').run(args),
   'match': () => require('./matcher').run(args),
   'analyze': () => require('./analyzer').run(args),
+  'learn': () => require('./churn-signature').runCLI(args),
   'report': () => require('./report').run(args),
   'status': () => require('./report').status(),
 };
@@ -61,6 +62,12 @@ Commands:
 
   analyze                    Compute risk scores for all matched accounts
     --validate               Also run model validation against known churns
+    --learn                  Force rebuild of churn signature
+
+  learn                      Build/inspect churn signature
+    --rebuild                Force rebuild even if recent signature exists
+    --window <days>          Pre-churn analysis window (default: 90)
+    --inspect                Show detailed signature without rebuilding
 
   report                     Print churn risk report to console
     --dashboard              Output JSON for the web dashboard
