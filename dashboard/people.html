@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>People Hub — TS Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+<style>
+/* People Grid */
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.person-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all 200ms;
+}
+.person-card:hover {
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+.person-card.active {
+  border-color: var(--av-green);
+  box-shadow: 0 0 0 1px var(--av-green), var(--shadow-hover);
+}
+.person-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.person-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.person-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.person-role {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sub);
+}
+.person-team-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 2px;
+}
+.person-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.person-stat {
+  text-align: center;
+}
+.person-stat .num {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.person-stat .lbl {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.person-stat .num.overdue { color: var(--accent-red); }
+.person-stat .num.open { color: var(--accent-yellow); }
+.person-stat .num.done { color: var(--av-green); }
+
+/* Slide-out Panel */
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 200ms;
+  backdrop-filter: blur(2px);
+}
+.panel-overlay.visible { opacity: 1; }
+
+.detail-panel {
+  position: fixed;
+  top: 0;
+  right: -520px;
+  width: 500px;
+  max-width: 90vw;
+  height: 100vh;
+  background: var(--bg-secondary);
+  border-left: 2px solid var(--av-green);
+  z-index: 201;
+  overflow-y: auto;
+  transition: right 250ms ease;
+  box-shadow: -4px 0 30px rgba(0,0,0,0.4);
+}
+.detail-panel.open { right: 0; }
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 10;
+}
+.panel-close {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms;
+}
+.panel-close:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-red);
+  background: rgba(248,81,73,0.1);
+}
+.panel-body { padding: 20px 24px; }
+.panel-section {
+  margin-bottom: 24px;
+}
+.panel-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Action item list in panel */
+.panel-item {
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+  transition: background 150ms;
+}
+.panel-item:hover { background: var(--bg-card-hover); }
+.panel-item .item-text { color: var(--text-primary); margin-bottom: 4px; }
+.panel-item .item-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Meeting list in panel */
+.panel-meeting {
+  padding: 8px 12px;
+  border-left: 3px solid var(--av-blue);
+  margin-bottom: 6px;
+  background: var(--bg-card);
+  border-radius: 0 6px 6px 0;
+}
+.panel-meeting .meeting-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.panel-meeting .meeting-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Relationship map */
+.rel-map {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+.rel-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 80px;
+}
+.rel-name {
+  color: var(--av-green);
+  font-weight: 600;
+  cursor: pointer;
+}
+.rel-name:hover { text-decoration: underline; }
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-chip {
+  padding: 5px 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: var(--font-main);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  transition: all 150ms;
+}
+.filter-chip:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+.filter-chip.active {
+  background: var(--av-green-dark);
+  color: #fff;
+  border-color: var(--av-green);
+}
+
+/* Performance bar */
+.perf-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.perf-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.perf-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.perf-score {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 36px;
+  text-align: right;
+}
+
+@media(max-width:768px) {
+  .people-grid { grid-template-columns: 1fr; }
+  .detail-panel { width: 100vw; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">People Hub</div>
+      <div class="header-subtitle" id="header-sub">Team & contact management</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-primary" onclick="refreshAll()">Refresh</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Stats -->
+  <section>
+    <div class="stats-grid" id="stats-box">
+      <div class="loading-shimmer"></div><div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div><div class="loading-shimmer"></div>
+    </div>
+  </section>
+
+  <!-- Filter Bar -->
+  <section>
+    <div class="filter-bar" id="filter-bar">
+      <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600">FILTER:</span>
+    </div>
+  </section>
+
+  <!-- People Grid -->
+  <section>
+    <div class="section-header">
+      <div class="section-title">People</div>
+      <span style="font-size:0.72rem;color:var(--text-muted);font-family:var(--font-mono)" id="people-count"></span>
+    </div>
+    <div class="people-grid" id="people-grid">
+      <div class="loading-shimmer" style="height:160px"></div>
+      <div class="loading-shimmer" style="height:160px"></div>
+      <div class="loading-shimmer" style="height:160px"></div>
+    </div>
+  </section>
+</div>
+
+<!-- Slide-out Detail Panel -->
+<div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="panel-header">
+    <div>
+      <div class="person-name" id="panel-name"></div>
+      <div class="person-role" id="panel-role"></div>
+    </div>
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-body" id="panel-body">
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var peopleData = null;
+var actionItemsData = null;
+var interactionsData = null;
+var agentsData = null;
+var currentFilter = 'all';
+var openPersonId = null;
+
+// Avatar colors by team
+var TEAM_COLORS = {
+  'TS': 'linear-gradient(135deg, #216843, #75c29a)',
+  'Engineering': 'linear-gradient(135deg, #3a5ba0, #76c3ce)',
+  'Product': 'linear-gradient(135deg, #7c3aed, #bb86fc)',
+  'Operations': 'linear-gradient(135deg, #b45309, #f0c050)',
+  'CS': 'linear-gradient(135deg, #0e7490, #67e8f9)',
+};
+var TEAM_BADGE_STYLES = {
+  'TS': 'background:rgba(117,194,154,0.15);color:var(--av-green)',
+  'Engineering': 'background:rgba(118,195,206,0.15);color:var(--av-blue)',
+  'Product': 'background:rgba(187,134,252,0.15);color:#bb86fc',
+  'Operations': 'background:rgba(240,192,80,0.15);color:var(--accent-yellow)',
+  'CS': 'background:rgba(103,232,249,0.15);color:#67e8f9',
+};
+
+function loadAllData() {
+  return Promise.all([
+    fetch('data/people.json?_=' + Date.now()).then(function(r){ return r.json(); }),
+    fetch('data/action-items.json?_=' + Date.now()).then(function(r){ return r.json(); }),
+    fetch('data/interactions.json?_=' + Date.now()).then(function(r){ return r.json(); }),
+    CC.api('agents').catch(function(){ return null; }),
+  ]).then(function(results) {
+    peopleData = results[0];
+    actionItemsData = results[1];
+    interactionsData = results[2];
+    agentsData = results[3];
+    render();
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
+  });
+}
+
+function getPersonItems(personId) {
+  if (!actionItemsData || !actionItemsData.items) return [];
+  return actionItemsData.items.filter(function(ai) {
+    return ai.ownerId === personId || (ai.assignedTo && ai.assignedTo.includes(personId));
+  });
+}
+
+function getPersonMeetings(personId) {
+  if (!interactionsData || !interactionsData.meetings) return [];
+  return interactionsData.meetings.filter(function(m) {
+    return m.participantIds && m.participantIds.includes(personId);
+  }).sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+}
+
+function getAgentPerf(personName) {
+  if (!agentsData || !agentsData.agents) return null;
+  return agentsData.agents.find(function(a) {
+    return a.name.toLowerCase().includes(personName.split(' ')[0].toLowerCase());
+  });
+}
+
+function getTeams() {
+  if (!peopleData) return [];
+  var teams = {};
+  peopleData.people.forEach(function(p) { if (p.team) teams[p.team] = true; });
+  return Object.keys(teams).sort();
+}
+
+function render() {
+  renderStats();
+  renderFilters();
+  renderPeopleGrid();
+}
+
+function renderStats() {
+  var box = document.getElementById('stats-box');
+  if (!peopleData) return;
+
+  var totalPeople = peopleData.people.length;
+  var totalItems = actionItemsData ? actionItemsData.items.length : 0;
+  var overdueItems = actionItemsData ? actionItemsData.items.filter(function(ai) { return ai.status === 'overdue'; }).length : 0;
+  var openItems = actionItemsData ? actionItemsData.items.filter(function(ai) { return ai.status === 'open' || ai.status === 'in-progress'; }).length : 0;
+
+  var cards = [
+    { l: 'People', v: totalPeople, det: getTeams().length + ' teams' },
+    { l: 'Action Items', v: totalItems, det: 'Total tracked' },
+    { l: 'Overdue', v: overdueItems, det: 'Past due date', cls: overdueItems > 0 ? 'color:var(--accent-red)' : '' },
+    { l: 'Open', v: openItems, det: 'Active items', cls: '' },
+  ];
+
+  var h = '';
+  cards.forEach(function(c) {
+    h += '<div class="stat-card fade-in"><div class="stat-label">' + CC.esc(c.l) + '</div>';
+    h += '<div class="stat-value"' + (c.cls ? ' style="' + c.cls + '"' : '') + '>' + c.v + '</div>';
+    h += '<div class="stat-detail">' + CC.esc(c.det) + '</div></div>';
+  });
+  box.innerHTML = h;
+}
+
+function renderFilters() {
+  var bar = document.getElementById('filter-bar');
+  var teams = getTeams();
+  var h = '<span style="font-size:0.72rem;color:var(--text-muted);font-weight:600">FILTER:</span>';
+  h += '<button class="filter-chip' + (currentFilter === 'all' ? ' active' : '') + '" onclick="setFilter(\'all\')">All</button>';
+  teams.forEach(function(team) {
+    h += '<button class="filter-chip' + (currentFilter === team ? ' active' : '') + '" onclick="setFilter(\'' + CC.esc(team) + '\')">' + CC.esc(team) + '</button>';
+  });
+  bar.innerHTML = h;
+}
+
+function renderPeopleGrid() {
+  var grid = document.getElementById('people-grid');
+  if (!peopleData) return;
+
+  var people = peopleData.people;
+  if (currentFilter !== 'all') {
+    people = people.filter(function(p) { return p.team === currentFilter; });
+  }
+
+  document.getElementById('people-count').textContent = people.length + ' people';
+
+  if (people.length === 0) {
+    grid.innerHTML = '<div class="no-data">No people match this filter</div>';
+    return;
+  }
+
+  var h = '';
+  people.forEach(function(p) {
+    var items = getPersonItems(p.id);
+    var overdue = items.filter(function(ai) { return ai.status === 'overdue'; }).length;
+    var open = items.filter(function(ai) { return ai.status === 'open' || ai.status === 'in-progress'; }).length;
+    var done = items.filter(function(ai) { return ai.status === 'completed' || ai.status === 'done'; }).length;
+    var meetings = getPersonMeetings(p.id);
+    var initials = p.name.split(' ').map(function(w) { return w[0]; }).join('').toUpperCase();
+    var bgColor = TEAM_COLORS[p.team] || 'linear-gradient(135deg, #545d68, #8b949e)';
+    var badgeStyle = TEAM_BADGE_STYLES[p.team] || 'background:rgba(84,93,104,0.2);color:var(--text-muted)';
+
+    h += '<div class="person-card' + (openPersonId === p.id ? ' active' : '') + '" onclick="openPerson(\'' + CC.esc(p.id) + '\')">';
+    h += '<div class="person-header">';
+    h += '<div class="person-avatar" style="background:' + bgColor + '">' + initials + '</div>';
+    h += '<div>';
+    h += '<div class="person-name">' + CC.esc(p.name) + '</div>';
+    h += '<div class="person-role">' + CC.esc(p.role || 'Team Member') + '</div>';
+    if (p.team) h += '<span class="person-team-badge" style="' + badgeStyle + '">' + CC.esc(p.team) + '</span>';
+    h += '</div></div>';
+
+    h += '<div class="person-stats">';
+    h += '<div class="person-stat"><div class="num overdue">' + overdue + '</div><div class="lbl">Overdue</div></div>';
+    h += '<div class="person-stat"><div class="num open">' + open + '</div><div class="lbl">Open</div></div>';
+    h += '<div class="person-stat"><div class="num done">' + done + '</div><div class="lbl">Done</div></div>';
+    h += '</div>';
+
+    if (meetings.length > 0) {
+      h += '<div style="margin-top:10px;font-size:0.7rem;color:var(--text-muted)">';
+      h += 'Last meeting: ' + CC.esc(meetings[0].title) + ' (' + meetings[0].date + ')';
+      h += '</div>';
+    }
+
+    h += '</div>';
+  });
+
+  grid.innerHTML = h;
+}
+
+// --- Panel ---
+window.openPerson = function(personId) {
+  openPersonId = personId;
+  var person = peopleData.people.find(function(p) { return p.id === personId; });
+  if (!person) return;
+
+  document.getElementById('panel-name').textContent = person.name;
+  document.getElementById('panel-role').textContent = (person.role || '') + (person.team ? ' — ' + person.team : '');
+
+  var items = getPersonItems(personId);
+  var meetings = getPersonMeetings(personId);
+  var perf = getAgentPerf(person.name);
+
+  var h = '';
+
+  // Relationships
+  if (person.relationships) {
+    h += '<div class="panel-section">';
+    h += '<div class="panel-section-title">Relationships</div>';
+    h += '<div class="rel-map">';
+    if (person.relationships.reports_to) {
+      var mgr = peopleData.people.find(function(p) { return p.id === person.relationships.reports_to; });
+      h += '<div class="rel-row"><span class="rel-label">Reports to</span><span class="rel-name" onclick="openPerson(\'' + person.relationships.reports_to + '\')">' + (mgr ? CC.esc(mgr.name) : person.relationships.reports_to) + '</span></div>';
+    }
+    if (person.relationships.manages && person.relationships.manages.length) {
+      person.relationships.manages.forEach(function(mid) {
+        var sub = peopleData.people.find(function(p) { return p.id === mid; });
+        h += '<div class="rel-row"><span class="rel-label">Manages</span><span class="rel-name" onclick="openPerson(\'' + mid + '\')">' + (sub ? CC.esc(sub.name) : mid) + '</span></div>';
+      });
+    }
+    h += '</div></div>';
+  }
+
+  // Performance (from Zendesk agents API)
+  if (perf && perf.currentPeriod) {
+    var cp = perf.currentPeriod;
+    var vel = cp.velocity || {};
+    h += '<div class="panel-section">';
+    h += '<div class="panel-section-title">Performance (This Month)</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
+    h += '<div style="text-align:center"><div style="font-family:var(--font-mono);font-size:1.3rem;font-weight:800">' + (cp.assigned || 0) + '</div><div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase">Assigned</div></div>';
+    h += '<div style="text-align:center"><div style="font-family:var(--font-mono);font-size:1.3rem;font-weight:800">' + (cp.solved || 0) + '</div><div style="font-size:0.62rem;color:var(--text-muted);text-transform:uppercase">Solved</div></div>';
+    h += '</div>';
+
+    if (vel.total != null) {
+      var velColor = vel.total >= 90 ? 'var(--av-green)' : vel.total >= 70 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+      h += '<div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:4px">Velocity Score</div>';
+      h += '<div class="perf-bar">';
+      h += '<div class="perf-track"><div class="perf-fill" style="width:' + Math.min(vel.total, 100) + '%;background:' + velColor + '"></div></div>';
+      h += '<div class="perf-score" style="color:' + velColor + '">' + vel.total.toFixed(0) + '</div>';
+      h += '</div>';
+      if (vel.tier) h += '<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px">Payout tier: ' + vel.tier + '</div>';
+    }
+
+    if (perf.csat) {
+      h += '<div style="margin-top:10px;font-size:0.72rem;color:var(--text-secondary)">CSAT: <span style="font-family:var(--font-mono);font-weight:700;color:var(--text-primary)">' + (perf.csat.pct || 0) + '%</span> (' + (perf.csat.good || 0) + ' good / ' + (perf.csat.total || 0) + ' total)</div>';
+    }
+    h += '</div>';
+  }
+
+  // Action Items
+  h += '<div class="panel-section">';
+  h += '<div class="panel-section-title">Action Items (' + items.length + ')</div>';
+  if (items.length === 0) {
+    h += '<div class="no-data">No action items</div>';
+  } else {
+    // Sort: overdue first, then open, then done
+    var statusOrder = { overdue: 0, open: 1, 'in-progress': 1, completed: 2, done: 2 };
+    items.sort(function(a, b) {
+      return (statusOrder[a.status] || 1) - (statusOrder[b.status] || 1);
+    });
+    items.forEach(function(ai) {
+      var statusColor = ai.status === 'overdue' ? 'var(--accent-red)' :
+                        ai.status === 'completed' || ai.status === 'done' ? 'var(--av-green)' :
+                        'var(--accent-yellow)';
+      h += '<div class="panel-item">';
+      h += '<div class="item-text">' + CC.esc(ai.item) + '</div>';
+      h += '<div class="item-meta">';
+      h += '<span class="priority-badge" style="background:rgba(117,194,154,0.12);color:' + statusColor + '">' + CC.esc(ai.status) + '</span>';
+      if (ai.dueDate) h += '<span>Due: ' + ai.dueDate + '</span>';
+      if (ai.category && ai.category !== 'general') h += '<span>' + CC.esc(ai.category) + '</span>';
+      h += '</div>';
+      if (ai.notes) h += '<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">' + CC.esc(CC.trunc(ai.notes, 120)) + '</div>';
+      h += '</div>';
+    });
+  }
+  h += '</div>';
+
+  // Meetings
+  h += '<div class="panel-section">';
+  h += '<div class="panel-section-title">Recent Meetings (' + meetings.length + ')</div>';
+  if (meetings.length === 0) {
+    h += '<div class="no-data">No meetings recorded</div>';
+  } else {
+    meetings.slice(0, 10).forEach(function(m) {
+      h += '<div class="panel-meeting">';
+      h += '<div class="meeting-title">' + CC.esc(m.title) + '</div>';
+      h += '<div class="meeting-date">' + m.date + ' &middot; ' + (m.actionItemCount || m.actionItemIds.length) + ' action items</div>';
+      h += '</div>';
+    });
+  }
+  h += '</div>';
+
+  // Tags
+  if (person.tags && person.tags.length) {
+    h += '<div class="panel-section">';
+    h += '<div class="panel-section-title">Tags</div>';
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    person.tags.forEach(function(tag) {
+      h += '<span style="font-size:0.68rem;padding:3px 10px;border-radius:10px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary)">' + CC.esc(tag) + '</span>';
+    });
+    h += '</div></div>';
+  }
+
+  document.getElementById('panel-body').innerHTML = h;
+
+  // Show panel
+  document.getElementById('panel-overlay').classList.add('visible');
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('panel-overlay').style.display = 'block';
+
+  // Update card highlight
+  renderPeopleGrid();
+};
+
+window.closePanel = function() {
+  openPersonId = null;
+  document.getElementById('panel-overlay').classList.remove('visible');
+  document.getElementById('detail-panel').classList.remove('open');
+  setTimeout(function() {
+    document.getElementById('panel-overlay').style.display = 'none';
+  }, 250);
+  renderPeopleGrid();
+};
+
+window.setFilter = function(filter) {
+  currentFilter = filter;
+  renderFilters();
+  renderPeopleGrid();
+};
+
+window.refreshAll = function() {
+  loadAllData().then(function() {
+    CC.toast('Data refreshed', true);
+  });
+};
+
+// Keyboard: Escape closes panel
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closePanel();
+});
+
+// Init
+loadAllData();
+
+})();
+</script>
+</body>
+</html>

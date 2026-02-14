@@ -1,0 +1,109 @@
+{
+  "lastUpdated": "2026-02-14T16:49:35.071Z",
+  "people": [
+    {
+      "id": "blake",
+      "name": "Blake Corbit",
+      "role": "TS Lead",
+      "team": "TS",
+      "email": "blake.corbit@autovitalsinc.com",
+      "tags": [
+        "manager",
+        "dev"
+      ],
+      "relationships": {
+        "reports_to": "cory",
+        "manages": [
+          "brien",
+          "jake"
+        ]
+      }
+    },
+    {
+      "id": "brien",
+      "name": "Brien Nunn",
+      "role": "TS Agent",
+      "team": "TS",
+      "email": "",
+      "tags": [
+        "agent"
+      ],
+      "relationships": {
+        "reports_to": "blake",
+        "manages": []
+      }
+    },
+    {
+      "id": "jake",
+      "name": "Jacob Ryder",
+      "role": "TS Agent",
+      "team": "TS",
+      "email": "",
+      "tags": [
+        "agent"
+      ],
+      "relationships": {
+        "reports_to": "blake",
+        "manages": []
+      }
+    },
+    {
+      "id": "cory",
+      "name": "Cory Berg",
+      "role": "Director",
+      "team": "Engineering",
+      "email": "",
+      "tags": [
+        "leadership"
+      ],
+      "relationships": {
+        "reports_to": null,
+        "manages": [
+          "blake"
+        ]
+      }
+    },
+    {
+      "id": "ally",
+      "name": "Ally Prach",
+      "role": "Product",
+      "team": "Product",
+      "email": "",
+      "tags": [
+        "product"
+      ],
+      "relationships": {
+        "reports_to": null,
+        "manages": []
+      }
+    },
+    {
+      "id": "jenna",
+      "name": "Jenna Treat",
+      "role": "Operations",
+      "team": "Operations",
+      "email": "",
+      "tags": [
+        "ops"
+      ],
+      "relationships": {
+        "reports_to": null,
+        "manages": []
+      }
+    },
+    {
+      "id": "jennifer",
+      "name": "Jennifer",
+      "role": "CS",
+      "team": "CS",
+      "email": "",
+      "tags": [
+        "cs"
+      ],
+      "relationships": {
+        "reports_to": null,
+        "manages": []
+      }
+    }
+  ]
+}

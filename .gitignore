@@ -7,3 +7,4 @@ dist/
 .DS_Store
 Thumbs.db
 .vercel
+local-sync/.sync-state.json

@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks — TS Command Center</title>
+<link rel="icon" href="assets/av-icon-green.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+<style>
+/* Kanban Board */
+.kanban {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  min-height: 400px;
+}
+.kanban-col {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  min-height: 300px;
+}
+.kanban-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+}
+.kanban-col-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.kanban-col-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.col-open .kanban-col-header { border-bottom-color: var(--accent-yellow); }
+.col-open .kanban-col-title { color: var(--accent-yellow); }
+.col-open .kanban-col-count { background: rgba(240,192,80,0.15); color: var(--accent-yellow); }
+
+.col-progress .kanban-col-header { border-bottom-color: var(--av-blue); }
+.col-progress .kanban-col-title { color: var(--av-blue); }
+.col-progress .kanban-col-count { background: rgba(118,195,206,0.15); color: var(--av-blue); }
+
+.col-done .kanban-col-header { border-bottom-color: var(--av-green); }
+.col-done .kanban-col-title { color: var(--av-green); }
+.col-done .kanban-col-count { background: rgba(117,194,154,0.15); color: var(--av-green); }
+
+/* Task Card */
+.task-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow);
+  transition: all 200ms;
+  cursor: pointer;
+}
+.task-card:hover {
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+.task-card.overdue {
+  border-left: 4px solid var(--accent-red);
+}
+.task-card.due-soon {
+  border-left: 4px solid var(--accent-yellow);
+}
+.task-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.task-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(117,194,154,0.12);
+  color: var(--av-green);
+}
+.task-due {
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.task-due.overdue {
+  background: rgba(248,81,73,0.15);
+  color: var(--accent-red);
+}
+.task-due.soon {
+  background: rgba(240,192,80,0.15);
+  color: var(--accent-yellow);
+}
+.task-due.normal {
+  background: var(--bg-input);
+  color: var(--text-muted);
+}
+.task-category {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(118,195,206,0.12);
+  color: var(--av-blue);
+}
+.task-meeting {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.task-priority {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.task-priority.high { background: rgba(248,81,73,0.15); color: var(--accent-red); }
+.task-priority.medium { background: rgba(240,192,80,0.15); color: var(--accent-yellow); }
+.task-priority.low { background: rgba(84,93,104,0.2); color: var(--text-muted); }
+
+.task-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+/* Filters */
+.task-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.task-filters select {
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-family: var(--font-main);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.task-filters select:focus {
+  border-color: var(--av-green);
+  outline: none;
+}
+
+/* Add Task Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 500px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+.form-group {
+  margin-bottom: 12px;
+}
+.form-group label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--av-green);
+  outline: none;
+}
+.form-group textarea {
+  min-height: 60px;
+  resize: vertical;
+  font-family: var(--font-sub);
+}
+.form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* Empty col */
+.kanban-empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+@media(max-width:900px) {
+  .kanban {
+    grid-template-columns: 1fr;
+  }
+  .kanban-col { min-height: auto; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/av-logo-white.png" alt="AutoVitals" class="header-logo">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">Action Items</div>
+      <div class="header-subtitle" id="header-sub">Task management & tracking</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-primary" onclick="showAddModal()">+ Add Task</button>
+    <button class="btn" onclick="refreshAll()">Refresh</button>
+    <div class="last-updated" id="last-updated">--</div>
+  </div>
+</header>
+
+<div class="dashboard">
+  <!-- Stats -->
+  <section>
+    <div class="stats-grid" id="stats-box">
+      <div class="loading-shimmer"></div><div class="loading-shimmer"></div>
+      <div class="loading-shimmer"></div><div class="loading-shimmer"></div>
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section>
+    <div class="task-filters" id="task-filters">
+      <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600">FILTERS:</span>
+    </div>
+  </section>
+
+  <!-- Kanban Board -->
+  <div class="kanban" id="kanban-board">
+    <div class="loading-shimmer" style="height:400px"></div>
+    <div class="loading-shimmer" style="height:400px"></div>
+    <div class="loading-shimmer" style="height:400px"></div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title">Add Task</div>
+    <div id="modal-form"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/utils.js"></script>
+<script src="shared/nav.js"></script>
+<script>
+(function(){
+'use strict';
+
+var actionItemsData = null;
+var peopleData = null;
+var interactionsData = null;
+var overrides = {};
+var localAdds = [];
+var editingId = null;
+
+// Filters
+var filterOwner = 'all';
+var filterCategory = 'all';
+var filterPriority = 'all';
+
+// localStorage keys
+var OVERRIDES_KEY = 'tasks_overrides';
+var ADDS_KEY = 'tasks_local_adds';
+
+function loadOverrides() {
+  try { overrides = JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {}; } catch(e) { overrides = {}; }
+  try { localAdds = JSON.parse(localStorage.getItem(ADDS_KEY)) || []; } catch(e) { localAdds = []; }
+}
+
+function saveOverrides() {
+  try { localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides)); } catch(e) {}
+  try { localStorage.setItem(ADDS_KEY, JSON.stringify(localAdds)); } catch(e) {}
+}
+
+function loadAllData() {
+  loadOverrides();
+  return Promise.all([
+    fetch('data/action-items.json?_=' + Date.now()).then(function(r){ return r.json(); }),
+    fetch('data/people.json?_=' + Date.now()).then(function(r){ return r.json(); }),
+    fetch('data/interactions.json?_=' + Date.now()).then(function(r){ return r.json(); }),
+  ]).then(function(results) {
+    actionItemsData = results[0];
+    peopleData = results[1];
+    interactionsData = results[2];
+    render();
+    document.getElementById('last-updated').textContent = 'Updated ' + CC.fmtTime(new Date().toISOString());
+  });
+}
+
+function getAllItems() {
+  var items = [];
+  if (actionItemsData && actionItemsData.items) {
+    items = actionItemsData.items.map(function(ai) {
+      var ov = overrides[ai.id];
+      if (ov) return Object.assign({}, ai, ov);
+      return ai;
+    });
+  }
+  // Merge local adds
+  localAdds.forEach(function(la) {
+    items.push(la);
+  });
+  return items;
+}
+
+function getPersonName(id) {
+  if (!peopleData) return id;
+  var p = peopleData.people.find(function(pp) { return pp.id === id; });
+  return p ? p.name.split(' ')[0] : id;
+}
+
+function getCategories() {
+  var cats = {};
+  getAllItems().forEach(function(ai) { if (ai.category) cats[ai.category] = true; });
+  return Object.keys(cats).sort();
+}
+
+function getOwners() {
+  var owners = {};
+  getAllItems().forEach(function(ai) { if (ai.ownerId) owners[ai.ownerId] = true; });
+  return Object.keys(owners).sort();
+}
+
+function getDueClass(dueDate, status) {
+  if (!dueDate || status === 'completed' || status === 'done') return 'normal';
+  var days = (new Date(dueDate) - new Date()) / 86400000;
+  if (days < 0) return 'overdue';
+  if (days < 3) return 'soon';
+  return 'normal';
+}
+
+function render() {
+  renderStats();
+  renderFilters();
+  renderKanban();
+}
+
+function renderStats() {
+  var box = document.getElementById('stats-box');
+  var items = getAllItems();
+  var overdue = items.filter(function(ai) { return ai.status === 'overdue' || (ai.dueDate && ai.status !== 'completed' && ai.status !== 'done' && new Date(ai.dueDate) < new Date()); }).length;
+  var open = items.filter(function(ai) { return ai.status === 'open'; }).length;
+  var inProgress = items.filter(function(ai) { return ai.status === 'in-progress'; }).length;
+  var done = items.filter(function(ai) { return ai.status === 'completed' || ai.status === 'done'; }).length;
+
+  var cards = [
+    { l: 'Overdue', v: overdue, cls: overdue > 0 ? 'color:var(--accent-red)' : '' },
+    { l: 'Open', v: open, cls: '' },
+    { l: 'In Progress', v: inProgress, cls: 'color:var(--av-blue)' },
+    { l: 'Completed', v: done, cls: 'color:var(--av-green)' },
+  ];
+
+  var h = '';
+  cards.forEach(function(c) {
+    h += '<div class="stat-card fade-in"><div class="stat-label">' + CC.esc(c.l) + '</div>';
+    h += '<div class="stat-value"' + (c.cls ? ' style="' + c.cls + '"' : '') + '>' + c.v + '</div></div>';
+  });
+  box.innerHTML = h;
+}
+
+function renderFilters() {
+  var bar = document.getElementById('task-filters');
+  var owners = getOwners();
+  var categories = getCategories();
+
+  var h = '<span style="font-size:0.72rem;color:var(--text-muted);font-weight:600">FILTERS:</span>';
+
+  // Owner filter
+  h += '<select onchange="setFilterOwner(this.value)">';
+  h += '<option value="all"' + (filterOwner === 'all' ? ' selected' : '') + '>All People</option>';
+  owners.forEach(function(oid) {
+    h += '<option value="' + CC.esc(oid) + '"' + (filterOwner === oid ? ' selected' : '') + '>' + CC.esc(getPersonName(oid)) + '</option>';
+  });
+  h += '</select>';
+
+  // Category filter
+  h += '<select onchange="setFilterCategory(this.value)">';
+  h += '<option value="all"' + (filterCategory === 'all' ? ' selected' : '') + '>All Categories</option>';
+  categories.forEach(function(cat) {
+    h += '<option value="' + CC.esc(cat) + '"' + (filterCategory === cat ? ' selected' : '') + '>' + CC.esc(cat) + '</option>';
+  });
+  h += '</select>';
+
+  // Priority filter
+  h += '<select onchange="setFilterPriority(this.value)">';
+  h += '<option value="all"' + (filterPriority === 'all' ? ' selected' : '') + '>All Priorities</option>';
+  ['high', 'medium', 'low'].forEach(function(p) {
+    h += '<option value="' + p + '"' + (filterPriority === p ? ' selected' : '') + '>' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
+  });
+  h += '</select>';
+
+  bar.innerHTML = h;
+}
+
+function renderKanban() {
+  var board = document.getElementById('kanban-board');
+  var items = getAllItems();
+
+  // Apply filters
+  if (filterOwner !== 'all') items = items.filter(function(ai) { return ai.ownerId === filterOwner; });
+  if (filterCategory !== 'all') items = items.filter(function(ai) { return ai.category === filterCategory; });
+  if (filterPriority !== 'all') items = items.filter(function(ai) { return ai.priority === filterPriority; });
+
+  // Split into columns
+  var openItems = items.filter(function(ai) { return ai.status === 'open' || ai.status === 'overdue'; });
+  var progressItems = items.filter(function(ai) { return ai.status === 'in-progress'; });
+  var doneItems = items.filter(function(ai) { return ai.status === 'completed' || ai.status === 'done'; });
+
+  // Sort: overdue first, then by due date, then by priority
+  var priOrder = { high: 0, medium: 1, low: 2 };
+  function sortItems(a, b) {
+    // Overdue first
+    var aOverdue = a.dueDate && new Date(a.dueDate) < new Date() ? 0 : 1;
+    var bOverdue = b.dueDate && new Date(b.dueDate) < new Date() ? 0 : 1;
+    if (aOverdue !== bOverdue) return aOverdue - bOverdue;
+    // Then by priority
+    var aPri = priOrder[a.priority] != null ? priOrder[a.priority] : 1;
+    var bPri = priOrder[b.priority] != null ? priOrder[b.priority] : 1;
+    if (aPri !== bPri) return aPri - bPri;
+    // Then by due date
+    if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+    if (a.dueDate) return -1;
+    if (b.dueDate) return 1;
+    return 0;
+  }
+  openItems.sort(sortItems);
+  progressItems.sort(sortItems);
+  doneItems.sort(function(a, b) {
+    // Done: most recently completed first
+    if (a.completedDate && b.completedDate) return new Date(b.completedDate) - new Date(a.completedDate);
+    return 0;
+  });
+
+  function renderCard(ai) {
+    var dueClass = getDueClass(ai.dueDate, ai.status);
+    var cardClass = dueClass === 'overdue' ? ' overdue' : dueClass === 'soon' ? ' due-soon' : '';
+    var h = '<div class="task-card' + cardClass + '" onclick="showEditModal(' + ai.id + ')">';
+    h += '<div class="task-title">' + CC.esc(ai.item) + '</div>';
+    h += '<div class="task-meta">';
+    h += '<span class="task-owner">' + CC.esc(getPersonName(ai.ownerId)) + '</span>';
+    if (ai.dueDate) {
+      h += '<span class="task-due ' + dueClass + '">' + ai.dueDate + '</span>';
+    }
+    if (ai.priority) {
+      h += '<span class="task-priority ' + ai.priority + '">' + ai.priority + '</span>';
+    }
+    if (ai.category && ai.category !== 'general') {
+      h += '<span class="task-category">' + CC.esc(ai.category) + '</span>';
+    }
+    h += '</div>';
+    if (ai.meetingTitle) {
+      h += '<div class="task-meeting">From: ' + CC.esc(ai.meetingTitle) + '</div>';
+    }
+
+    // Quick action buttons
+    h += '<div class="task-actions" onclick="event.stopPropagation()">';
+    if (ai.status === 'open' || ai.status === 'overdue') {
+      h += '<button class="btn btn-sm btn-link" onclick="moveItem(' + ai.id + ',\'in-progress\')">Start</button>';
+      h += '<button class="btn btn-sm btn-approve" onclick="moveItem(' + ai.id + ',\'completed\')">Done</button>';
+    } else if (ai.status === 'in-progress') {
+      h += '<button class="btn btn-sm btn-approve" onclick="moveItem(' + ai.id + ',\'completed\')">Done</button>';
+      h += '<button class="btn btn-sm" onclick="moveItem(' + ai.id + ',\'open\')">Reopen</button>';
+    } else if (ai.status === 'completed' || ai.status === 'done') {
+      h += '<button class="btn btn-sm" onclick="moveItem(' + ai.id + ',\'open\')">Reopen</button>';
+    }
+    h += '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  var h = '';
+
+  // Open column
+  h += '<div class="kanban-col col-open">';
+  h += '<div class="kanban-col-header"><span class="kanban-col-title">Open</span><span class="kanban-col-count">' + openItems.length + '</span></div>';
+  if (openItems.length === 0) h += '<div class="kanban-empty">No open items</div>';
+  else openItems.forEach(function(ai) { h += renderCard(ai); });
+  h += '</div>';
+
+  // In Progress column
+  h += '<div class="kanban-col col-progress">';
+  h += '<div class="kanban-col-header"><span class="kanban-col-title">In Progress</span><span class="kanban-col-count">' + progressItems.length + '</span></div>';
+  if (progressItems.length === 0) h += '<div class="kanban-empty">No items in progress</div>';
+  else progressItems.forEach(function(ai) { h += renderCard(ai); });
+  h += '</div>';
+
+  // Done column
+  h += '<div class="kanban-col col-done">';
+  h += '<div class="kanban-col-header"><span class="kanban-col-title">Done</span><span class="kanban-col-count">' + doneItems.length + '</span></div>';
+  if (doneItems.length === 0) h += '<div class="kanban-empty">No completed items</div>';
+  else doneItems.forEach(function(ai) { h += renderCard(ai); });
+  h += '</div>';
+
+  board.innerHTML = h;
+}
+
+// --- Status Changes (localStorage overrides) ---
+window.moveItem = function(id, newStatus) {
+  loadOverrides();
+  if (!overrides[id]) overrides[id] = {};
+  overrides[id].status = newStatus;
+  if (newStatus === 'completed' || newStatus === 'done') {
+    overrides[id].completedDate = new Date().toISOString().slice(0, 10);
+  } else {
+    overrides[id].completedDate = null;
+  }
+  saveOverrides();
+  render();
+  CC.toast('Item moved to ' + newStatus, true);
+};
+
+// --- Filters ---
+window.setFilterOwner = function(v) { filterOwner = v; render(); };
+window.setFilterCategory = function(v) { filterCategory = v; render(); };
+window.setFilterPriority = function(v) { filterPriority = v; render(); };
+
+// --- Add Modal ---
+window.showAddModal = function() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Add Task';
+
+  var owners = getOwners();
+  var h = '';
+  h += '<div class="form-group"><label>Task</label><input type="text" id="f-item" placeholder="What needs to be done?"></div>';
+  h += '<div class="form-group"><label>Owner</label><select id="f-owner">';
+  owners.forEach(function(oid) {
+    h += '<option value="' + CC.esc(oid) + '"' + (oid === 'blake' ? ' selected' : '') + '>' + CC.esc(getPersonName(oid)) + '</option>';
+  });
+  h += '</select></div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  h += '<div class="form-group"><label>Due Date</label><input type="date" id="f-due"></div>';
+  h += '<div class="form-group"><label>Priority</label><select id="f-priority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></div>';
+  h += '</div>';
+  h += '<div class="form-group"><label>Category</label><select id="f-category">';
+  ['general', 'process', 'documentation', 'tooling', 'marketing', 'testing', 'setup', 'hr', 'strategy', 'incident'].forEach(function(c) {
+    h += '<option value="' + c + '">' + c + '</option>';
+  });
+  h += '</select></div>';
+  h += '<div class="form-group"><label>Notes</label><textarea id="f-notes" placeholder="Additional context..."></textarea></div>';
+  h += '<div class="form-actions">';
+  h += '<button class="btn" onclick="closeModal()">Cancel</button>';
+  h += '<button class="btn btn-primary" onclick="saveTask()">Add Task</button>';
+  h += '</div>';
+
+  document.getElementById('modal-form').innerHTML = h;
+  document.getElementById('modal-overlay').style.display = 'flex';
+  setTimeout(function() { document.getElementById('f-item').focus(); }, 100);
+};
+
+// --- Edit Modal ---
+window.showEditModal = function(id) {
+  var items = getAllItems();
+  var item = items.find(function(ai) { return ai.id === id; });
+  if (!item) return;
+
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Edit Task #' + id;
+
+  var owners = getOwners();
+  var h = '';
+  h += '<div class="form-group"><label>Task</label><input type="text" id="f-item" value="' + CC.esc(item.item) + '"></div>';
+  h += '<div class="form-group"><label>Owner</label><select id="f-owner">';
+  owners.forEach(function(oid) {
+    h += '<option value="' + CC.esc(oid) + '"' + (oid === item.ownerId ? ' selected' : '') + '>' + CC.esc(getPersonName(oid)) + '</option>';
+  });
+  h += '</select></div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  h += '<div class="form-group"><label>Due Date</label><input type="date" id="f-due" value="' + (item.dueDate || '') + '"></div>';
+  h += '<div class="form-group"><label>Priority</label><select id="f-priority">';
+  ['high', 'medium', 'low'].forEach(function(p) {
+    h += '<option value="' + p + '"' + (p === item.priority ? ' selected' : '') + '>' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
+  });
+  h += '</select></div>';
+  h += '</div>';
+  h += '<div class="form-group"><label>Category</label><select id="f-category">';
+  ['general', 'process', 'documentation', 'tooling', 'marketing', 'testing', 'setup', 'hr', 'strategy', 'incident'].forEach(function(c) {
+    h += '<option value="' + c + '"' + (c === item.category ? ' selected' : '') + '>' + c + '</option>';
+  });
+  h += '</select></div>';
+  h += '<div class="form-group"><label>Notes</label><textarea id="f-notes">' + CC.esc(item.notes || '') + '</textarea></div>';
+
+  if (item.meetingTitle) {
+    h += '<div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:12px">Source: ' + CC.esc(item.meetingTitle) + ' (' + (item.meetingDate || '') + ')</div>';
+  }
+
+  h += '<div class="form-actions">';
+  h += '<button class="btn btn-danger" onclick="deleteTask(' + id + ')">Delete</button>';
+  h += '<button class="btn" onclick="closeModal()">Cancel</button>';
+  h += '<button class="btn btn-primary" onclick="saveTask()">Save</button>';
+  h += '</div>';
+
+  document.getElementById('modal-form').innerHTML = h;
+  document.getElementById('modal-overlay').style.display = 'flex';
+};
+
+window.saveTask = function() {
+  var itemText = document.getElementById('f-item').value.trim();
+  if (!itemText) { CC.toast('Task description required', false); return; }
+
+  var taskData = {
+    item: itemText,
+    ownerId: document.getElementById('f-owner').value,
+    assignedTo: [document.getElementById('f-owner').value],
+    dueDate: document.getElementById('f-due').value || null,
+    priority: document.getElementById('f-priority').value,
+    category: document.getElementById('f-category').value,
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+
+  loadOverrides();
+
+  if (editingId) {
+    // Edit existing
+    if (!overrides[editingId]) overrides[editingId] = {};
+    Object.assign(overrides[editingId], taskData);
+    CC.toast('Task #' + editingId + ' updated', true);
+  } else {
+    // New task
+    var maxId = 0;
+    getAllItems().forEach(function(ai) { if (ai.id > maxId) maxId = ai.id; });
+    var newId = maxId + 1;
+    localAdds.push(Object.assign({
+      id: newId,
+      status: 'open',
+      relatedPeople: [],
+      meetingTitle: '',
+      meetingDate: '',
+      dateAdded: new Date().toISOString().slice(0, 10),
+      completedDate: null,
+    }, taskData));
+    CC.toast('Task #' + newId + ' added', true);
+  }
+
+  saveOverrides();
+  closeModal();
+  render();
+};
+
+window.deleteTask = function(id) {
+  if (!confirm('Delete this task?')) return;
+  loadOverrides();
+  // If it's a local add, remove it
+  localAdds = localAdds.filter(function(la) { return la.id !== id; });
+  // Otherwise mark as deleted via override
+  overrides[id] = { status: 'deleted' };
+  saveOverrides();
+  closeModal();
+  render();
+  CC.toast('Task deleted', true);
+};
+
+window.closeModal = function() {
+  document.getElementById('modal-overlay').style.display = 'none';
+  editingId = null;
+};
+
+window.refreshAll = function() {
+  loadAllData().then(function() { CC.toast('Data refreshed', true); });
+};
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'n' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'SELECT') {
+    showAddModal();
+  }
+});
+
+// Click outside modal closes it
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Init
+loadAllData();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,443 @@
+{
+  "lastUpdated": "2026-02-14T16:49:35.071Z",
+  "items": [
+    {
+      "id": 1,
+      "item": "Rewrite incident procedure document for 3-person team",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-07",
+      "status": "overdue",
+      "priority": "high",
+      "category": "incident",
+      "meetingTitle": "Incident response workflow optimization",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "No permission-seeking approach. Create troubleshooting and client communication sections."
+    },
+    {
+      "id": 2,
+      "item": "Document top 10 automated solutions/filters for incident response",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-14",
+      "status": "open",
+      "priority": "high",
+      "category": "incident",
+      "meetingTitle": "Incident response workflow optimization",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": ""
+    },
+    {
+      "id": 3,
+      "item": "Coordinate Tracks API fix testing — advocate for week-long test period vs single day",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-14",
+      "status": "open",
+      "priority": "high",
+      "category": "process",
+      "meetingTitle": "TS Stand Up",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Two shops selected for testing (ticket 144-17-13672). Coordinate with Cole on timeline."
+    },
+    {
+      "id": 4,
+      "item": "Problem ticket review with Robert — 15 open problem tickets (8 AVX-related)",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-05",
+      "status": "overdue",
+      "priority": "high",
+      "category": "process",
+      "meetingTitle": "TS Stand Up",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Need JIRA tracking and timelines. Some customers referred to CS for credits."
+    },
+    {
+      "id": 5,
+      "item": "Schedule SQL 7 maintenance restart (last restart was 6+ months ago)",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-14",
+      "status": "open",
+      "priority": "high",
+      "category": "general",
+      "meetingTitle": "TS Stand Up",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Weekend maintenance preferred but weekday acceptable. Two Ryder shops showing no data."
+    },
+    {
+      "id": 6,
+      "item": "Use dedicated Slack thread for AI Auto Notes early access requests",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [
+        "ally"
+      ],
+      "dueDate": "2026-02-14",
+      "status": "open",
+      "priority": "high",
+      "category": "general",
+      "meetingTitle": "TS Stand Up *Special Guest*",
+      "meetingDate": "2026-02-09",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Ally sharing presentation, deployment spreadsheet, and feature flag access. Rollout: 10% week 1 → 100% by week 4."
+    },
+    {
+      "id": 7,
+      "item": "Set up faceless social media accounts (Reddit, Facebook business, Instagram)",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-28",
+      "status": "open",
+      "priority": "medium",
+      "category": "marketing",
+      "meetingTitle": "Autovitals marketing channels and website strategy",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "LinkedIn personal already optimized. Twitter adding soon. Email updated to whimsy@whimsyxm.com."
+    },
+    {
+      "id": 8,
+      "item": "Apple App Store account — pending app review approval causing delays",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-28",
+      "status": "open",
+      "priority": "medium",
+      "category": "setup",
+      "meetingTitle": "Autovitals marketing channels and website strategy",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Google Play Store account setup complete."
+    },
+    {
+      "id": 9,
+      "item": "Set up dev environment on new laptop (Claude Code, SSH/Git, backend codebase review)",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-14",
+      "status": "open",
+      "priority": "high",
+      "category": "setup",
+      "meetingTitle": "Linux & Git Setup Training",
+      "meetingDate": "2026-02-03",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Goal: understand zip file processing issues. Position Blake to work independently without Slav."
+    },
+    {
+      "id": 10,
+      "item": "Twilio compliance — add legal business name, business type, registration fields",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-28",
+      "status": "open",
+      "priority": "medium",
+      "category": "general",
+      "meetingTitle": "Jenna / Blake Jira Q's",
+      "meetingDate": "2026-01-26",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "New explanation box for domain mismatches should reduce rejection rates. Character limit debate: 1000 vs 450 vs 150."
+    },
+    {
+      "id": 11,
+      "item": "Get Blake, Jake, and Nun on GitHub for tool collaboration and code reviews",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-01-31",
+      "status": "overdue",
+      "priority": "high",
+      "category": "documentation",
+      "meetingTitle": "Q1 planning and tool development",
+      "meetingDate": "2026-01-09",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Enable code reviews with Corey. Resume building opportunity through documented contributions."
+    },
+    {
+      "id": 12,
+      "item": "Build Zendesk analysis tool (pattern analysis using Zendesk API)",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-28",
+      "status": "open",
+      "priority": "medium",
+      "category": "tooling",
+      "meetingTitle": "Autovitals app update and side project brainstorming",
+      "meetingDate": "2026-01-14",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Similar framework to CS call analyzer. Scrape common ticket patterns."
+    },
+    {
+      "id": 13,
+      "item": "Deploy social media content generator to client for revenue testing",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-28",
+      "status": "open",
+      "priority": "medium",
+      "category": "marketing",
+      "meetingTitle": "Autovitals app update and side project brainstorming",
+      "meetingDate": "2026-01-14",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Password-protected local app with Claude API. Auto-generates posts for Google Business, Instagram, LinkedIn, Facebook."
+    },
+    {
+      "id": 14,
+      "item": "CS Salesforce task reduction (10% goal) — scrape Zendesk for common patterns",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-03-31",
+      "status": "open",
+      "priority": "low",
+      "category": "documentation",
+      "meetingTitle": "Q1 planning and tool development",
+      "meetingDate": "2026-01-09",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Sarah managing 471 accounts. Focus on building troubleshooting section in wiki."
+    },
+    {
+      "id": 15,
+      "item": "Reinstate test user/beta testing program (TestFlight) to catch issues before wide release",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-28",
+      "status": "open",
+      "priority": "medium",
+      "category": "testing",
+      "meetingTitle": "TS Standup - Open Office",
+      "meetingDate": "2026-02-03",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Previous power user/beta testing infrastructure exists. Need to reinstate to catch issues before wide rollout."
+    },
+    {
+      "id": 16,
+      "item": "BCP update for multi-shop data exports (coming in ~2 weeks from Feb 9)",
+      "ownerId": "ally",
+      "assignedTo": [
+        "ally"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-23",
+      "status": "open",
+      "priority": "medium",
+      "category": "general",
+      "meetingTitle": "TS Stand Up *Special Guest*",
+      "meetingDate": "2026-02-09",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": ""
+    },
+    {
+      "id": 17,
+      "item": "Address compensation disparity — Jake doing more work than Nun despite fewer hours",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [
+        "ally"
+      ],
+      "dueDate": "2026-03-31",
+      "status": "open",
+      "priority": "low",
+      "category": "documentation",
+      "meetingTitle": "Q1 planning and tool development",
+      "meetingDate": "2026-01-09",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "March typically brings raise/promotion discussions. Document concrete value through process improvements."
+    },
+    {
+      "id": 18,
+      "item": "Create engineering contact cheat sheet with phone numbers for emergencies",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-14",
+      "status": "open",
+      "priority": "high",
+      "category": "general",
+      "meetingTitle": "Incident response workflow optimization",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "20-minute response threshold concern. 'Rather be wrong but say something than be right and wait.'"
+    },
+    {
+      "id": 19,
+      "item": "PowerShell automation — auto-generate debugging scripts for error checking",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-03-15",
+      "status": "open",
+      "priority": "low",
+      "category": "tooling",
+      "meetingTitle": "Autovitals marketing channels and website strategy",
+      "meetingDate": "2026-02-04",
+      "dateAdded": "2026-02-13",
+      "completedDate": null,
+      "notes": "Reference Event Viewer, WINSCP logs with timestamps. Integration with graph/plugin system."
+    },
+    {
+      "id": 20,
+      "item": "Develop team charter with success metrics and stakeholder input",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-28",
+      "status": "open",
+      "priority": "medium",
+      "category": "strategy",
+      "meetingTitle": "Cory / Blake",
+      "meetingDate": "2026-02-13",
+      "dateAdded": "2026-02-14",
+      "completedDate": null,
+      "notes": "Every team needs quantifiable success definition. Gather input from Engineering, CS, Product on 'more of/less of'. Measurable goals: resolution time, NPS scores."
+    },
+    {
+      "id": 21,
+      "item": "Practice reframing conversations — present plans instead of seeking direction",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": null,
+      "status": "open",
+      "priority": "medium",
+      "category": "general",
+      "meetingTitle": "Cory / Blake",
+      "meetingDate": "2026-02-13",
+      "dateAdded": "2026-02-14",
+      "completedDate": null,
+      "notes": "Don't show up with 'empty shelves'. Present observations + proposed solutions. Ask 'How does this align?' not 'Tell me what to do.'"
+    },
+    {
+      "id": 22,
+      "item": "Create standard email testing procedure documentation",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-21",
+      "status": "open",
+      "priority": "medium",
+      "category": "documentation",
+      "meetingTitle": "Cory / Blake",
+      "meetingDate": "2026-02-13",
+      "dateAdded": "2026-02-14",
+      "completedDate": null,
+      "notes": "Different team members using different methods. Cache reset critical to avoid SMTP fallback errors."
+    },
+    {
+      "id": 23,
+      "item": "Resolve domain change requests — Sports Marine and Carsmith",
+      "ownerId": "cory",
+      "assignedTo": [
+        "cory"
+      ],
+      "relatedPeople": [],
+      "dueDate": "2026-02-21",
+      "status": "open",
+      "priority": "medium",
+      "category": "process",
+      "meetingTitle": "Cory / Blake",
+      "meetingDate": "2026-02-13",
+      "dateAdded": "2026-02-14",
+      "completedDate": null,
+      "notes": "Sports Marine → sportsmarineneport.avims.us. Carsmith → carsmith.avims.us. Tickets 19018 and 19152."
+    },
+    {
+      "id": 24,
+      "item": "Start daily 20-min meditation practice",
+      "ownerId": "blake",
+      "assignedTo": [
+        "blake"
+      ],
+      "relatedPeople": [
+        "cory"
+      ],
+      "dueDate": null,
+      "status": "open",
+      "priority": "medium",
+      "category": "general",
+      "meetingTitle": "Cory / Blake",
+      "meetingDate": "2026-02-13",
+      "dateAdded": "2026-02-14",
+      "completedDate": null,
+      "notes": "Cory's recommendation: 6+ months to see results. Goal is turning down 'monkey mind', not stopping thoughts. Cory sending meditation resources."
+    }
+  ]
+}

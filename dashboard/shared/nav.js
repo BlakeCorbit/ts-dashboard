@@ -2,6 +2,8 @@
 'use strict';
 var pages = [
   { href: '/', label: 'Overview' },
+  { href: '/people.html', label: 'People' },
+  { href: '/tasks.html', label: 'Tasks' },
   { href: '/problems.html', label: 'PT Identifier' },
   { href: '/emergency.html', label: 'Emergency' },
   { href: '/reporting.html', label: 'Reporting' },

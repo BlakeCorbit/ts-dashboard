@@ -1,0 +1,11 @@
+{
+  "name": "ts-dashboard-local-sync",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Local Granola → ts-dashboard sync pipeline",
+  "scripts": {
+    "sync": "node sync.js",
+    "migrate": "node migrate-data.js",
+    "seed": "node seed-state.js"
+  }
+}
