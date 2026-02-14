@@ -93,6 +93,38 @@ NAME_MAP["jacob"] = "jake";
 NAME_MAP["cory berg"] = "cory";
 NAME_MAP["ally prach"] = "ally";
 NAME_MAP["jenna treat"] = "jenna";
+// Engineering team
+NAME_MAP["alex troy"] = "alex_troy";
+NAME_MAP["alex yatsenko"] = "alex_y";
+NAME_MAP["alexey"] = "alexey";
+NAME_MAP["alexey polovinka"] = "alexey";
+NAME_MAP["anatoliy"] = "anatoliy";
+NAME_MAP["anatoliy shapoval"] = "anatoliy";
+NAME_MAP["shweps"] = "anatoliy";
+NAME_MAP["dmitriy"] = "dmitriy";
+NAME_MAP["dmitriy karlov"] = "dmitriy";
+NAME_MAP["marsel"] = "marsel";
+NAME_MAP["marsel fattakhov"] = "marsel";
+NAME_MAP["michael"] = "michael_k";
+NAME_MAP["michael krits"] = "michael_k";
+NAME_MAP["oleg"] = "oleg";
+NAME_MAP["oleg rylin"] = "oleg";
+NAME_MAP["sergey"] = "sergey";
+NAME_MAP["sergey doroshchenko"] = "sergey";
+NAME_MAP["slav"] = "slav";
+NAME_MAP["slav rilov"] = "slav";
+NAME_MAP["ute"] = "ute";
+NAME_MAP["ute gerlach"] = "ute";
+NAME_MAP["vadim"] = "vadim";
+NAME_MAP["vadim loboda"] = "vadim";
+NAME_MAP["jenn"] = "jenn_t";
+NAME_MAP["jenn thronson"] = "jenn_t";
+NAME_MAP["taren"] = "taren";
+NAME_MAP["taren peng"] = "taren";
+NAME_MAP["roman"] = "roman";
+NAME_MAP["roman goryachev"] = "roman";
+NAME_MAP["shane"] = "shane";
+NAME_MAP["shane gibson"] = "shane";
 
 function resolvePersonId(name) {
   if (!name) return "blake";

@@ -521,6 +521,15 @@ function renderPeopleGrid() {
       h += '</div>';
     }
 
+    if (p.timezone || p.location) {
+      h += '<div style="margin-top:4px;font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono)">';
+      var parts = [];
+      if (p.location) parts.push(p.location);
+      if (p.timezone) parts.push(p.timezone);
+      h += CC.esc(parts.join(' · '));
+      h += '</div>';
+    }
+
     h += '</div>';
   });
 
@@ -542,22 +551,59 @@ window.openPerson = function(personId) {
 
   var h = '';
 
-  // Relationships
-  if (person.relationships) {
+  // Contact Info & Location
+  var hasContact = (person.phone && person.phone.length) || person.timezone || person.location;
+  if (hasContact) {
     h += '<div class="panel-section">';
-    h += '<div class="panel-section-title">Relationships</div>';
-    h += '<div class="rel-map">';
-    if (person.relationships.reports_to) {
-      var mgr = peopleData.people.find(function(p) { return p.id === person.relationships.reports_to; });
-      h += '<div class="rel-row"><span class="rel-label">Reports to</span><span class="rel-name" onclick="openPerson(\'' + person.relationships.reports_to + '\')">' + (mgr ? CC.esc(mgr.name) : person.relationships.reports_to) + '</span></div>';
-    }
-    if (person.relationships.manages && person.relationships.manages.length) {
-      person.relationships.manages.forEach(function(mid) {
-        var sub = peopleData.people.find(function(p) { return p.id === mid; });
-        h += '<div class="rel-row"><span class="rel-label">Manages</span><span class="rel-name" onclick="openPerson(\'' + mid + '\')">' + (sub ? CC.esc(sub.name) : mid) + '</span></div>';
+    h += '<div class="panel-section-title">Contact & Location</div>';
+    if (person.phone && person.phone.length) {
+      person.phone.forEach(function(ph) {
+        h += '<div class="rel-row"><span class="rel-label">Phone</span><span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-primary)">' + CC.esc(ph) + '</span></div>';
       });
     }
-    h += '</div></div>';
+    if (person.email) {
+      h += '<div class="rel-row"><span class="rel-label">Email</span><span style="font-size:0.8rem;color:var(--av-green)">' + CC.esc(person.email) + '</span></div>';
+    }
+    if (person.timezone) {
+      h += '<div class="rel-row"><span class="rel-label">Timezone</span><span style="font-size:0.8rem;color:var(--text-primary)">' + CC.esc(person.timezone) + '</span></div>';
+    }
+    if (person.location) {
+      h += '<div class="rel-row"><span class="rel-label">Location</span><span style="font-size:0.8rem;color:var(--text-primary)">' + CC.esc(person.location) + '</span></div>';
+    }
+    h += '</div>';
+  }
+
+  // Relationships
+  if (person.relationships) {
+    var hasRels = person.relationships.reports_to || (person.relationships.manages && person.relationships.manages.length);
+    if (hasRels) {
+      h += '<div class="panel-section">';
+      h += '<div class="panel-section-title">Relationships</div>';
+      h += '<div class="rel-map">';
+      if (person.relationships.reports_to) {
+        var mgr = peopleData.people.find(function(p) { return p.id === person.relationships.reports_to; });
+        h += '<div class="rel-row"><span class="rel-label">Reports to</span><span class="rel-name" onclick="openPerson(\'' + person.relationships.reports_to + '\')">' + (mgr ? CC.esc(mgr.name) : person.relationships.reports_to) + '</span></div>';
+      }
+      if (person.relationships.manages && person.relationships.manages.length) {
+        person.relationships.manages.forEach(function(mid) {
+          var sub = peopleData.people.find(function(p) { return p.id === mid; });
+          h += '<div class="rel-row"><span class="rel-label">Manages</span><span class="rel-name" onclick="openPerson(\'' + mid + '\')">' + (sub ? CC.esc(sub.name) : mid) + '</span></div>';
+        });
+      }
+      h += '</div></div>';
+    }
+  }
+
+  // App Ownership
+  if (person.appOwnership && person.appOwnership.length) {
+    h += '<div class="panel-section">';
+    h += '<div class="panel-section-title">Application Ownership (' + person.appOwnership.length + ')</div>';
+    person.appOwnership.forEach(function(app) {
+      h += '<div class="panel-item" style="padding:8px 12px">';
+      h += '<div style="font-size:0.8rem;color:var(--text-primary)">' + CC.esc(app) + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
   }
 
   // Performance (from Zendesk agents API)

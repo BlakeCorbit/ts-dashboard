@@ -35,7 +35,25 @@ const NAME_MAP = {
   ally: "ally", "ally prach": "ally",
   jenna: "jenna", "jenna treat": "jenna",
   jennifer: "jennifer",
-  cole: "cole", robert: "robert", al: "al", slav: "slav",
+  // Engineering team
+  "alex troy": "alex_troy",
+  "alex yatsenko": "alex_y",
+  alexey: "alexey", "alexey polovinka": "alexey",
+  anatoliy: "anatoliy", "anatoliy shapoval": "anatoliy", shweps: "anatoliy",
+  dmitriy: "dmitriy", "dmitriy karlov": "dmitriy",
+  marsel: "marsel", "marsel fattakhov": "marsel",
+  michael: "michael_k", "michael krits": "michael_k",
+  oleg: "oleg", "oleg rylin": "oleg",
+  sergey: "sergey", "sergey doroshchenko": "sergey",
+  slav: "slav", "slav rilov": "slav",
+  ute: "ute", "ute gerlach": "ute",
+  vadim: "vadim", "vadim loboda": "vadim",
+  jenn: "jenn_t", "jenn thronson": "jenn_t",
+  taren: "taren", "taren peng": "taren",
+  roman: "roman", "roman goryachev": "roman",
+  shane: "shane", "shane gibson": "shane",
+  // Aliases
+  cole: "cole", robert: "robert", al: "al",
 };
 
 function resolvePersonId(name) {
@@ -185,7 +203,7 @@ function extractActionItems(panelText, meetingTitle, meetingDate, attendees) {
 
     if (!inActionSection) {
       const actionPatterns = [
-        /(?:Blake|Jacob|Brien|Cole|Cory|Ally|Jenna|Jennifer|Al)\s+(?:to|will|should|needs? to)\s+(.+)/i,
+        /(?:Blake|Jacob|Brien|Cole|Cory|Ally|Jenna|Jennifer|Al|Alex|Alexey|Anatoliy|Dmitriy|Marsel|Michael|Oleg|Sergey|Slav|Ute|Vadim|Jenn|Taren|Roman|Shane)\s+(?:to|will|should|needs? to)\s+(.+)/i,
       ];
       for (const pattern of actionPatterns) {
         const match = line.match(pattern);
