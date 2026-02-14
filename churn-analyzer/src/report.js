@@ -174,6 +174,23 @@ function generateDashboardJSON(db) {
     };
 
     // Get predictions — all risk levels, capped at 750
+    const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+
+    const getActiveTickets = db.prepare(`
+      SELECT id, subject, status, priority, category, created_at, updated_at
+      FROM zd_tickets
+      WHERE org_id = ? AND status NOT IN ('solved', 'closed')
+      ORDER BY created_at DESC
+    `);
+
+    const getHistoricalTickets = db.prepare(`
+      SELECT id, subject, status, priority, category, created_at, updated_at, resolution_hours
+      FROM zd_tickets
+      WHERE org_id = ? AND status IN ('solved', 'closed') AND created_at >= ?
+      ORDER BY created_at DESC
+      LIMIT 10
+    `);
+
     predictions = db.prepare(`
       SELECT p.*, s.account_name, s.mrr, o.name as zd_org_name
       FROM churn_predictions p
@@ -188,6 +205,18 @@ function generateDashboardJSON(db) {
         explanation: s.explanation,
         severity: s.severity,
       }));
+
+      // Fetch tickets for this org
+      const activeTickets = p.zd_org_id ? getActiveTickets.all(p.zd_org_id).map(t => ({
+        id: t.id, subject: t.subject, status: t.status, priority: t.priority,
+        category: t.category, created: t.created_at, updated: t.updated_at,
+      })) : [];
+
+      const historicalTickets = p.zd_org_id ? getHistoricalTickets.all(p.zd_org_id, sixMonthsAgo).map(t => ({
+        id: t.id, subject: t.subject, status: t.status, priority: t.priority,
+        category: t.category, created: t.created_at, resHours: t.resolution_hours ? Math.round(t.resolution_hours) : null,
+      })) : [];
+
       return {
         name: p.account_name,
         zdOrgId: p.zd_org_id,
@@ -197,6 +226,8 @@ function generateDashboardJSON(db) {
         signalCount: p.signal_count,
         confidence: p.confidence,
         mrr: p.mrr,
+        activeTickets,
+        historicalTickets,
       };
     });
 

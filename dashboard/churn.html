@@ -331,6 +331,48 @@ window.predSortBy = function(field) {
   if (churnData) renderPredictions(churnData);
 };
 
+function priorityColor(p) {
+  if (p === 'urgent') return 'var(--accent-red)';
+  if (p === 'high') return 'var(--accent-orange)';
+  if (p === 'normal') return 'var(--text-secondary)';
+  return 'var(--text-muted)';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '--';
+  var d = new Date(iso);
+  return (d.getMonth() + 1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2);
+}
+
+function renderTicketRow(t, isActive) {
+  var h = '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem">';
+  h += '<a href="' + CC.ZD + t.id + '" target="_blank" style="font-family:var(--font-mono);font-weight:600;color:var(--av-blue);flex-shrink:0">#' + t.id + '</a>';
+  h += '<span style="color:' + priorityColor(t.priority) + ';font-weight:600;flex-shrink:0;width:48px;text-transform:capitalize">' + CC.esc(t.priority || 'normal') + '</span>';
+  h += '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + CC.esc(t.subject) + '">' + CC.esc(CC.trunc(t.subject, 50)) + '</span>';
+  h += '<span style="color:var(--text-muted);flex-shrink:0;width:55px;text-align:right">' + fmtDate(t.created) + '</span>';
+  if (!isActive && t.resHours != null) {
+    h += '<span style="font-family:var(--font-mono);color:var(--text-muted);flex-shrink:0;width:45px;text-align:right">' + t.resHours + 'h</span>';
+  }
+  if (isActive) {
+    h += '<span style="color:var(--accent-yellow);font-weight:600;flex-shrink:0;width:50px;text-align:right;text-transform:capitalize;font-size:0.65rem">' + CC.esc(t.status) + '</span>';
+  }
+  h += '</div>';
+  return h;
+}
+
+window.togglePredDetail = function(idx) {
+  var el = document.getElementById('pred-detail-' + idx);
+  if (!el) return;
+  var arrow = document.getElementById('pred-arrow-' + idx);
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    if (arrow) arrow.textContent = '\u25BC';
+  } else {
+    el.style.display = 'none';
+    if (arrow) arrow.textContent = '\u25B6';
+  }
+};
+
 function renderPredictions(d) {
   if (!d.churnSignature || !d.churnSignature.available || !d.predictions) return;
 
@@ -364,6 +406,7 @@ function renderPredictions(d) {
   };
 
   var h = '<table><thead><tr>';
+  h += '<th style="width:24px"></th>';
   h += '<th style="cursor:pointer" onclick="predSortBy(\'name\')">Account' + arrow('name') + '</th>';
   h += '<th style="cursor:pointer;text-align:center" onclick="predSortBy(\'churnScore\')">Churn Score' + arrow('churnScore') + '</th>';
   h += '<th style="text-align:center">Level</th>';
@@ -373,16 +416,24 @@ function renderPredictions(d) {
   h += '<th>Warning Signs</th>';
   h += '</tr></thead><tbody>';
 
-  preds.forEach(function(p) {
+  preds.forEach(function(p, idx) {
     var rc = riskColor(p.churnRiskLevel);
     var rb = riskBg(p.churnRiskLevel);
+    var hasTickets = (p.activeTickets && p.activeTickets.length > 0) || (p.historicalTickets && p.historicalTickets.length > 0);
 
-    h += '<tr class="fade-in">';
+    h += '<tr class="fade-in" style="' + (hasTickets ? 'cursor:pointer' : '') + '" onclick="' + (hasTickets ? 'togglePredDetail(' + idx + ')' : '') + '">';
+
+    // Expand arrow
+    h += '<td style="text-align:center;width:24px;padding:0 4px">';
+    if (hasTickets) {
+      h += '<span id="pred-arrow-' + idx + '" style="font-size:0.65rem;color:var(--text-muted);user-select:none">&#9654;</span>';
+    }
+    h += '</td>';
 
     // Name
     h += '<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + CC.esc(p.name) + '">';
     if (p.zdOrgId) {
-      h += '<a href="' + CC.ZD.replace('/agent/tickets/', '/agent/organizations/') + p.zdOrgId + '/tickets" target="_blank">' + CC.esc(CC.trunc(p.name, 28)) + '</a>';
+      h += '<a href="' + CC.ZD.replace('/agent/tickets/', '/agent/organizations/') + p.zdOrgId + '/tickets" target="_blank" onclick="event.stopPropagation()">' + CC.esc(CC.trunc(p.name, 28)) + '</a>';
     } else {
       h += CC.esc(CC.trunc(p.name, 28));
     }
@@ -420,6 +471,46 @@ function renderPredictions(d) {
     h += '</td>';
 
     h += '</tr>';
+
+    // Expandable detail row
+    if (hasTickets) {
+      h += '<tr><td colspan="8" style="padding:0;border-top:none">';
+      h += '<div id="pred-detail-' + idx + '" style="display:none;padding:8px 16px 12px 40px;background:var(--bg-main);border-top:1px solid var(--border-subtle)">';
+
+      // Active Tickets
+      var active = p.activeTickets || [];
+      h += '<div style="margin-bottom:' + (active.length > 0 ? '10' : '0') + 'px">';
+      h += '<div style="font-size:0.68rem;font-weight:700;color:var(--accent-orange);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;display:flex;align-items:center;gap:6px">';
+      h += 'Active Tickets';
+      if (active.length > 0) h += '<span style="font-family:var(--font-mono);font-weight:800;background:rgba(232,134,58,0.15);color:var(--accent-orange);border-radius:10px;padding:1px 7px;font-size:0.65rem">' + active.length + '</span>';
+      h += '</div>';
+      if (active.length > 0) {
+        h += '<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden">';
+        active.forEach(function(t) { h += renderTicketRow(t, true); });
+        h += '</div>';
+      } else {
+        h += '<div style="font-size:0.72rem;color:var(--text-muted);padding:2px 0">No active tickets</div>';
+      }
+      h += '</div>';
+
+      // Historical Tickets
+      var hist = p.historicalTickets || [];
+      h += '<div>';
+      h += '<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;display:flex;align-items:center;gap:6px">';
+      h += 'Recent Resolved';
+      if (hist.length > 0) h += '<span style="font-family:var(--font-mono);font-weight:800;background:var(--bg-input);color:var(--text-muted);border-radius:10px;padding:1px 7px;font-size:0.65rem">' + hist.length + '</span>';
+      h += '</div>';
+      if (hist.length > 0) {
+        h += '<div style="border:1px solid var(--border-subtle);border-radius:var(--radius);overflow:hidden">';
+        hist.forEach(function(t) { h += renderTicketRow(t, false); });
+        h += '</div>';
+      } else {
+        h += '<div style="font-size:0.72rem;color:var(--text-muted);padding:2px 0">No resolved tickets in last 6 months</div>';
+      }
+      h += '</div>';
+
+      h += '</div></td></tr>';
+    }
   });
 
   h += '</tbody></table>';
